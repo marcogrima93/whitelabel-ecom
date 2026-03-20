@@ -24,6 +24,7 @@ import {
   LayoutGrid,
   ChevronRight,
 } from "lucide-react";
+import { ImageUpload } from "@/components/ui/image-upload";
 import {
   addCategoryAction,
   updateCategoryAction,
@@ -216,18 +217,15 @@ export default function AdminCatalogueClient({
                       URL-friendly identifier. Used in filters: /products?category=beef
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cat-image">Image Path</Label>
-                    <Input
-                      id="cat-image"
-                      value={catForm.image}
-                      onChange={(e) => setCatForm((p) => ({ ...p, image: e.target.value }))}
-                      placeholder="/images/categories/beef.jpg"
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Place images in /public/images/categories/
-                    </p>
-                  </div>
+                  <ImageUpload
+                    label="Image"
+                    folder="categories"
+                    value={catForm.image}
+                    onChange={(url) => setCatForm((p) => ({ ...p, image: url as string }))}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Upload an image or leave blank for no image.
+                  </p>
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={isPending}>
