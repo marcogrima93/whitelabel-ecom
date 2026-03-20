@@ -1,7 +1,7 @@
-import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { NextResponse, type NextRequest } from "next/server";
+import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function middleware(request) {
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -9,21 +9,21 @@ export async function middleware(request: NextRequest) {
   });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     {
       cookies: {
-        get(name: string) {
+        get(name) {
           return request.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
+        set(name, value, options) {
           request.cookies.set({ name, value, ...options });
           response = NextResponse.next({
             request: { headers: request.headers },
           });
           response.cookies.set({ name, value, ...options });
         },
-        remove(name: string, options: CookieOptions) {
+        remove(name, options) {
           request.cookies.set({ name, value: "", ...options });
           response = NextResponse.next({
             request: { headers: request.headers },
@@ -48,7 +48,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  // Admin protection
+  // Admin protection with role check
   if (path.startsWith("/admin")) {
     if (!user) {
       url.pathname = "/login";
@@ -56,11 +56,18 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(url);
     }
     
-    // In a real app, check role via a profile query or JWT claim
-    // For this template, we assume admin role logic would be implemented here
-    // Example:
-    // const { data } = await supabase.from('profiles').select('role').eq('id', user.id).single();
-    // if (data?.role !== 'ADMIN') return NextResponse.redirect(new URL('/', request.url));
+    // Check if user has admin role
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+    
+    if (!profile || profile.role !== "ADMIN") {
+      // Redirect non-admin users to home page
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
   }
 
   // Redirect auth pages if already logged in

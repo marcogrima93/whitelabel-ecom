@@ -13,11 +13,12 @@ import { siteConfig } from "@/site.config";
 
 interface StripeFormProps {
   amount: number;
+  orderNumber: string;
   onSuccess: (orderNumber: string) => void;
   onBack: () => void;
 }
 
-export default function StripeForm({ amount, onSuccess, onBack }: StripeFormProps) {
+export default function StripeForm({ amount, orderNumber, onSuccess, onBack }: StripeFormProps) {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -50,13 +51,11 @@ export default function StripeForm({ amount, onSuccess, onBack }: StripeFormProp
       setLoading(false);
     } else if (paymentIntent && paymentIntent.status === "succeeded") {
       // Payment was successfully confirmed
-      const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}`;
       onSuccess(orderNumber);
     } else {
       // It might require further action (e.g. 3D Secure), though 'if_required' usually handles it.
       // If it's processing or requires action, we can either wait or inform the user.
       // For simplicity in this SPA flow:
-      const orderNumber = `ORD-${Date.now().toString(36).toUpperCase()}`;
       onSuccess(orderNumber);
     }
   };

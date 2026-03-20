@@ -2,31 +2,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
+import { getDashboardStats, getOrders } from "@/lib/supabase/queries";
 import {
   DollarSign,
   ShoppingCart,
   Package,
   Users,
   TrendingUp,
-  ArrowUpRight,
+  Inbox,
 } from "lucide-react";
-
-// Mock KPI data
-const kpis = [
-  { label: "Today's Orders", value: "12", icon: ShoppingCart, change: "+3 from yesterday", color: "text-blue-600" },
-  { label: "Pending Orders", value: "5", icon: Package, change: "Needs attention", color: "text-amber-600" },
-  { label: "Monthly Revenue", value: "€4,280", icon: DollarSign, change: "+12% vs last month", color: "text-emerald-600" },
-  { label: "New Customers", value: "28", icon: Users, change: "This month", color: "text-violet-600" },
-];
-
-// Mock recent orders
-const recentOrders = [
-  { id: "ORD-103", customer: "Maria Borg", type: "Retail", date: "Today, 14:30", total: 67.50, status: "PENDING" },
-  { id: "ORD-102", customer: "Joe Camilleri", type: "Wholesale", date: "Today, 11:15", total: 245.00, status: "CONFIRMED" },
-  { id: "ORD-101", customer: "Anna Vella", type: "Retail", date: "Yesterday", total: 34.99, status: "DISPATCHED" },
-  { id: "ORD-100", customer: "Mark Farrugia", type: "Retail", date: "Yesterday", total: 89.97, status: "DELIVERED" },
-  { id: "ORD-099", customer: "Lisa Grech", type: "Wholesale", date: "2 days ago", total: 520.00, status: "DELIVERED" },
-];
 
 const statusVariant = (status: string) => {
   switch (status) {
@@ -38,7 +22,58 @@ const statusVariant = (status: string) => {
   }
 };
 
-export default function AdminDashboard() {
+function formatRelativeDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffDays === 0) {
+    return `Today, ${date.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}`;
+  } else if (diffDays === 1) {
+    return "Yesterday";
+  } else {
+    return `${diffDays} days ago`;
+  }
+}
+
+export default async function AdminDashboard() {
+  const [stats, recentOrders] = await Promise.all([
+    getDashboardStats(),
+    getOrders({ limit: 5 }),
+  ]);
+
+  const kpis = [
+    { 
+      label: "Today's Orders", 
+      value: stats.todayOrders.toString(), 
+      icon: ShoppingCart, 
+      change: "Orders placed today", 
+      color: "text-blue-600" 
+    },
+    { 
+      label: "Pending Orders", 
+      value: stats.pendingOrders.toString(), 
+      icon: Package, 
+      change: stats.pendingOrders > 0 ? "Needs attention" : "All clear", 
+      color: stats.pendingOrders > 0 ? "text-amber-600" : "text-emerald-600" 
+    },
+    { 
+      label: "Monthly Revenue", 
+      value: formatPrice(stats.monthlyRevenue, siteConfig.currency.code, siteConfig.currency.locale), 
+      icon: DollarSign, 
+      change: "This month", 
+      color: "text-emerald-600" 
+    },
+    { 
+      label: "New Customers", 
+      value: stats.newCustomers.toString(), 
+      icon: Users, 
+      change: "This month", 
+      color: "text-violet-600" 
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <div>
@@ -75,38 +110,50 @@ export default function AdminDashboard() {
           <CardTitle>Recent Orders</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b">
-                  <th className="text-left pb-3 font-semibold">Order</th>
-                  <th className="text-left pb-3 font-semibold">Customer</th>
-                  <th className="text-left pb-3 font-semibold">Type</th>
-                  <th className="text-left pb-3 font-semibold">Date</th>
-                  <th className="text-left pb-3 font-semibold">Total</th>
-                  <th className="text-left pb-3 font-semibold">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y">
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="py-3 font-mono font-medium">{order.id}</td>
-                    <td className="py-3">{order.customer}</td>
-                    <td className="py-3">
-                      <Badge variant={order.type === "Wholesale" ? "default" : "outline"}>
-                        {order.type}
-                      </Badge>
-                    </td>
-                    <td className="py-3 text-muted-foreground">{order.date}</td>
-                    <td className="py-3 font-medium">€{order.total.toFixed(2)}</td>
-                    <td className="py-3">
-                      <Badge variant={statusVariant(order.status)}>{order.status}</Badge>
-                    </td>
+          {recentOrders.length === 0 ? (
+            <div className="text-center py-12">
+              <Inbox className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
+              <p className="text-muted-foreground">No orders yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Orders will appear here once customers start purchasing.
+              </p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left pb-3 font-semibold">Order</th>
+                    <th className="text-left pb-3 font-semibold">Customer</th>
+                    <th className="text-left pb-3 font-semibold">Type</th>
+                    <th className="text-left pb-3 font-semibold">Date</th>
+                    <th className="text-left pb-3 font-semibold">Total</th>
+                    <th className="text-left pb-3 font-semibold">Status</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                </thead>
+                <tbody className="divide-y">
+                  {recentOrders.map((order) => (
+                    <tr key={order.id} className="hover:bg-muted/50 transition-colors">
+                      <td className="py-3 font-mono font-medium">{order.order_number}</td>
+                      <td className="py-3">{order.email}</td>
+                      <td className="py-3">
+                        <Badge variant={order.delivery_method === "COLLECTION" ? "secondary" : "outline"}>
+                          {order.delivery_method}
+                        </Badge>
+                      </td>
+                      <td className="py-3 text-muted-foreground">{formatRelativeDate(order.created_at)}</td>
+                      <td className="py-3 font-medium">
+                        {formatPrice(Number(order.total), siteConfig.currency.code, siteConfig.currency.locale)}
+                      </td>
+                      <td className="py-3">
+                        <Badge variant={statusVariant(order.status)}>{order.status}</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

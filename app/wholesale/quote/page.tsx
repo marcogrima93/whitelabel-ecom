@@ -1,7 +1,6 @@
 "use client";
 
-import { useState } from "react";
-import type { Metadata } from "next";
+import { useState, useTransition } from "react";
 import { siteConfig } from "@/site.config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,10 +21,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2, CheckCircle, Send } from "lucide-react";
+import { submitQuoteAction } from "./actions";
 
 export default function QuotePage() {
-  const [loading, setLoading] = useState(false);
+  const [isPending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     business: "",
@@ -52,17 +53,26 @@ export default function QuotePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setError("");
 
-    try {
-      // In production, POST to /api/quote
-      await new Promise((r) => setTimeout(r, 1500));
-      setSubmitted(true);
-    } catch {
-      // Handle error
-    } finally {
-      setLoading(false);
-    }
+    startTransition(async () => {
+      const result = await submitQuoteAction({
+        name: formData.name,
+        business: formData.business,
+        email: formData.email,
+        phone: formData.phone || null,
+        categories: formData.categories,
+        quantity: formData.quantity,
+        frequency: formData.frequency || null,
+        notes: formData.notes || null,
+      });
+
+      if (result.success) {
+        setSubmitted(true);
+      } else {
+        setError(result.error || "Failed to submit quote request");
+      }
+    });
   };
 
   if (submitted) {
@@ -142,9 +152,9 @@ export default function QuotePage() {
                 <Select value={formData.quantity} onValueChange={(v) => update("quantity", v)}>
                   <SelectTrigger><SelectValue placeholder="Select range" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1-50">1–50 units</SelectItem>
-                    <SelectItem value="51-100">51–100 units</SelectItem>
-                    <SelectItem value="101-500">101–500 units</SelectItem>
+                    <SelectItem value="1-50">1-50 units</SelectItem>
+                    <SelectItem value="51-100">51-100 units</SelectItem>
+                    <SelectItem value="101-500">101-500 units</SelectItem>
                     <SelectItem value="500+">500+ units</SelectItem>
                   </SelectContent>
                 </Select>
@@ -173,10 +183,14 @@ export default function QuotePage() {
                 rows={4}
               />
             </div>
+
+            {error && (
+              <p className="text-sm text-destructive">{error}</p>
+            )}
           </CardContent>
           <div className="px-6 pb-6">
-            <Button type="submit" size="lg" className="w-full" disabled={loading}>
-              {loading ? (
+            <Button type="submit" size="lg" className="w-full" disabled={isPending}>
+              {isPending ? (
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Submitting...</>
               ) : (
                 <><Send className="mr-2 h-4 w-4" /> Submit Quote Request</>
