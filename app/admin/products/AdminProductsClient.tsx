@@ -279,7 +279,7 @@ export default function AdminProductsClient({ initialProducts }: { initialProduc
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {siteConfig.categories.map((cat) => (
+            {categories.map((cat) => (
               <SelectItem key={cat.slug} value={cat.slug}>{cat.name}</SelectItem>
             ))}
           </SelectContent>
@@ -337,7 +337,7 @@ export default function AdminProductsClient({ initialProducts }: { initialProduc
                         </div>
                       </td>
                       <td className="p-4 text-muted-foreground">
-                        {siteConfig.categories.find((c) => c.slug === product.category)?.name || product.category}
+                        {getCategoryName(product.category)}
                       </td>
                       <td className="p-4">{stockBadge(product.stock_status)}</td>
                       <td className="p-4 font-medium">

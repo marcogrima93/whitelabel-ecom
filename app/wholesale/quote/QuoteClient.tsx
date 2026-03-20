@@ -141,7 +141,7 @@ export default function QuotePage({ categories }: QuotePageProps) {
             <div className="space-y-2">
               <Label>Products of Interest</Label>
               <div className="flex flex-wrap gap-2">
-                {siteConfig.categories.map((cat) => (
+                {categories.map((cat) => (
                   <button
                     key={cat.slug}
                     type="button"

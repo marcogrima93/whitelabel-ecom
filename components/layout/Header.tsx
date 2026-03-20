@@ -48,10 +48,13 @@ export function Header({ categories = [] }: HeaderProps) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const itemCount = useCartStore((s) => s.getItemCount());
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -302,7 +305,7 @@ export function Header({ categories = [] }: HeaderProps) {
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative" aria-label="Shopping cart">
                   <ShoppingCart className="h-5 w-5" />
-                  {itemCount > 0 && (
+                  {mounted && itemCount > 0 && (
                     <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold animate-fade-in">
                       {itemCount > 99 ? "99+" : itemCount}
                     </span>

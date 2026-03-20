@@ -36,21 +36,14 @@ export const siteConfig = {
   },
 
   // ── Navigation & Categories ───────────────────────────────────────────
-  categories: [
-    { name: "Beef", slug: "beef", image: "/images/categories/beef.jpg" },
-    { name: "Pork", slug: "pork", image: "/images/categories/pork.jpg" },
-    { name: "Poultry", slug: "poultry", image: "/images/categories/poultry.jpg" },
-    { name: "Lamb", slug: "lamb", image: "/images/categories/lamb.jpg" },
-  ],
+  // Categories are managed in the Admin Portal → Catalogue section and stored in the DB.
 
   // ── Product Filters ───────────────────────────────────────────────────
+  // Filter groups and options are managed in Admin Portal → Catalogue section.
+  // unit and optionSelector are store-level display labels used across the UI.
   filters: {
-    secondary: {
-      label: "Cut",
-      options: ["Steak", "Chops", "Mince", "Whole", "Sausages"],
-    },
-    unit: "kg", // e.g. "kg", "piece", "pack"
-    optionSelector: "Weight", // e.g. "Weight", "Size", "Colour"
+    unit: "kg", // e.g. "kg", "piece", "pack" — shown as "€12.50 / kg"
+    optionSelector: "Weight", // e.g. "Weight", "Size", "Colour" — labels the variant picker
   },
 
   // ── Homepage ──────────────────────────────────────────────────────────
@@ -111,13 +104,11 @@ export const siteConfig = {
       { name: "Żejtun", fee: 5 },
       { name: "Żurrieq", fee: 5 },
       // Malta – Eastern
-      { name: "Kalkara", fee: 4 },
-      { name: "Marsaskala", fee: 5 },
-      { name: "Paola", fee: 3 },
-      { name: "San Ġwann", fee: 3 },
-      { name: "Swieqi", fee: 4 },
-      { name: "Tarxien", fee: 4 },
-      { name: "Żejtun", fee: 5 },
+      { name: "Kalkara",      fee: 4 },
+      { name: "Paola",        fee: 3 },
+      { name: "San Ġwann",    fee: 3 },
+      { name: "Swieqi",       fee: 4 },
+      { name: "Tarxien",      fee: 4 },
       // Valletta & Harbour
       { name: "Floriana", fee: 3 },
       { name: "Senglea", fee: 4 },
@@ -132,11 +123,10 @@ export const siteConfig = {
       { name: "Rabat", fee: 4 },
       { name: "Siġġiewi", fee: 5 },
       // Gozo
-      { name: "Fontana", fee: 8 },
-      { name: "Għajnsielem", fee: 8 },
-      { name: "Għarb", fee: 9 },
-      { name: "Għasri", fee: 9 },
-      { name: "Għajnsielem", fee: 8 },
+      { name: "Fontana",       fee: 8 },
+      { name: "Għajnsielem",   fee: 8 },
+      { name: "Għarb",         fee: 9 },
+      { name: "Għasri",        fee: 9 },
       { name: "Kerċem", fee: 9 },
       { name: "Marsalforn", fee: 8 },
       { name: "Munxar", fee: 9 },
