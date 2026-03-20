@@ -4,7 +4,7 @@ import Stripe from "stripe";
 import { getOrderByPaymentIntent, updateOrderStatus } from "@/lib/supabase/queries";
 
 const stripe = process.env.STRIPE_SECRET_KEY
-  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" })
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2025-02-24.acacia" })
   : null;
   
 const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;

@@ -101,39 +101,64 @@ export interface QuoteRequest {
   created_at: string;
 }
 
+// ── Supabase Table Update/Insert helpers ───────────────────────────────
+export type ProductInsert = Omit<Product, "id" | "created_at" | "updated_at">;
+export type ProductUpdate = Partial<Omit<Product, "id" | "created_at" | "updated_at">>;
+
+export type ProfileInsert = Omit<Profile, "created_at" | "updated_at">;
+export type ProfileUpdate = Partial<Omit<Profile, "id" | "created_at" | "updated_at">>;
+
+export type AddressInsert = Omit<Address, "id" | "created_at">;
+export type AddressUpdate = Partial<Omit<Address, "id" | "created_at">>;
+
+export type OrderInsert = Omit<Order, "id" | "created_at" | "updated_at">;
+export type OrderUpdate = Partial<Omit<Order, "id" | "created_at" | "updated_at">>;
+
+export type OrderItemInsert = Omit<OrderItem, "id">;
+export type OrderItemUpdate = Partial<Omit<OrderItem, "id">>;
+
+export type QuoteRequestInsert = Omit<QuoteRequest, "id" | "created_at">;
+export type QuoteRequestUpdate = Partial<Omit<QuoteRequest, "id" | "created_at">>;
+
 // ── Supabase Database Type Map ──────────────────────────────────────────
 export interface Database {
   public: {
     Tables: {
       products: {
         Row: Product;
-        Insert: Omit<Product, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<Product, "id" | "created_at" | "updated_at">>;
+        Insert: ProductInsert;
+        Update: ProductUpdate;
+        Relationships: [];
       };
       profiles: {
         Row: Profile;
-        Insert: Omit<Profile, "created_at" | "updated_at">;
-        Update: Partial<Omit<Profile, "id" | "created_at" | "updated_at">>;
+        Insert: ProfileInsert;
+        Update: ProfileUpdate;
+        Relationships: [];
       };
       addresses: {
         Row: Address;
-        Insert: Omit<Address, "id" | "created_at">;
-        Update: Partial<Omit<Address, "id" | "created_at">>;
+        Insert: AddressInsert;
+        Update: AddressUpdate;
+        Relationships: [];
       };
       orders: {
         Row: Order;
-        Insert: Omit<Order, "id" | "created_at" | "updated_at">;
-        Update: Partial<Omit<Order, "id" | "created_at" | "updated_at">>;
+        Insert: OrderInsert;
+        Update: OrderUpdate;
+        Relationships: [];
       };
       order_items: {
         Row: OrderItem;
-        Insert: Omit<OrderItem, "id">;
-        Update: Partial<Omit<OrderItem, "id">>;
+        Insert: OrderItemInsert;
+        Update: OrderItemUpdate;
+        Relationships: [];
       };
       quote_requests: {
         Row: QuoteRequest;
-        Insert: Omit<QuoteRequest, "id" | "created_at">;
-        Update: Partial<Omit<QuoteRequest, "id" | "created_at">>;
+        Insert: QuoteRequestInsert;
+        Update: QuoteRequestUpdate;
+        Relationships: [];
       };
     };
     Views: Record<string, never>;

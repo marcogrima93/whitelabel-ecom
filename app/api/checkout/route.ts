@@ -6,7 +6,7 @@ import Stripe from "stripe";
 
 // Initialize Stripe if key exists
 const stripeKey = process.env.STRIPE_SECRET_KEY || "";
-const stripe = stripeKey ? new Stripe(stripeKey, { apiVersion: "2023-10-16" }) : null;
+const stripe = stripeKey ? new Stripe(stripeKey, { apiVersion: "2025-02-24.acacia" }) : null;
 
 function generateOrderNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
