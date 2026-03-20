@@ -62,7 +62,7 @@ export const siteConfig = {
     backgroundImage: "/images/hero-bg.jpg",
     // "dark" = dark/moody image → light text & buttons
     // "light" = light/bright image → dark text & buttons
-    theme: "light",
+    theme: "dark",
   },
 
   announcement: {
