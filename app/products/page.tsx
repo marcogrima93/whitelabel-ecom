@@ -1,0 +1,90 @@
+import { Suspense } from "react";
+import type { Metadata } from "next";
+import { siteConfig } from "@/site.config";
+import { getProducts } from "@/lib/supabase/products";
+import { ProductCard } from "@/components/products/ProductCard";
+import { FilterSidebar } from "@/components/products/FilterSidebar";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Package } from "lucide-react";
+
+export const metadata: Metadata = {
+  title: "Products",
+  description: `Browse all products at ${siteConfig.shopName}. Find the perfect items for your needs.`,
+};
+
+interface ProductsPageProps {
+  searchParams: Promise<{
+    category?: string;
+    filter?: string;
+    sort?: string;
+    q?: string;
+  }>;
+}
+
+export default async function ProductsPage({ searchParams }: ProductsPageProps) {
+  const params = await searchParams;
+  const products = await getProducts({
+    category: params.category,
+    filterField: params.filter,
+    sort: (params.sort as "featured" | "price_asc" | "price_desc" | "newest") || undefined,
+    search: params.q,
+  });
+
+  const categoryName = params.category
+    ? siteConfig.categories.find((c) => c.slug === params.category)?.name
+    : null;
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {/* Page Header */}
+      <div className="mb-8">
+        <nav className="text-sm text-muted-foreground mb-2" aria-label="Breadcrumb">
+          <ol className="flex items-center gap-1.5">
+            <li><a href="/" className="hover:text-foreground transition-colors">Home</a></li>
+            <li>/</li>
+            <li className="text-foreground font-medium">
+              {categoryName || "All Products"}
+            </li>
+          </ol>
+        </nav>
+        <h1 className="text-3xl font-bold">
+          {categoryName || "All Products"}
+        </h1>
+        <p className="text-muted-foreground mt-1">
+          {products.length} product{products.length !== 1 ? "s" : ""} found
+        </p>
+      </div>
+
+      <div className="flex gap-8">
+        {/* Filter Sidebar */}
+        <Suspense fallback={<div className="hidden lg:block w-64 shrink-0" />}>
+          <FilterSidebar
+            currentCategory={params.category}
+            currentFilter={params.filter}
+            currentSort={params.sort}
+            currentSearch={params.q}
+          />
+        </Suspense>
+
+        {/* Product Grid */}
+        <div className="flex-1">
+          {products.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center">
+              <Package className="h-16 w-16 text-muted-foreground/30 mb-4" />
+              <h2 className="text-xl font-semibold mb-2">No products found</h2>
+              <p className="text-muted-foreground">
+                Try adjusting your filters or search query.
+              </p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
