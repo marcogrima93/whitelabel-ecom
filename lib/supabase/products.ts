@@ -78,10 +78,6 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
     return applyFiltersToMock(mockProducts, filters);
   }
 
-  if (data && data.length > 0) {
-    console.log("[v0] First product images raw:", JSON.stringify(data[0].images), "type:", typeof data[0].images);
-  }
-
   return (data as Product[]).map(normaliseImages);
 }
 
