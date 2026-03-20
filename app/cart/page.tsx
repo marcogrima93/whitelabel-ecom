@@ -52,8 +52,17 @@ export default function CartPage() {
               key={`${item.productId}-${item.selectedOption}`}
               className="flex gap-4 p-4 rounded-lg border bg-card group"
             >
-              <div className="h-24 w-24 rounded-md bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center shrink-0">
-                <ShoppingBag className="h-8 w-8 text-muted-foreground/20" />
+              <div className="h-24 w-24 rounded-md bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center shrink-0 overflow-hidden relative">
+                {item.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={item.image}
+                    alt={item.name}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <ShoppingBag className="h-8 w-8 text-muted-foreground/20" />
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between gap-2">
