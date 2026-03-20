@@ -48,11 +48,11 @@ export async function POST(req: Request) {
     // Delivery fee logic
     let deliveryFee = 0;
     if (deliveryMethod === "DELIVERY") {
-      const region = deliveryAddress?.region;
-      const regionConfig = siteConfig.delivery.regions.find((r) => r.name === region);
+      const town = deliveryAddress?.town || deliveryAddress?.region;
+      const townConfig = siteConfig.delivery.towns.find((t) => t.name === town);
       deliveryFee = subtotal >= siteConfig.delivery.freeThreshold 
         ? 0 
-        : (regionConfig?.fee || siteConfig.delivery.regions[0]?.fee || 0);
+        : (townConfig?.fee || siteConfig.delivery.towns[0]?.fee || 0);
     }
 
     const total = subtotal + vatAmount + deliveryFee;
