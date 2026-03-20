@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/lib/store/cart";
@@ -65,12 +64,11 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
             {/* Image */}
             <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 relative overflow-hidden">
               {product.images && product.images[0] ? (
-                <Image
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
                   src={product.images[0]}
                   alt={product.name}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-300"
-                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                 />
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -149,12 +147,11 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
           {/* Image */}
           <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg overflow-hidden relative">
             {product.images && product.images[0] ? (
-              <Image
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
                 src={product.images[0]}
                 alt={product.name}
-                fill
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, 400px"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">

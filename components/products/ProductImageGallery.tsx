@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { useState } from "react";
 import { ShoppingBag } from "lucide-react";
 
@@ -18,13 +17,11 @@ export function ProductImageGallery({ images, name }: ProductImageGalleryProps) 
       {/* Main image */}
       <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-xl overflow-hidden relative">
         {hasImages ? (
-          <Image
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
             src={images[selected]}
             alt={name}
-            fill
-            className="object-cover"
-            sizes="(max-width: 1024px) 100vw, 50vw"
-            priority
+            className="absolute inset-0 w-full h-full object-cover"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -45,12 +42,11 @@ export function ProductImageGallery({ images, name }: ProductImageGalleryProps) 
               }`}
               aria-label={`View image ${i + 1}`}
             >
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={img}
                 alt={`${name} image ${i + 1}`}
-                fill
-                className="object-cover"
-                sizes="25vw"
+                className="absolute inset-0 w-full h-full object-cover"
               />
             </button>
           ))}
