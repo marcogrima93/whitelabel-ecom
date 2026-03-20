@@ -51,7 +51,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
     fullName: "",
     line1: "",
     line2: "",
-    town: towns[0]?.name || "",
+    town: (towns[0]?.name || "") as string,
     postcode: "",
     isDefault: false,
   });
