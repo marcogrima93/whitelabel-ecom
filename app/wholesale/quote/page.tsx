@@ -22,11 +22,14 @@ import {
 } from "@/components/ui/select";
 import { Loader2, CheckCircle, Send } from "lucide-react";
 import { submitQuoteAction } from "./actions";
+import { PhoneInput, joinPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 
 export default function QuotePage() {
   const [isPending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");
+  const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [formData, setFormData] = useState({
     name: "",
     business: "",
@@ -60,7 +63,7 @@ export default function QuotePage() {
         name: formData.name,
         business: formData.business,
         email: formData.email,
-        phone: formData.phone || null,
+        phone: joinPhone(phoneCountryCode, phoneNumber) || null,
         categories: formData.categories,
         quantity: formData.quantity,
         frequency: formData.frequency || null,
@@ -121,7 +124,13 @@ export default function QuotePage() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="q-phone">Phone</Label>
-                <Input id="q-phone" type="tel" value={formData.phone} onChange={(e) => update("phone", e.target.value)} />
+                <PhoneInput
+                  id="q-phone"
+                  countryCode={phoneCountryCode}
+                  number={phoneNumber}
+                  onCountryCodeChange={setPhoneCountryCode}
+                  onNumberChange={setPhoneNumber}
+                />
               </div>
             </div>
 

@@ -16,6 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { PhoneInput, joinPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -32,6 +33,8 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phoneNumber, setPhoneNumber] = useState("");
   const router = useRouter();
 
   const update = (field: string, value: string) =>
@@ -160,12 +163,18 @@ export default function RegisterPage() {
 
           <div className="space-y-2">
             <Label htmlFor="reg-phone">Phone</Label>
-            <Input
+            <PhoneInput
               id="reg-phone"
-              type="tel"
-              value={formData.phone}
-              onChange={(e) => update("phone", e.target.value)}
-              autoComplete="tel"
+              countryCode={phoneCountryCode}
+              number={phoneNumber}
+              onCountryCodeChange={(c) => {
+                setPhoneCountryCode(c);
+                update("phone", joinPhone(c, phoneNumber));
+              }}
+              onNumberChange={(n) => {
+                setPhoneNumber(n);
+                update("phone", joinPhone(phoneCountryCode, n));
+              }}
             />
           </div>
 

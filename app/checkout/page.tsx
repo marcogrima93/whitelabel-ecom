@@ -31,6 +31,7 @@ import {
   BookUser,
 } from "lucide-react";
 import StripeForm from "@/components/checkout/StripeForm";
+import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 
@@ -93,6 +94,8 @@ export default function CheckoutPage() {
     deliverySlot: siteConfig.delivery.slots[0]?.value || "",
     preferredDay: "monday",
   });
+  const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phoneNumber, setPhoneNumber] = useState("");
 
   const updateForm = (field: string, value: string) =>
     setDeliveryForm((prev) => ({ ...prev, [field]: value }));
@@ -366,11 +369,18 @@ export default function CheckoutPage() {
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="ck-phone">Phone</Label>
-                          <Input
+                          <PhoneInput
                             id="ck-phone"
-                            type="tel"
-                            value={deliveryForm.phone}
-                            onChange={(e) => updateForm("phone", e.target.value)}
+                            countryCode={phoneCountryCode}
+                            number={phoneNumber}
+                            onCountryCodeChange={(c) => {
+                              setPhoneCountryCode(c);
+                              updateForm("phone", joinPhone(c, phoneNumber));
+                            }}
+                            onNumberChange={(n) => {
+                              setPhoneNumber(n);
+                              updateForm("phone", joinPhone(phoneCountryCode, n));
+                            }}
                             required
                           />
                         </div>
