@@ -30,6 +30,8 @@ export function CookieConsent() {
             site, you agree to our{" "}
             <a
               href="/cookie-policy"
+              target="_blank"
+              rel="noopener noreferrer"
               className="underline hover:text-primary transition-colors font-medium"
             >
               Cookie Policy
@@ -39,7 +41,7 @@ export function CookieConsent() {
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <Button variant="outline" size="sm" asChild>
-            <a href="/cookie-policy">Learn More</a>
+            <a href="/cookie-policy" target="_blank" rel="noopener noreferrer">Learn More</a>
           </Button>
           <Button size="sm" onClick={handleDismiss}>
             Accept & Close
