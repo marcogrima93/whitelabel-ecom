@@ -23,6 +23,7 @@ import {
   X,
   ChevronRight,
   Package,
+  LayoutDashboard,
 } from "lucide-react";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 
@@ -38,9 +39,10 @@ interface SearchResult {
 
 interface HeaderProps {
   categories?: { id: string; name: string; slug: string; }[];
+  isAdmin?: boolean;
 }
 
-export function Header({ categories = [] }: HeaderProps) {
+export function Header({ categories = [], isAdmin = false }: HeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -160,6 +162,14 @@ export function Header({ categories = [] }: HeaderProps) {
                         My Account <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </Link>
                     </li>
+                    {isAdmin && (
+                      <li>
+                        <Link href="/admin" onClick={() => setMobileOpen(false)} className="flex items-center justify-between py-3 px-2 rounded-md bg-destructive/10 text-destructive hover:bg-destructive/20 transition-colors font-medium">
+                          <span className="flex items-center gap-2"><LayoutDashboard className="h-4 w-4" /> Admin Portal</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </Link>
+                      </li>
+                    )}
                   </ul>
                 </nav>
               </SheetContent>
@@ -299,6 +309,16 @@ export function Header({ categories = [] }: HeaderProps) {
                 <User className="h-5 w-5" />
               </Link>
             </Button>
+
+            {/* Admin portal — only shown to admins */}
+            {isAdmin && (
+              <Button size="sm" asChild className="bg-destructive text-destructive-foreground hover:bg-destructive/90 gap-1.5 hidden sm:flex">
+                <Link href="/admin">
+                  <LayoutDashboard className="h-3.5 w-3.5" />
+                  Admin
+                </Link>
+              </Button>
+            )}
 
             {/* Cart */}
             <Sheet open={cartOpen} onOpenChange={setCartOpen}>
