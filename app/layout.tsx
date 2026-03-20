@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { siteConfig } from "@/site.config";
+import { getCategories } from "@/lib/supabase/queries";
 import { AnnouncementBar } from "@/components/layout/AnnouncementBar";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -31,11 +32,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const categories = await getCategories();
+
   return (
     <html lang={siteConfig.locale.split("-")[0]} className={inter.variable} data-scroll-behavior="smooth">
       <body className="min-h-screen flex flex-col antialiased font-sans">
@@ -43,11 +46,11 @@ export default function RootLayout({
           Skip to main content
         </a>
         <AnnouncementBar />
-        <Header />
+        <Header categories={categories} />
         <main id="main-content" className="flex-1">
           {children}
         </main>
-        <Footer />
+        <Footer categories={categories} />
         <WhatsAppButton />
         <CookieConsent />
       </body>

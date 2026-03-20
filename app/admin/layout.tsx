@@ -12,12 +12,13 @@ import {
   BarChart3,
   Settings,
   ArrowLeft,
+  LayoutGrid,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const adminNav = [
   { label: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { label: "Products", href: "/admin/products", icon: Package },
+  { label: "Catalogue", href: "/admin/catalogue", icon: LayoutGrid },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { label: "Customers", href: "/admin/customers", icon: Users },
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },

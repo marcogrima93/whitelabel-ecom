@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { siteConfig } from "@/site.config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,7 +23,11 @@ import { Loader2, CheckCircle, Send } from "lucide-react";
 import { submitQuoteAction } from "./actions";
 import { PhoneInput, joinPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 
-export default function QuotePage() {
+interface QuotePageProps {
+  categories: { id: string; name: string; slug: string; }[];
+}
+
+export default function QuotePage({ categories }: QuotePageProps) {
   const [isPending, startTransition] = useTransition();
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState("");

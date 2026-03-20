@@ -3,6 +3,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { siteConfig } from "@/site.config";
 import { getProductBySlug, getRelatedProducts } from "@/lib/supabase/products";
+import { getCategories } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/utils";
 import { AddToCartSection } from "@/components/products/AddToCartSection";
 import { ProductCard } from "@/components/products/ProductCard";
@@ -31,13 +32,16 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
-  const product = await getProductBySlug(slug);
 
+  const [product, categories] = await Promise.all([
+    getProductBySlug(slug),
+    getCategories(),
+  ]);
   if (!product) notFound();
 
   const relatedProducts = await getRelatedProducts(product.category, product.slug, 4);
   const categoryName =
-    siteConfig.categories.find((c) => c.slug === product.category)?.name || product.category;
+    categories.find((c) => c.slug === product.category)?.name || product.category;
 
   return (
     <div className="container mx-auto px-4 py-8">

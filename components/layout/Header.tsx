@@ -36,7 +36,11 @@ interface SearchResult {
   stock_status: string;
 }
 
-export function Header() {
+interface HeaderProps {
+  categories?: { id: string; name: string; slug: string; }[];
+}
+
+export function Header({ categories = [] }: HeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -134,7 +138,7 @@ export function Header() {
                         Shop All <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </Link>
                     </li>
-                    {siteConfig.categories.map((cat) => (
+                    {categories.map((cat) => (
                       <li key={cat.slug}>
                         <Link href={`/products?category=${cat.slug}`} onClick={() => setMobileOpen(false)} className="flex items-center justify-between py-3 px-2 rounded-md hover:bg-accent transition-colors pl-6">
                           {cat.name} <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -184,7 +188,7 @@ export function Header() {
                     Shop All
                   </Link>
                 </li>
-                {siteConfig.categories.map((cat) => (
+                {categories.map((cat) => (
                   <li key={cat.slug}>
                     <Link href={`/products?category=${cat.slug}`} className="text-sm font-medium hover:text-primary/80 transition-colors">
                       {cat.name}

@@ -2,6 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { siteConfig } from "@/site.config";
 import { getFeaturedProducts } from "@/lib/supabase/products";
+import { getCategories } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +28,10 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export default async function HomePage() {
-  const featuredProducts = await getFeaturedProducts(4);
+  const [featuredProducts, categories] = await Promise.all([
+    getFeaturedProducts(4),
+    getCategories(),
+  ]);
 
   return (
     <>
@@ -111,7 +115,7 @@ export default async function HomePage() {
           <p className="text-muted-foreground">Browse our curated collections</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {siteConfig.categories.map((cat) => (
+          {categories.map((cat) => (
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}
