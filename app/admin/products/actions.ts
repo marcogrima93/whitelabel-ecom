@@ -2,13 +2,18 @@
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import type { Database } from "@/lib/supabase/types";
+
+type ProductUpdate = Database["public"]["Tables"]["products"]["Update"];
 
 export async function archiveProductAction(productId: string): Promise<boolean> {
   const supabase = await createServiceRoleClient();
   
+  const updateData: ProductUpdate = { is_archived: true };
+  
   const { error } = await supabase
     .from("products")
-    .update({ is_archived: true })
+    .update(updateData)
     .eq("id", productId);
   
   if (error) {
