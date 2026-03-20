@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
 import { useCartStore } from "@/lib/store/cart";
@@ -63,9 +64,19 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
           <Card className="overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 group-hover:-translate-y-1">
             {/* Image */}
             <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 relative overflow-hidden">
-              <div className="absolute inset-0 flex items-center justify-center">
-                <ShoppingBag className="h-12 w-12 text-muted-foreground/20 group-hover:scale-110 transition-transform duration-300" />
-              </div>
+              {product.images && product.images[0] ? (
+                <Image
+                  src={product.images[0]}
+                  alt={product.name}
+                  fill
+                  className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                />
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <ShoppingBag className="h-12 w-12 text-muted-foreground/20 group-hover:scale-110 transition-transform duration-300" />
+                </div>
+              )}
 
               {/* Stock badge */}
               <div className="absolute top-3 left-3 z-10">
@@ -136,8 +147,20 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Image */}
-          <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg flex items-center justify-center">
-            <ShoppingBag className="h-16 w-16 text-muted-foreground/20" />
+          <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg overflow-hidden relative">
+            {product.images && product.images[0] ? (
+              <Image
+                src={product.images[0]}
+                alt={product.name}
+                fill
+                className="object-cover"
+                sizes="(max-width: 768px) 100vw, 400px"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <ShoppingBag className="h-16 w-16 text-muted-foreground/20" />
+              </div>
+            )}
           </div>
           {/* Details */}
           <div className="space-y-4">

@@ -7,7 +7,7 @@ import { getCategories } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/utils";
 import { AddToCartSection } from "@/components/products/AddToCartSection";
 import { ProductCard } from "@/components/products/ProductCard";
-import { ShoppingBag } from "lucide-react";
+import { ProductImageGallery } from "@/components/products/ProductImageGallery";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -63,25 +63,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       {/* Product */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
         {/* Left: Image Gallery */}
-        <div className="space-y-4">
-          {/* Main image */}
-          <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-xl overflow-hidden flex items-center justify-center">
-            <ShoppingBag className="h-24 w-24 text-muted-foreground/20" />
-          </div>
-          {/* Thumbnails */}
-          {product.images.length > 1 && (
-            <div className="grid grid-cols-4 gap-2">
-              {product.images.map((_, i) => (
-                <div
-                  key={i}
-                  className="aspect-square bg-gradient-to-br from-muted to-muted/50 rounded-lg overflow-hidden flex items-center justify-center cursor-pointer hover:ring-2 ring-primary transition-all"
-                >
-                  <ShoppingBag className="h-6 w-6 text-muted-foreground/20" />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <ProductImageGallery images={product.images} name={product.name} />
 
         {/* Right: Product Info */}
         <div>
