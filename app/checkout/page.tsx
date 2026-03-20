@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Elements } from "@stripe/react-stripe-js";
 import { useCartStore } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
@@ -27,6 +28,7 @@ import {
   ArrowRight,
   Package,
 } from "lucide-react";
+import StripeForm from "@/components/checkout/StripeForm";
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 
