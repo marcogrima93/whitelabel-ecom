@@ -461,8 +461,7 @@ export async function getCategories(): Promise<Category[]> {
   const supabase = await createServiceRoleClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("*")
-    .order("position");
+    .select("*");
   if (error) { console.error("Error fetching categories:", error); return []; }
   return data || [];
 }

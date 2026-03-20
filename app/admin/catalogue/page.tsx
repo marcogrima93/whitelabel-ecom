@@ -6,9 +6,9 @@ export default async function AdminCataloguePage() {
 
   const [{ data: categories }, { data: filterGroups }, { data: filterOptions }] =
     await Promise.all([
-      supabase.from("categories").select("*").order("position"),
-      supabase.from("product_filter_groups").select("*").order("position"),
-      supabase.from("product_filter_options").select("*").order("position"),
+      supabase.from("categories").select("*"),
+      supabase.from("product_filter_groups").select("*"),
+      supabase.from("product_filter_options").select("*"),
     ]);
 
   return (
