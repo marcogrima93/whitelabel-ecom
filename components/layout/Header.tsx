@@ -250,9 +250,7 @@ export function Header() {
                           <p className="text-xs text-muted-foreground capitalize">{item.category}</p>
                         </div>
                         <span className="text-sm font-semibold text-primary flex-shrink-0">
-                          {siteConfig.locale === "en-IE"
-                            ? `€${item.retail_price.toFixed(2)}`
-                            : `£${item.retail_price.toFixed(2)}`}
+                          {siteConfig.currency.symbol}{item.retail_price.toFixed(2)}
                         </span>
                       </button>
                     ))}
