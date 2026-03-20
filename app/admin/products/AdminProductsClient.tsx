@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
+import { siteConfig } from "@/site.config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -18,6 +18,17 @@ import { Plus, Pencil, Archive, Search, Package, Inbox, Loader2 } from "lucide-r
 import type { Product } from "@/lib/supabase/types";
 import { archiveProductAction } from "./actions";
 
+interface Category { id: string; name: string; slug: string; }
+interface FilterGroup { id: string; label: string; }
+interface FilterOption { id: string; group_id: string; value: string; }
+
+interface Props {
+  initialProducts: Product[];
+  categories: Category[];
+  filterGroups: FilterGroup[];
+  filterOptions: FilterOption[];
+}
+
 const stockBadge = (status: string) => {
   switch (status) {
     case "IN_STOCK": return <Badge variant="success">In Stock</Badge>;
@@ -27,7 +38,7 @@ const stockBadge = (status: string) => {
   }
 };
 
-export default function AdminProductsClient({ initialProducts }: { initialProducts: Product[] }) {
+export default function AdminProductsClient({ initialProducts, categories, filterGroups, filterOptions }: Props) {
   const [products, setProducts] = useState(initialProducts);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
@@ -42,7 +53,6 @@ export default function AdminProductsClient({ initialProducts }: { initialProduc
 
   const handleArchive = async (productId: string) => {
     if (!confirm("Are you sure you want to archive this product?")) return;
-    
     setArchivingId(productId);
     startTransition(async () => {
       const success = await archiveProductAction(productId);
@@ -54,6 +64,9 @@ export default function AdminProductsClient({ initialProducts }: { initialProduc
       setArchivingId(null);
     });
   };
+
+  const getCategoryName = (slug: string) =>
+    categories.find((c) => c.slug === slug)?.name ?? slug;
 
   return (
     <div className="space-y-6">
@@ -84,7 +97,7 @@ export default function AdminProductsClient({ initialProducts }: { initialProduc
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Categories</SelectItem>
-            {siteConfig.categories.map((cat) => (
+            {categories.map((cat) => (
               <SelectItem key={cat.slug} value={cat.slug}>{cat.name}</SelectItem>
             ))}
           </SelectContent>
@@ -126,8 +139,8 @@ export default function AdminProductsClient({ initialProducts }: { initialProduc
                         <div className="flex items-center gap-3">
                           <div className="h-10 w-10 rounded-md bg-muted flex items-center justify-center shrink-0 overflow-hidden">
                             {product.images && product.images[0] ? (
-                              <img 
-                                src={product.images[0]} 
+                              <img
+                                src={product.images[0]}
                                 alt={product.name}
                                 className="h-full w-full object-cover"
                               />
@@ -141,8 +154,8 @@ export default function AdminProductsClient({ initialProducts }: { initialProduc
                           </div>
                         </div>
                       </td>
-                      <td className="p-4 text-muted-foreground">
-                        {siteConfig.categories.find((c) => c.slug === product.category)?.name || product.category}
+                      <td className="p-4 text-muted-foreground capitalize">
+                        {getCategoryName(product.category)}
                       </td>
                       <td className="p-4">{stockBadge(product.stock_status)}</td>
                       <td className="p-4 font-medium">
@@ -158,9 +171,9 @@ export default function AdminProductsClient({ initialProducts }: { initialProduc
                           <Button variant="ghost" size="icon" className="h-8 w-8">
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             className="h-8 w-8 text-destructive"
                             onClick={() => handleArchive(product.id)}
                             disabled={archivingId === product.id}

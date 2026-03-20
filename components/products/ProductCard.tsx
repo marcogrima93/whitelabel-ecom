@@ -21,9 +21,10 @@ import { useState } from "react";
 
 interface ProductCardProps {
   product: Product;
+  categoryName?: string;
 }
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, categoryName }: ProductCardProps) {
   const [quickViewOpen, setQuickViewOpen] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const isOutOfStock = product.stock_status === "OUT_OF_STOCK";
@@ -100,7 +101,7 @@ export function ProductCard({ product }: ProductCardProps) {
             {/* Content */}
             <CardContent className="p-4">
               <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                {siteConfig.categories.find((c) => c.slug === product.category)?.name || product.category}
+              {categoryName ?? product.category}
               </p>
               <h3 className="font-semibold line-clamp-1 group-hover:text-primary transition-colors">
                 {product.name}

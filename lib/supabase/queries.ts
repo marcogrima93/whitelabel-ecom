@@ -447,6 +447,25 @@ export async function getQuoteRequests(): Promise<QuoteRequest[]> {
   return data || [];
 }
 
+// ── Categories ──────────────────────────────────────────────────────────
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  image: string;
+  position: number;
+}
+
+export async function getCategories(): Promise<Category[]> {
+  const supabase = await createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*");
+  if (error) { console.error("Error fetching categories:", error); return []; }
+  return data || [];
+}
+
 // ── Dashboard Stats ─────────────────────────────────────────────────────
 
 export async function getDashboardStats(): Promise<{

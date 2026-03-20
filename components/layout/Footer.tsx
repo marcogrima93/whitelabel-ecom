@@ -5,7 +5,11 @@ import { siteConfig } from "@/site.config";
 import { Mail, Phone, MapPin, Facebook, Instagram, Twitter } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 
-export function Footer() {
+interface FooterProps {
+  categories?: { id: string; name: string; slug: string; }[];
+}
+
+export function Footer({ categories = [] }: FooterProps) {
   const currentYear = new Date().getFullYear();
 
   return (
@@ -36,7 +40,7 @@ export function Footer() {
                     Shop All
                   </Link>
                 </li>
-                {siteConfig.categories.map((cat) => (
+                {categories.map((cat) => (
                   <li key={cat.slug}>
                     <Link
                       href={`/products?category=${cat.slug}`}

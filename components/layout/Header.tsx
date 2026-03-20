@@ -36,7 +36,11 @@ interface SearchResult {
   stock_status: string;
 }
 
-export function Header() {
+interface HeaderProps {
+  categories?: { id: string; name: string; slug: string; }[];
+}
+
+export function Header({ categories = [] }: HeaderProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -44,10 +48,13 @@ export function Header() {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [searching, setSearching] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const searchRef = useRef<HTMLDivElement>(null);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const itemCount = useCartStore((s) => s.getItemCount());
+
+  useEffect(() => { setMounted(true); }, []);
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -134,7 +141,7 @@ export function Header() {
                         Shop All <ChevronRight className="h-4 w-4 text-muted-foreground" />
                       </Link>
                     </li>
-                    {siteConfig.categories.map((cat) => (
+                    {categories.map((cat) => (
                       <li key={cat.slug}>
                         <Link href={`/products?category=${cat.slug}`} onClick={() => setMobileOpen(false)} className="flex items-center justify-between py-3 px-2 rounded-md hover:bg-accent transition-colors pl-6">
                           {cat.name} <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -158,8 +165,20 @@ export function Header() {
               </SheetContent>
             </Sheet>
 
-            <Link href="/" className="font-bold text-xl tracking-tight hover:opacity-80 transition-opacity">
-              {siteConfig.shopName}
+            <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
+              <Image
+                src={siteConfig.logo}
+                alt={siteConfig.shopName}
+                width={140}
+                height={40}
+                className="h-9 w-auto object-contain"
+                priority
+              />
+              {siteConfig.logoDisplay === "logo-and-name" && (
+                <span className="font-bold text-lg tracking-tight hidden sm:block">
+                  {siteConfig.shopName}
+                </span>
+              )}
             </Link>
           </div>
 
@@ -172,7 +191,7 @@ export function Header() {
                     Shop All
                   </Link>
                 </li>
-                {siteConfig.categories.map((cat) => (
+                {categories.map((cat) => (
                   <li key={cat.slug}>
                     <Link href={`/products?category=${cat.slug}`} className="text-sm font-medium hover:text-primary/80 transition-colors">
                       {cat.name}
@@ -286,7 +305,7 @@ export function Header() {
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative" aria-label="Shopping cart">
                   <ShoppingCart className="h-5 w-5" />
-                  {itemCount > 0 && (
+                  {mounted && itemCount > 0 && (
                     <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center font-bold animate-fade-in">
                       {itemCount > 99 ? "99+" : itemCount}
                     </span>

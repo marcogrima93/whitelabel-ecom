@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { siteConfig } from "@/site.config";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,11 +27,18 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
+interface Category { id: string; name: string; slug: string; }
+interface FilterGroup { id: string; label: string; }
+interface FilterOption { id: string; group_id: string; value: string; }
+
 interface FilterSidebarProps {
   currentCategory?: string;
   currentFilter?: string;
   currentSort?: string;
   currentSearch?: string;
+  categories: Category[];
+  filterGroups: FilterGroup[];
+  filterOptions: FilterOption[];
 }
 
 export function FilterSidebar({
@@ -40,6 +46,9 @@ export function FilterSidebar({
   currentFilter,
   currentSort,
   currentSearch,
+  categories,
+  filterGroups,
+  filterOptions,
 }: FilterSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -100,82 +109,75 @@ export function FilterSidebar({
         </Select>
       </div>
 
-      <Accordion type="multiple" defaultValue={["category", "filter"]} className="w-full">
+      <Accordion type="multiple" defaultValue={["category", ...filterGroups.map((g) => g.id)]} className="w-full">
         {/* Category filter */}
-        <AccordionItem value="category">
-          <AccordionTrigger className="text-sm font-semibold">Category</AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-2">
-              <button
-                onClick={() => updateFilter("category", null)}
-                className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
-                  !currentCategory
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-accent"
-                }`}
-              >
-                All Categories
-              </button>
-              {siteConfig.categories.map((cat) => (
+        {categories.length > 0 && (
+          <AccordionItem value="category">
+            <AccordionTrigger className="text-sm font-semibold">Category</AccordionTrigger>
+            <AccordionContent>
+              <div className="space-y-2">
                 <button
-                  key={cat.slug}
-                  onClick={() => updateFilter("category", cat.slug)}
+                  onClick={() => updateFilter("category", null)}
                   className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
-                    currentCategory === cat.slug
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent"
+                    !currentCategory ? "bg-primary text-primary-foreground" : "hover:bg-accent"
                   }`}
                 >
-                  {cat.name}
+                  All Categories
                 </button>
-              ))}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
+                {categories.map((cat) => (
+                  <button
+                    key={cat.slug}
+                    onClick={() => updateFilter("category", cat.slug)}
+                    className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
+                      currentCategory === cat.slug ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                    }`}
+                  >
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        )}
 
-        {/* Secondary filter */}
-        <AccordionItem value="filter">
-          <AccordionTrigger className="text-sm font-semibold">
-            {siteConfig.filters.secondary.label}
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="space-y-2">
-              <button
-                onClick={() => updateFilter("filter", null)}
-                className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
-                  !currentFilter
-                    ? "bg-primary text-primary-foreground"
-                    : "hover:bg-accent"
-                }`}
-              >
-                All {siteConfig.filters.secondary.label}s
-              </button>
-              {siteConfig.filters.secondary.options.map((opt) => (
-                <button
-                  key={opt}
-                  onClick={() => updateFilter("filter", opt)}
-                  className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
-                    currentFilter === opt
-                      ? "bg-primary text-primary-foreground"
-                      : "hover:bg-accent"
-                  }`}
-                >
-                  {opt}
-                </button>
-              ))}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
+        {/* Dynamic filter groups */}
+        {filterGroups.map((group) => {
+          const opts = filterOptions.filter((o) => o.group_id === group.id);
+          if (opts.length === 0) return null;
+          return (
+            <AccordionItem key={group.id} value={group.id}>
+              <AccordionTrigger className="text-sm font-semibold">{group.label}</AccordionTrigger>
+              <AccordionContent>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => updateFilter("filter", null)}
+                    className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
+                      !currentFilter ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                    }`}
+                  >
+                    All {group.label}s
+                  </button>
+                  {opts.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => updateFilter("filter", opt.value)}
+                      className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
+                        currentFilter === opt.value ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                      }`}
+                    >
+                      {opt.value}
+                    </button>
+                  ))}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          );
+        })}
       </Accordion>
 
       {/* Clear filters */}
       {hasActiveFilters && (
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full mt-4"
-          onClick={clearFilters}
-        >
+        <Button variant="ghost" size="sm" className="w-full mt-4" onClick={clearFilters}>
           <X className="h-4 w-4 mr-2" />
           Clear All Filters
         </Button>
@@ -201,9 +203,7 @@ export function FilterSidebar({
               <SlidersHorizontal className="h-4 w-4" />
               Filters
               {hasActiveFilters && (
-                <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">
-                  !
-                </span>
+                <span className="h-5 w-5 rounded-full bg-primary text-primary-foreground text-xs flex items-center justify-center">!</span>
               )}
             </Button>
           </SheetTrigger>

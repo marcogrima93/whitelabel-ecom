@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Save, CheckCircle } from "lucide-react";
+import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 import { updateProfileAction, updatePasswordAction } from "./actions";
 
 interface AccountDetailsClientProps {
@@ -30,6 +31,10 @@ export default function AccountDetailsClient({ initialProfile, userId }: Account
     email: initialProfile.email,
     phone: initialProfile.phone,
   });
+
+  const split = splitPhone(initialProfile.phone || "");
+  const [phoneCountryCode, setPhoneCountryCode] = useState(split.countryCode || DEFAULT_COUNTRY_CODE);
+  const [phoneNumber, setPhoneNumber] = useState(split.number);
 
   const [passwordData, setPasswordData] = useState({
     currentPassword: "",
@@ -113,11 +118,18 @@ export default function AccountDetailsClient({ initialProfile, userId }: Account
               </div>
               <div className="space-y-2">
                 <Label htmlFor="detail-phone">Phone</Label>
-                <Input
+                <PhoneInput
                   id="detail-phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => update("phone", e.target.value)}
+                  countryCode={phoneCountryCode}
+                  number={phoneNumber}
+                  onCountryCodeChange={(c) => {
+                    setPhoneCountryCode(c);
+                    update("phone", joinPhone(c, phoneNumber));
+                  }}
+                  onNumberChange={(n) => {
+                    setPhoneNumber(n);
+                    update("phone", joinPhone(phoneCountryCode, n));
+                  }}
                 />
               </div>
             </div>

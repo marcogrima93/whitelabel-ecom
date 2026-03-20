@@ -1,6 +1,8 @@
 import Link from "next/link";
+import Image from "next/image";
 import { siteConfig } from "@/site.config";
 import { getFeaturedProducts } from "@/lib/supabase/products";
+import { getCategories } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -26,29 +28,76 @@ const iconMap: Record<string, React.ElementType> = {
 };
 
 export default async function HomePage() {
-  const featuredProducts = await getFeaturedProducts(4);
+  const [featuredProducts, categories] = await Promise.all([
+    getFeaturedProducts(4),
+    getCategories(),
+  ]);
 
   return (
     <>
       {/* ── Hero Section ──────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/10">
-        <div className="container mx-auto px-4 py-20 md:py-32">
+      <section className="relative overflow-hidden min-h-[560px] md:min-h-[680px] flex items-center">
+        {/* Background image */}
+        <Image
+          src={siteConfig.hero.backgroundImage}
+          alt="Hero background"
+          fill
+          priority
+          className="object-cover object-center"
+          sizes="100vw"
+        />
+        {/* Overlay — dark image gets a dark scrim, light image gets a light scrim */}
+        <div
+          className={
+            siteConfig.hero.theme === "dark"
+              ? "absolute inset-0 bg-black/55"
+              : "absolute inset-0 bg-white/60"
+          }
+        />
+
+        <div className="relative z-10 container mx-auto px-4 py-20 md:py-32">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            <h1
+              className={`text-4xl md:text-6xl font-bold tracking-tight mb-6 text-balance ${
+                siteConfig.hero.theme === "dark" ? "text-white" : "text-foreground"
+              }`}
+            >
               {siteConfig.hero.headline}
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p
+              className={`text-lg md:text-xl mb-8 max-w-2xl mx-auto text-pretty ${
+                siteConfig.hero.theme === "dark" ? "text-white/80" : "text-foreground/70"
+              }`}
+            >
               {siteConfig.hero.subheadline}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="xl" asChild>
+              {/* Primary CTA: light bg + dark text on dark hero; default brand on light hero */}
+              <Button
+                size="xl"
+                asChild
+                className={
+                  siteConfig.hero.theme === "dark"
+                    ? "bg-white text-foreground hover:bg-white/90"
+                    : ""
+                }
+              >
                 <Link href={siteConfig.hero.primaryCta.href}>
                   {siteConfig.hero.primaryCta.label}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               {siteConfig.wholesale.enabled && (
-                <Button size="xl" variant="outline" asChild>
+                <Button
+                  size="xl"
+                  variant="outline"
+                  className={
+                    siteConfig.hero.theme === "dark"
+                      ? "border-white/40 text-white hover:bg-white/10"
+                      : "border-foreground/30 text-foreground hover:bg-foreground/10"
+                  }
+                  asChild
+                >
                   <Link href={siteConfig.hero.secondaryCta.href}>
                     {siteConfig.hero.secondaryCta.label}
                   </Link>
@@ -57,9 +106,6 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-        {/* Decorative gradient orbs */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl translate-y-1/2" />
       </section>
 
       {/* ── Category Grid ─────────────────────────────────────────────── */}
@@ -69,7 +115,7 @@ export default async function HomePage() {
           <p className="text-muted-foreground">Browse our curated collections</p>
         </div>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-          {siteConfig.categories.map((cat) => (
+          {categories.map((cat) => (
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}

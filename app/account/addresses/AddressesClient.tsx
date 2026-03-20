@@ -8,6 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -18,12 +25,16 @@ import {
 } from "@/components/ui/dialog";
 import { MapPin, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import type { Address } from "@/lib/supabase/types";
+import { siteConfig } from "@/site.config";
+import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 import { addAddressAction, updateAddressAction, deleteAddressAction } from "./actions";
 
 interface AddressesClientProps {
   initialAddresses: Address[];
   userId: string;
 }
+
+const towns = siteConfig.delivery.towns;
 
 export default function AddressesClient({ initialAddresses, userId }: AddressesClientProps) {
   const [addresses, setAddresses] = useState(initialAddresses);
@@ -32,14 +43,15 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
+  const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [phoneNumber, setPhoneNumber] = useState("");
+
   const [formData, setFormData] = useState({
     label: "Home",
     fullName: "",
-    phone: "",
     line1: "",
     line2: "",
-    city: "",
-    region: "",
+    town: (towns[0]?.name || "") as string,
     postcode: "",
     isDefault: false,
   });
@@ -48,27 +60,28 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
     setFormData({
       label: "Home",
       fullName: "",
-      phone: "",
       line1: "",
       line2: "",
-      city: "",
-      region: "",
+      town: towns[0]?.name || "",
       postcode: "",
       isDefault: false,
     });
+    setPhoneCountryCode(DEFAULT_COUNTRY_CODE);
+    setPhoneNumber("");
     setEditingAddress(null);
   };
 
   const openEditDialog = (address: Address) => {
     setEditingAddress(address);
+    const split = splitPhone(address.phone || "");
+    setPhoneCountryCode(split.countryCode);
+    setPhoneNumber(split.number);
     setFormData({
       label: address.label,
       fullName: address.full_name,
-      phone: address.phone,
       line1: address.line_1,
       line2: address.line_2 || "",
-      city: address.city,
-      region: address.region,
+      town: address.city,
       postcode: address.postcode,
       isDefault: address.is_default,
     });
@@ -77,21 +90,22 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+    const phone = joinPhone(phoneCountryCode, phoneNumber);
+
     startTransition(async () => {
       if (editingAddress) {
         const success = await updateAddressAction(editingAddress.id, userId, {
           label: formData.label,
           full_name: formData.fullName,
-          phone: formData.phone,
+          phone,
           line_1: formData.line1,
           line_2: formData.line2 || null,
-          city: formData.city,
-          region: formData.region,
+          city: formData.town,
+          region: formData.town,
           postcode: formData.postcode,
           is_default: formData.isDefault,
         });
-        
+
         if (success) {
           setAddresses((prev) =>
             prev.map((a) =>
@@ -100,11 +114,11 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                     ...a,
                     label: formData.label,
                     full_name: formData.fullName,
-                    phone: formData.phone,
+                    phone,
                     line_1: formData.line1,
                     line_2: formData.line2 || null,
-                    city: formData.city,
-                    region: formData.region,
+                    city: formData.town,
+                    region: formData.town,
                     postcode: formData.postcode,
                     is_default: formData.isDefault,
                   }
@@ -119,15 +133,15 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           user_id: userId,
           label: formData.label,
           full_name: formData.fullName,
-          phone: formData.phone,
+          phone,
           line_1: formData.line1,
           line_2: formData.line2 || null,
-          city: formData.city,
-          region: formData.region,
+          city: formData.town,
+          region: formData.town,
           postcode: formData.postcode,
           is_default: formData.isDefault,
         });
-        
+
         if (newAddress) {
           setAddresses((prev) => {
             const updated = formData.isDefault
@@ -137,7 +151,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           });
         }
       }
-      
+
       setIsDialogOpen(false);
       resetForm();
     });
@@ -145,7 +159,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
 
   const handleDelete = async (addressId: string) => {
     if (!confirm("Are you sure you want to delete this address?")) return;
-    
+
     setDeletingId(addressId);
     startTransition(async () => {
       const success = await deleteAddressAction(addressId, userId);
@@ -160,7 +174,13 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Saved Addresses</h2>
-        <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) resetForm(); }}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button size="sm">
               <Plus className="mr-2 h-4 w-4" /> Add Address
@@ -169,17 +189,21 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           <DialogContent className="sm:max-w-md">
             <form onSubmit={handleSubmit}>
               <DialogHeader>
-                <DialogTitle>{editingAddress ? "Edit Address" : "Add New Address"}</DialogTitle>
+                <DialogTitle>
+                  {editingAddress ? "Edit Address" : "Add New Address"}
+                </DialogTitle>
                 <DialogDescription>
-                  {editingAddress ? "Update your address details below." : "Enter the details for your new address."}
+                  {editingAddress
+                    ? "Update your address details below."
+                    : "Enter the details for your new address."}
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="label">Label</Label>
+                    <Label htmlFor="addr-label">Label</Label>
                     <Input
-                      id="label"
+                      id="addr-label"
                       value={formData.label}
                       onChange={(e) => setFormData((p) => ({ ...p, label: e.target.value }))}
                       placeholder="Home, Office, etc."
@@ -187,9 +211,9 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="fullName">Full Name</Label>
+                    <Label htmlFor="addr-name">Full Name</Label>
                     <Input
-                      id="fullName"
+                      id="addr-name"
                       value={formData.fullName}
                       onChange={(e) => setFormData((p) => ({ ...p, fullName: e.target.value }))}
                       required
@@ -197,68 +221,72 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="phone">Phone</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData((p) => ({ ...p, phone: e.target.value }))}
+                  <Label htmlFor="addr-phone">Phone</Label>
+                  <PhoneInput
+                    id="addr-phone"
+                    countryCode={phoneCountryCode}
+                    number={phoneNumber}
+                    onCountryCodeChange={setPhoneCountryCode}
+                    onNumberChange={setPhoneNumber}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="line1">Address Line 1</Label>
+                  <Label htmlFor="addr-line1">Address Line 1</Label>
                   <Input
-                    id="line1"
+                    id="addr-line1"
                     value={formData.line1}
                     onChange={(e) => setFormData((p) => ({ ...p, line1: e.target.value }))}
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="line2">Address Line 2</Label>
+                  <Label htmlFor="addr-line2">Address Line 2 (optional)</Label>
                   <Input
-                    id="line2"
+                    id="addr-line2"
                     value={formData.line2}
                     onChange={(e) => setFormData((p) => ({ ...p, line2: e.target.value }))}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="city">City</Label>
-                    <Input
-                      id="city"
-                      value={formData.city}
-                      onChange={(e) => setFormData((p) => ({ ...p, city: e.target.value }))}
-                      required
-                    />
+                    <Label>Town / City</Label>
+                    <Select
+                      value={formData.town}
+                      onValueChange={(v) => setFormData((p) => ({ ...p, town: v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select town" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-64">
+                        {towns.map((t) => (
+                          <SelectItem key={t.name} value={t.name}>
+                            {t.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="region">Region</Label>
+                    <Label htmlFor="addr-post">Postcode</Label>
                     <Input
-                      id="region"
-                      value={formData.region}
-                      onChange={(e) => setFormData((p) => ({ ...p, region: e.target.value }))}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="postcode">Postcode</Label>
-                    <Input
-                      id="postcode"
+                      id="addr-post"
                       value={formData.postcode}
                       onChange={(e) => setFormData((p) => ({ ...p, postcode: e.target.value }))}
+                      placeholder="e.g. BKR 1234"
                       required
                     />
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
-                    id="isDefault"
+                    id="addr-default"
                     checked={formData.isDefault}
-                    onCheckedChange={(checked) => setFormData((p) => ({ ...p, isDefault: !!checked }))}
+                    onCheckedChange={(checked) =>
+                      setFormData((p) => ({ ...p, isDefault: !!checked }))
+                    }
                   />
-                  <Label htmlFor="isDefault" className="text-sm font-normal">
+                  <Label htmlFor="addr-default" className="text-sm font-normal">
                     Set as default address
                   </Label>
                 </div>
@@ -267,8 +295,10 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                 <Button type="submit" disabled={isPending}>
                   {isPending ? (
                     <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                  ) : editingAddress ? (
+                    "Save Changes"
                   ) : (
-                    editingAddress ? "Save Changes" : "Add Address"
+                    "Add Address"
                   )}
                 </Button>
               </DialogFooter>
@@ -293,20 +323,22 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                 <div className="flex items-center justify-between">
                   <CardTitle className="text-base flex items-center gap-2">
                     {addr.label}
-                    {addr.is_default && <Badge variant="secondary">Default</Badge>}
+                    {addr.is_default && (
+                      <Badge variant="secondary">Default</Badge>
+                    )}
                   </CardTitle>
                   <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8"
                       onClick={() => openEditDialog(addr)}
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
+                    <Button
+                      variant="ghost"
+                      size="icon"
                       className="h-8 w-8 text-destructive"
                       onClick={() => handleDelete(addr.id)}
                       disabled={deletingId === addr.id}
@@ -324,8 +356,9 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                 <p>{addr.full_name}</p>
                 <p>{addr.line_1}</p>
                 {addr.line_2 && <p>{addr.line_2}</p>}
-                <p>{addr.city}, {addr.region}</p>
+                <p>{addr.city}</p>
                 <p>{addr.postcode}</p>
+                {addr.phone && <p className="mt-1">{addr.phone}</p>}
               </CardContent>
             </Card>
           ))}

@@ -13,6 +13,9 @@ export const siteConfig = {
   shopDescription: "Premium meats & poultry, expertly butchered and delivered fresh.",
   shopUrl: "https://meatdrop.mt",
   logo: "/logo.svg", // Place in /public
+  // "logo-only"       = just the logo image in the header
+  // "logo-and-name"   = logo image (left) + shop name text (right)
+  logoDisplay: "logo-and-name",
 
   // ── Locale & Currency ─────────────────────────────────────────────────
   currency: {
@@ -33,21 +36,14 @@ export const siteConfig = {
   },
 
   // ── Navigation & Categories ───────────────────────────────────────────
-  categories: [
-    { name: "Beef", slug: "beef", image: "/images/categories/beef.jpg" },
-    { name: "Pork", slug: "pork", image: "/images/categories/pork.jpg" },
-    { name: "Poultry", slug: "poultry", image: "/images/categories/poultry.jpg" },
-    { name: "Lamb", slug: "lamb", image: "/images/categories/lamb.jpg" },
-  ],
+  // Categories are managed in the Admin Portal → Catalogue section and stored in the DB.
 
   // ── Product Filters ───────────────────────────────────────────────────
+  // Filter groups and options are managed in Admin Portal → Catalogue section.
+  // unit and optionSelector are store-level display labels used across the UI.
   filters: {
-    secondary: {
-      label: "Cut",
-      options: ["Steak", "Chops", "Mince", "Whole", "Sausages"],
-    },
-    unit: "kg", // e.g. "kg", "piece", "pack"
-    optionSelector: "Weight", // e.g. "Weight", "Size", "Colour"
+    unit: "kg", // e.g. "kg", "piece", "pack" — shown as "€12.50 / kg"
+    optionSelector: "Weight", // e.g. "Weight", "Size", "Colour" — labels the variant picker
   },
 
   // ── Homepage ──────────────────────────────────────────────────────────
@@ -57,6 +53,9 @@ export const siteConfig = {
     primaryCta: { label: "Shop Prime Cuts", href: "/products" },
     secondaryCta: { label: "Restaurant Wholesale", href: "/wholesale" },
     backgroundImage: "/images/hero-bg.jpg",
+    // "dark" = dark/moody image → light text & buttons
+    // "light" = light/bright image → dark text & buttons
+    theme: "dark",
   },
 
   announcement: {
@@ -72,16 +71,83 @@ export const siteConfig = {
 
   // ── Delivery ──────────────────────────────────────────────────────────
   delivery: {
-    regions: [
-      { name: "Region 1", fee: 5 },
-      { name: "Region 2", fee: 10 },
+    // Malta & Gozo towns with individual delivery fees (EUR)
+    towns: [
+      // Malta – Central
+      { name: "Birkirkara", fee: 3 },
+      { name: "Gżira", fee: 3 },
+      { name: "Hamrun", fee: 3 },
+      { name: "Msida", fee: 3 },
+      { name: "Pietà", fee: 3 },
+      { name: "Santa Venera", fee: 3 },
+      { name: "Tal-Pietà", fee: 3 },
+      // Malta – Northern
+      { name: "Bugibba", fee: 4 },
+      { name: "Mellieħa", fee: 5 },
+      { name: "Mġarr", fee: 5 },
+      { name: "Mosta", fee: 4 },
+      { name: "Naxxar", fee: 4 },
+      { name: "Pembroke", fee: 4 },
+      { name: "Qawra", fee: 4 },
+      { name: "St Paul's Bay", fee: 4 },
+      // Malta – Southern
+      { name: "Birżebbuġa", fee: 5 },
+      { name: "Fgura", fee: 4 },
+      { name: "Gudja", fee: 4 },
+      { name: "Luqa", fee: 4 },
+      { name: "Marsa", fee: 3 },
+      { name: "Marsaskala", fee: 5 },
+      { name: "Marsaxlokk", fee: 5 },
+      { name: "Qrendi", fee: 5 },
+      { name: "Safi", fee: 5 },
+      { name: "Żabbar", fee: 4 },
+      { name: "Żejtun", fee: 5 },
+      { name: "Żurrieq", fee: 5 },
+      // Malta – Eastern
+      { name: "Kalkara",      fee: 4 },
+      { name: "Paola",        fee: 3 },
+      { name: "San Ġwann",    fee: 3 },
+      { name: "Swieqi",       fee: 4 },
+      { name: "Tarxien",      fee: 4 },
+      // Valletta & Harbour
+      { name: "Floriana", fee: 3 },
+      { name: "Senglea", fee: 4 },
+      { name: "Three Cities", fee: 4 },
+      { name: "Valletta", fee: 3 },
+      // Malta – North-West
+      { name: "Attard", fee: 4 },
+      { name: "Balzan", fee: 3 },
+      { name: "Dingli", fee: 5 },
+      { name: "Lija", fee: 3 },
+      { name: "Mdina", fee: 4 },
+      { name: "Rabat", fee: 4 },
+      { name: "Siġġiewi", fee: 5 },
+      // Gozo
+      { name: "Fontana",       fee: 8 },
+      { name: "Għajnsielem",   fee: 8 },
+      { name: "Għarb",         fee: 9 },
+      { name: "Għasri",        fee: 9 },
+      { name: "Kerċem", fee: 9 },
+      { name: "Marsalforn", fee: 8 },
+      { name: "Munxar", fee: 9 },
+      { name: "Nadur", fee: 8 },
+      { name: "Qala", fee: 9 },
+      { name: "Rabat (Gozo)", fee: 8 },
+      { name: "San Lawrenz", fee: 9 },
+      { name: "Sannat", fee: 9 },
+      { name: "Victoria", fee: 8 },
+      { name: "Xlendi", fee: 9 },
+      { name: "Xagħra", fee: 8 },
+      { name: "Żebbuġ (Gozo)", fee: 9 },
+      // Comino
+      { name: "Comino", fee: 15 },
     ],
     freeThreshold: 80, // Free delivery over this amount
     slots: [
       { label: "Morning 8–12", value: "morning" },
       { label: "Afternoon 12–5", value: "afternoon" },
     ],
-    pickupAddress: "123 Main Street, Your City",
+    pickupAddress: "Triq Andrea Bogdan, Ħaż-Żebbuġ, ZBG306",
   },
 
   // ── Wholesale ─────────────────────────────────────────────────────────
@@ -96,10 +162,10 @@ export const siteConfig = {
     pendingMessage: "Your wholesale account will be reviewed within 24 hours.",
   },
 
-  // ── Contact & Social ──────────────────────────────────────────────────
+  // ── Contact & Social ──────────────────────────────────��───────────────
   whatsapp: {
-    enabled: false,
-    number: "",
+    enabled: true,
+    number: "+35699999999",
   },
 
   contact: {

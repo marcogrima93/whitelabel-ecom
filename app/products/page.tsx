@@ -2,9 +2,9 @@ import { Suspense } from "react";
 import type { Metadata } from "next";
 import { siteConfig } from "@/site.config";
 import { getProducts } from "@/lib/supabase/products";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 import { ProductCard } from "@/components/products/ProductCard";
 import { FilterSidebar } from "@/components/products/FilterSidebar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { Package } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -23,15 +23,25 @@ interface ProductsPageProps {
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const params = await searchParams;
-  const products = await getProducts({
-    category: params.category,
-    filterField: params.filter,
-    sort: (params.sort as "featured" | "price_asc" | "price_desc" | "newest") || undefined,
-    search: params.q,
-  });
+  const supabase = await createServiceRoleClient();
+
+  const [products, { data: categories }, { data: filterGroups }, { data: filterOptions }] =
+    await Promise.all([
+      getProducts({
+        category: params.category,
+        filterField: params.filter,
+        sort: (params.sort as "featured" | "price_asc" | "price_desc" | "newest") || undefined,
+        search: params.q,
+      }),
+      supabase.from("categories").select("*"),
+      supabase.from("product_filter_groups").select("*"),
+      supabase.from("product_filter_options").select("*"),
+    ]);
+
+  const resolvedCategories = categories ?? [];
 
   const categoryName = params.category
-    ? siteConfig.categories.find((c) => c.slug === params.category)?.name
+    ? resolvedCategories.find((c) => c.slug === params.category)?.name
     : null;
 
   return (
@@ -63,6 +73,9 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             currentFilter={params.filter}
             currentSort={params.sort}
             currentSearch={params.q}
+            categories={resolvedCategories}
+            filterGroups={filterGroups ?? []}
+            filterOptions={filterOptions ?? []}
           />
         </Suspense>
 
@@ -79,7 +92,11 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
               {products.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  categoryName={resolvedCategories.find((c) => c.slug === product.category)?.name}
+                />
               ))}
             </div>
           )}
