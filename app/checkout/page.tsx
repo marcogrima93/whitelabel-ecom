@@ -46,6 +46,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
   const [clientSecret, setClientSecret] = useState("");
+  const [checkoutOrderNumber, setCheckoutOrderNumber] = useState("");
 
   // Form state
   const [deliveryForm, setDeliveryForm] = useState({
@@ -95,18 +96,39 @@ export default function CheckoutPage() {
     if (clientSecret) return;
 
     try {
+      const deliveryAddress = deliveryType === "DELIVERY" ? {
+        fullName: deliveryForm.fullName,
+        phone: deliveryForm.phone,
+        line1: deliveryForm.line1,
+        line2: deliveryForm.line2,
+        city: deliveryForm.city,
+        region: deliveryForm.region,
+        postcode: deliveryForm.postcode,
+      } : null;
+
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          items,
+          items: items.map(item => ({
+            productId: item.productId,
+            name: item.name,
+            image: item.image,
+            selectedOption: item.selectedOption,
+            pricePerUnit: item.pricePerUnit,
+            quantity: item.quantity,
+          })),
           customerEmail: deliveryForm.email,
-          deliveryRequired: deliveryType === "DELIVERY"
+          customerName: deliveryForm.fullName,
+          deliveryMethod: deliveryType,
+          deliveryAddress,
+          deliverySlot: `${deliveryForm.preferredDay} - ${deliveryForm.deliverySlot}`,
         }),
       });
       const data = await res.json();
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
+        setCheckoutOrderNumber(data.orderNumber);
       } else {
         console.error("No client secret inside response", data);
       }
@@ -318,7 +340,8 @@ export default function CheckoutPage() {
                 ) : (
                   <Elements stripe={stripePromise} options={{ clientSecret }}>
                     <StripeForm 
-                      amount={total} 
+                      amount={total}
+                      orderNumber={checkoutOrderNumber}
                       onSuccess={handlePaymentSuccess} 
                       onBack={() => setStep("delivery")} 
                     />

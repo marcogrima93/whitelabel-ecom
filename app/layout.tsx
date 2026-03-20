@@ -37,7 +37,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang={siteConfig.locale.split("-")[0]} className={inter.variable}>
+    <html lang={siteConfig.locale.split("-")[0]} className={inter.variable} data-scroll-behavior="smooth">
       <body className="min-h-screen flex flex-col antialiased font-sans">
         <a href="#main-content" className="skip-to-content">
           Skip to main content

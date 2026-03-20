@@ -2,13 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Package, Eye } from "lucide-react";
-
-// Mock orders for demo
-const mockOrders = [
-  { id: "ORD-001", date: "2024-01-15", items: 3, total: 89.97, status: "DELIVERED" },
-  { id: "ORD-002", date: "2024-01-28", items: 1, total: 34.99, status: "DISPATCHED" },
-  { id: "ORD-003", date: "2024-02-10", items: 5, total: 199.95, status: "PENDING" },
-];
+import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { getUserOrders } from "@/lib/supabase/queries";
+import { siteConfig } from "@/site.config";
+import { formatPrice } from "@/lib/utils";
+import { redirect } from "next/navigation";
 
 const statusVariant = (status: string) => {
   switch (status) {
@@ -21,12 +19,21 @@ const statusVariant = (status: string) => {
   }
 };
 
-export default function OrdersPage() {
+export default async function OrdersPage() {
+  const supabase = await createServerSupabaseClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) {
+    redirect("/login?redirect=/account/orders");
+  }
+
+  const orders = await getUserOrders(user.id);
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">My Orders</h2>
 
-      {mockOrders.length === 0 ? (
+      {orders.length === 0 ? (
         <div className="text-center py-12">
           <Package className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
           <p className="text-muted-foreground">You haven&apos;t placed any orders yet.</p>
@@ -49,12 +56,16 @@ export default function OrdersPage() {
                 </tr>
               </thead>
               <tbody className="divide-y">
-                {mockOrders.map((order) => (
+                {orders.map((order) => (
                   <tr key={order.id} className="hover:bg-muted/50 transition-colors">
-                    <td className="p-4 font-mono font-medium">{order.id}</td>
-                    <td className="p-4 text-muted-foreground">{order.date}</td>
-                    <td className="p-4">{order.items}</td>
-                    <td className="p-4 font-medium">€{order.total.toFixed(2)}</td>
+                    <td className="p-4 font-mono font-medium">{order.order_number}</td>
+                    <td className="p-4 text-muted-foreground">
+                      {new Date(order.created_at).toLocaleDateString("en-GB")}
+                    </td>
+                    <td className="p-4">{order.items?.length || 0}</td>
+                    <td className="p-4 font-medium">
+                      {formatPrice(Number(order.total), siteConfig.currency.code, siteConfig.currency.locale)}
+                    </td>
                     <td className="p-4">
                       <Badge variant={statusVariant(order.status)}>
                         {order.status}
