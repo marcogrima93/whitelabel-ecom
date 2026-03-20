@@ -132,13 +132,13 @@ export function Footer() {
             © {currentYear} {siteConfig.legal.companyName || siteConfig.shopName}. All rights reserved.
           </p>
           <div className="flex gap-4">
-            <Link href="/cookie-policy" className="hover:text-foreground transition-colors">
+            <Link href="/cookie-policy" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
               Cookie Policy
             </Link>
-            <Link href="/privacy-policy" className="hover:text-foreground transition-colors">
+            <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
               Privacy Policy
             </Link>
-            <Link href="/terms" className="hover:text-foreground transition-colors">
+            <Link href="/terms" target="_blank" rel="noopener noreferrer" className="hover:text-foreground transition-colors">
               Terms & Conditions
             </Link>
           </div>

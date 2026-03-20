@@ -361,11 +361,11 @@ export default function CheckoutPage() {
                   <input type="checkbox" className="mt-1 rounded" required />
                   <span>
                     I agree to the{" "}
-                    <Link href="/terms" className="text-primary hover:underline">
+                    <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       Terms & Conditions
                     </Link>{" "}
                     and{" "}
-                    <Link href="/privacy-policy" className="text-primary hover:underline">
+                    <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
                       Privacy Policy
                     </Link>
                   </span>
