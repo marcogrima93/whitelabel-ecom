@@ -157,7 +157,7 @@ export const siteConfig = {
       { label: "Morning 8–12", value: "morning" },
       { label: "Afternoon 12–5", value: "afternoon" },
     ],
-    pickupAddress: "123 Main Street, Birkirkara",
+    pickupAddress: "Triq Andrea Bogdan, Ħaż-Żebbuġ, ZBG306",
   },
 
   // ── Wholesale ─────────────────────────────────────────────────────────
