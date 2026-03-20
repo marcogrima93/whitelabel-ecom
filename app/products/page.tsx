@@ -25,18 +25,16 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const params = await searchParams;
   const supabase = await createServiceRoleClient();
 
-  const [products, { data: categories }, { data: filterGroups }, { data: filterOptions }] =
-    await Promise.all([
-      getProducts({
-        category: params.category,
-        filterField: params.filter,
-        sort: (params.sort as "featured" | "price_asc" | "price_desc" | "newest") || undefined,
-        search: params.q,
-      }),
-      supabase.from("categories").select("*"),
-      supabase.from("product_filter_groups").select("*"),
-      supabase.from("product_filter_options").select("*"),
-    ]);
+  const [products, { data: categories }, { data: productFilters }] = await Promise.all([
+    getProducts({
+      category: params.category,
+      filterField: params.filter,
+      sort: (params.sort as "featured" | "price_asc" | "price_desc" | "newest") || undefined,
+      search: params.q,
+    }),
+    supabase.from("categories").select("*"),
+    supabase.from("product_filters").select("*"),
+  ]);
 
   const resolvedCategories = categories ?? [];
 
@@ -74,8 +72,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
             currentSort={params.sort}
             currentSearch={params.q}
             categories={resolvedCategories}
-            filterGroups={filterGroups ?? []}
-            filterOptions={filterOptions ?? []}
+            productFilters={productFilters ?? []}
           />
         </Suspense>
 

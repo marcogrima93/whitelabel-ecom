@@ -28,8 +28,7 @@ import {
 } from "@/components/ui/sheet";
 
 interface Category { id: string; name: string; slug: string; }
-interface FilterGroup { id: string; label: string; }
-interface FilterOption { id: string; group_id: string; value: string; }
+interface ProductFilter { id: string; label: string; options: string[]; }
 
 interface FilterSidebarProps {
   currentCategory?: string;
@@ -37,8 +36,7 @@ interface FilterSidebarProps {
   currentSort?: string;
   currentSearch?: string;
   categories: Category[];
-  filterGroups: FilterGroup[];
-  filterOptions: FilterOption[];
+  productFilters: ProductFilter[];
 }
 
 export function FilterSidebar({
@@ -47,8 +45,7 @@ export function FilterSidebar({
   currentSort,
   currentSearch,
   categories,
-  filterGroups,
-  filterOptions,
+  productFilters,
 }: FilterSidebarProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -63,9 +60,7 @@ export function FilterSidebar({
     router.push(`/products?${params.toString()}`);
   };
 
-  const clearFilters = () => {
-    router.push("/products");
-  };
+  const clearFilters = () => router.push("/products");
 
   const hasActiveFilters = currentCategory || currentFilter || currentSearch;
 
@@ -109,7 +104,11 @@ export function FilterSidebar({
         </Select>
       </div>
 
-      <Accordion type="multiple" defaultValue={["category", ...filterGroups.map((g) => g.id)]} className="w-full">
+      <Accordion
+        type="multiple"
+        defaultValue={["category", ...productFilters.map((f) => f.id)]}
+        className="w-full"
+      >
         {/* Category filter */}
         {categories.length > 0 && (
           <AccordionItem value="category">
@@ -140,10 +139,9 @@ export function FilterSidebar({
           </AccordionItem>
         )}
 
-        {/* Dynamic filter groups */}
-        {filterGroups.map((group) => {
-          const opts = filterOptions.filter((o) => o.group_id === group.id);
-          if (opts.length === 0) return null;
+        {/* Dynamic filter groups from DB */}
+        {productFilters.map((group) => {
+          if (group.options.length === 0) return null;
           return (
             <AccordionItem key={group.id} value={group.id}>
               <AccordionTrigger className="text-sm font-semibold">{group.label}</AccordionTrigger>
@@ -157,15 +155,15 @@ export function FilterSidebar({
                   >
                     All {group.label}s
                   </button>
-                  {opts.map((opt) => (
+                  {group.options.map((opt) => (
                     <button
-                      key={opt.id}
-                      onClick={() => updateFilter("filter", opt.value)}
+                      key={opt}
+                      onClick={() => updateFilter("filter", opt)}
                       className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
-                        currentFilter === opt.value ? "bg-primary text-primary-foreground" : "hover:bg-accent"
+                        currentFilter === opt ? "bg-primary text-primary-foreground" : "hover:bg-accent"
                       }`}
                     >
-                      {opt.value}
+                      {opt}
                     </button>
                   ))}
                 </div>
@@ -175,7 +173,6 @@ export function FilterSidebar({
         })}
       </Accordion>
 
-      {/* Clear filters */}
       {hasActiveFilters && (
         <Button variant="ghost" size="sm" className="w-full mt-4" onClick={clearFilters}>
           <X className="h-4 w-4 mr-2" />
@@ -195,7 +192,7 @@ export function FilterSidebar({
         </div>
       </aside>
 
-      {/* Mobile filter button + sheet */}
+      {/* Mobile filter sheet */}
       <div className="lg:hidden">
         <Sheet>
           <SheetTrigger asChild>

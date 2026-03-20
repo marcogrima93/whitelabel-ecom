@@ -44,14 +44,15 @@ export async function deleteCategoryAction(id: string): Promise<boolean> {
 }
 
 // ── Product Filters ────────────────────────────────────────────────────
+// Schema: product_filters(id, label, options TEXT[], sort_order)
 
 export async function addFilterGroupAction(data: {
   label: string;
-}): Promise<{ id: string; label: string } | null> {
+}): Promise<{ id: string; label: string; options: string[] } | null> {
   const supabase = await createServiceRoleClient();
   const { data: row, error } = await supabase
-    .from("product_filter_groups")
-    .insert({ label: data.label })
+    .from("product_filters")
+    .insert({ label: data.label, options: [] })
     .select()
     .single();
   if (error) { console.error(error); return null; }
@@ -59,9 +60,20 @@ export async function addFilterGroupAction(data: {
   return row;
 }
 
+export async function updateFilterGroupAction(
+  id: string,
+  data: { label: string }
+): Promise<boolean> {
+  const supabase = await createServiceRoleClient();
+  const { error } = await supabase.from("product_filters").update(data).eq("id", id);
+  if (error) { console.error(error); return false; }
+  revalidatePath("/admin/catalogue");
+  return true;
+}
+
 export async function deleteFilterGroupAction(id: string): Promise<boolean> {
   const supabase = await createServiceRoleClient();
-  const { error } = await supabase.from("product_filter_groups").delete().eq("id", id);
+  const { error } = await supabase.from("product_filters").delete().eq("id", id);
   if (error) { console.error(error); return false; }
   revalidatePath("/admin/catalogue");
   return true;
@@ -70,21 +82,30 @@ export async function deleteFilterGroupAction(id: string): Promise<boolean> {
 export async function addFilterOptionAction(data: {
   group_id: string;
   value: string;
-}): Promise<{ id: string; group_id: string; value: string } | null> {
+  current_options: string[];
+}): Promise<boolean> {
   const supabase = await createServiceRoleClient();
-  const { data: row, error } = await supabase
-    .from("product_filter_options")
-    .insert(data)
-    .select()
-    .single();
-  if (error) { console.error(error); return null; }
+  const newOptions = [...data.current_options, data.value];
+  const { error } = await supabase
+    .from("product_filters")
+    .update({ options: newOptions })
+    .eq("id", data.group_id);
+  if (error) { console.error(error); return false; }
   revalidatePath("/admin/catalogue");
-  return row;
+  return true;
 }
 
-export async function deleteFilterOptionAction(id: string): Promise<boolean> {
+export async function deleteFilterOptionAction(data: {
+  group_id: string;
+  value: string;
+  current_options: string[];
+}): Promise<boolean> {
   const supabase = await createServiceRoleClient();
-  const { error } = await supabase.from("product_filter_options").delete().eq("id", id);
+  const newOptions = data.current_options.filter((o) => o !== data.value);
+  const { error } = await supabase
+    .from("product_filters")
+    .update({ options: newOptions })
+    .eq("id", data.group_id);
   if (error) { console.error(error); return false; }
   revalidatePath("/admin/catalogue");
   return true;

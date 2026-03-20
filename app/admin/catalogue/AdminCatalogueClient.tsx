@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -45,30 +45,21 @@ interface Category {
 interface FilterGroup {
   id: string;
   label: string;
-  position?: number;
-}
-
-interface FilterOption {
-  id: string;
-  group_id: string;
-  value: string;
+  options: string[];
   position?: number;
 }
 
 interface Props {
   initialCategories: Category[];
   initialFilterGroups: FilterGroup[];
-  initialFilterOptions: FilterOption[];
 }
 
 export default function AdminCatalogueClient({
   initialCategories,
   initialFilterGroups,
-  initialFilterOptions,
 }: Props) {
   const [categories, setCategories] = useState(initialCategories);
   const [filterGroups, setFilterGroups] = useState(initialFilterGroups);
-  const [filterOptions, setFilterOptions] = useState(initialFilterOptions);
   const [isPending, startTransition] = useTransition();
 
   // ── Category form state ─────────────────────────────────────────────
@@ -126,30 +117,43 @@ export default function AdminCatalogueClient({
     if (!confirm("Delete this filter group and all its options?")) return;
     startTransition(async () => {
       const ok = await deleteFilterGroupAction(id);
-      if (ok) {
-        setFilterGroups((prev) => prev.filter((g) => g.id !== id));
-        setFilterOptions((prev) => prev.filter((o) => o.group_id !== id));
-      }
+      if (ok) setFilterGroups((prev) => prev.filter((g) => g.id !== id));
     });
   };
 
-  // ── Filter option form state ────────────────────────────────────────
+  // ── Filter option state ─────────────────────────────────────────────
   const [optionInput, setOptionInput] = useState<Record<string, string>>({});
 
-  const handleOptionAdd = (groupId: string) => {
-    const value = (optionInput[groupId] || "").trim();
+  const handleOptionAdd = (group: FilterGroup) => {
+    const value = (optionInput[group.id] || "").trim();
     if (!value) return;
     startTransition(async () => {
-      const row = await addFilterOptionAction({ group_id: groupId, value });
-      if (row) setFilterOptions((prev) => [...prev, row]);
-      setOptionInput((prev) => ({ ...prev, [groupId]: "" }));
+      const ok = await addFilterOptionAction({
+        group_id: group.id,
+        value,
+        current_options: group.options,
+      });
+      if (ok) {
+        setFilterGroups((prev) =>
+          prev.map((g) => g.id === group.id ? { ...g, options: [...g.options, value] } : g)
+        );
+      }
+      setOptionInput((prev) => ({ ...prev, [group.id]: "" }));
     });
   };
 
-  const handleOptionDelete = (id: string) => {
+  const handleOptionDelete = (group: FilterGroup, value: string) => {
     startTransition(async () => {
-      const ok = await deleteFilterOptionAction(id);
-      if (ok) setFilterOptions((prev) => prev.filter((o) => o.id !== id));
+      const ok = await deleteFilterOptionAction({
+        group_id: group.id,
+        value,
+        current_options: group.options,
+      });
+      if (ok) {
+        setFilterGroups((prev) =>
+          prev.map((g) => g.id === group.id ? { ...g, options: g.options.filter((o) => o !== value) } : g)
+        );
+      }
     });
   };
 
@@ -320,15 +324,13 @@ export default function AdminCatalogueClient({
         {filterGroups.length === 0 ? (
           <Card>
             <CardContent className="py-10 text-center text-muted-foreground">
-              No filter groups yet. Add a group like "Cut" or "Grade" and then add options to it.
+              No filter groups yet. Add a group like "Cut" or "Grade" then add options to it.
             </CardContent>
           </Card>
         ) : (
           <div className="space-y-3">
             {filterGroups.map((group) => {
-              const opts = filterOptions.filter((o) => o.group_id === group.id);
               const isExpanded = expandedGroup === group.id;
-
               return (
                 <Card key={group.id}>
                   <CardHeader className="pb-3">
@@ -340,7 +342,7 @@ export default function AdminCatalogueClient({
                       >
                         <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                         <CardTitle className="text-base">{group.label}</CardTitle>
-                        <Badge variant="outline" className="text-xs">{opts.length} options</Badge>
+                        <Badge variant="outline" className="text-xs">{group.options.length} options</Badge>
                       </button>
                       <Button
                         variant="ghost"
@@ -356,39 +358,39 @@ export default function AdminCatalogueClient({
 
                   {isExpanded && (
                     <CardContent className="pt-0 space-y-3">
-                      {/* Existing options */}
                       <div className="flex flex-wrap gap-2">
-                        {opts.map((opt) => (
-                          <Badge key={opt.id} variant="secondary" className="gap-1.5 pr-1">
-                            {opt.value}
+                        {group.options.map((opt) => (
+                          <Badge key={opt} variant="secondary" className="gap-1.5 pr-1">
+                            {opt}
                             <button
                               type="button"
-                              onClick={() => handleOptionDelete(opt.id)}
+                              onClick={() => handleOptionDelete(group, opt)}
                               className="hover:text-destructive transition-colors ml-0.5"
-                              aria-label={`Remove ${opt.value}`}
+                              aria-label={`Remove ${opt}`}
                             >
                               ×
                             </button>
                           </Badge>
                         ))}
-                        {opts.length === 0 && (
+                        {group.options.length === 0 && (
                           <p className="text-sm text-muted-foreground">No options yet.</p>
                         )}
                       </div>
-                      {/* Add option */}
                       <div className="flex gap-2">
                         <Input
-                          placeholder={`Add option, e.g. Steak`}
+                          placeholder="Add option, e.g. Steak"
                           value={optionInput[group.id] || ""}
                           onChange={(e) => setOptionInput((p) => ({ ...p, [group.id]: e.target.value }))}
-                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleOptionAdd(group.id); } }}
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleOptionAdd(group); } }}
                           className="h-8 text-sm"
                         />
-                        <Button size="sm" className="h-8" onClick={() => handleOptionAdd(group.id)} disabled={isPending}>
+                        <Button size="sm" className="h-8" onClick={() => handleOptionAdd(group)} disabled={isPending}>
                           <Plus className="h-3.5 w-3.5" />
                         </Button>
                       </div>
-                      <p className="text-xs text-muted-foreground">Press Enter or click + to add. These options appear as filter choices on the products page.</p>
+                      <p className="text-xs text-muted-foreground">
+                        Press Enter or click + to add. Options appear as filter choices on the products page.
+                      </p>
                     </CardContent>
                   )}
                 </Card>
