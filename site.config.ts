@@ -174,8 +174,8 @@ export const siteConfig = {
 
   // ── Contact & Social ──────────────────────────────────��───────────────
   whatsapp: {
-    enabled: false,
-    number: "",
+    enabled: true,
+    number: "+35699999999",
   },
 
   contact: {
