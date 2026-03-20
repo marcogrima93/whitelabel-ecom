@@ -25,8 +25,8 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
     return applyFiltersToMock(mockProducts, filters);
   }
 
-  const { createServerSupabaseClient } = await import("./server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("./server");
+  const supabase = await createServiceRoleClient();
 
   let query = supabase
     .from("products")
@@ -78,7 +78,11 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
     return applyFiltersToMock(mockProducts, filters);
   }
 
-  return data as Product[];
+  if (data && data.length > 0) {
+    console.log("[v0] First product images raw:", JSON.stringify(data[0].images), "type:", typeof data[0].images);
+  }
+
+  return (data as Product[]).map(normaliseImages);
 }
 
 export async function getProductBySlug(slug: string): Promise<Product | null> {
@@ -86,8 +90,8 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     return mockProducts.find((p) => p.slug === slug) || null;
   }
 
-  const { createServerSupabaseClient } = await import("./server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("./server");
+  const supabase = await createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("products")
@@ -100,7 +104,7 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     return mockProducts.find((p) => p.slug === slug) || null;
   }
 
-  return data as Product;
+  return normaliseImages(data as Product);
 }
 
 export async function getRelatedProducts(
@@ -114,8 +118,8 @@ export async function getRelatedProducts(
       .slice(0, limit);
   }
 
-  const { createServerSupabaseClient } = await import("./server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("./server");
+  const supabase = await createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("products")
@@ -131,7 +135,7 @@ export async function getRelatedProducts(
       .slice(0, limit);
   }
 
-  return data as Product[];
+  return (data as Product[]).map(normaliseImages);
 }
 
 export async function getFeaturedProducts(limit = 4): Promise<Product[]> {
@@ -139,8 +143,8 @@ export async function getFeaturedProducts(limit = 4): Promise<Product[]> {
     return mockProducts.filter((p) => p.stock_status === "IN_STOCK").slice(0, limit);
   }
 
-  const { createServerSupabaseClient } = await import("./server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("./server");
+  const supabase = await createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("products")
@@ -154,10 +158,28 @@ export async function getFeaturedProducts(limit = 4): Promise<Product[]> {
     return mockProducts.filter((p) => p.stock_status === "IN_STOCK").slice(0, limit);
   }
 
-  return data as Product[];
+  return (data as Product[]).map(normaliseImages);
 }
 
-// ── Helper: apply filters to mock data ──────────────────────────────────
+// ── Helper: normalise images column ──────────────────────────────────────
+// Supabase may return TEXT[] as a plain string, a JSON string, or a proper array.
+// This ensures product.images is always a clean string[].
+function normaliseImages(product: Product): Product {
+  let imgs = product.images as unknown;
+  if (!imgs) return { ...product, images: [] };
+  if (typeof imgs === "string") {
+    try { imgs = JSON.parse(imgs); } catch { imgs = [imgs]; }
+  }
+  if (!Array.isArray(imgs)) imgs = [String(imgs)];
+  return {
+    ...product,
+    images: (imgs as unknown[])
+      .map((u) => String(u).trim())
+      .filter((u) => u.startsWith("http") || u.startsWith("/")),
+  };
+}
+
+// ── Helper: apply filters to mock data ───────────────────────────────────
 function applyFiltersToMock(products: Product[], filters?: ProductFilters): Product[] {
   let result = [...products];
 
