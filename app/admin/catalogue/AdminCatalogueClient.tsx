@@ -52,7 +52,7 @@ interface FilterOption {
   id: string;
   group_id: string;
   value: string;
-  position: number;
+  position?: number;
 }
 
 interface Props {
