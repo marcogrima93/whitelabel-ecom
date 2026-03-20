@@ -47,11 +47,13 @@ export default async function HomePage() {
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
-              <Button size="xl" variant="outline" asChild>
-                <Link href={siteConfig.hero.secondaryCta.href}>
-                  {siteConfig.hero.secondaryCta.label}
-                </Link>
-              </Button>
+              {siteConfig.wholesale.enabled && (
+                <Button size="xl" variant="outline" asChild>
+                  <Link href={siteConfig.hero.secondaryCta.href}>
+                    {siteConfig.hero.secondaryCta.label}
+                  </Link>
+                </Button>
+              )}
             </div>
           </div>
         </div>

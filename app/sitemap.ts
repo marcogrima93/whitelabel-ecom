@@ -6,7 +6,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = siteConfig.shopUrl;
 
   // Static routes
-  const routes = [
+  const staticRoutes = [
     "",
     "/products",
     "/cart",
@@ -14,12 +14,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     "/login",
     "/register",
     "/forgot-password",
-    "/wholesale",
-    "/wholesale/quote",
     "/terms",
     "/privacy-policy",
     "/cookie-policy",
-  ].map((route) => ({
+  ];
+
+  // Conditionally add wholesale routes
+  if (siteConfig.wholesale.enabled) {
+    staticRoutes.push("/wholesale", "/wholesale/quote");
+  }
+
+  const routes = staticRoutes.map((route) => ({
     url: `${baseUrl}${route}`,
     lastModified: new Date(),
     changeFrequency: "weekly" as const,

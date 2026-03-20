@@ -85,8 +85,9 @@ export const siteConfig = {
   },
 
   // ── Wholesale ─────────────────────────────────────────────────────────
+  // Set to false to run as a retail-only store (hides all wholesale features)
   wholesale: {
-    enabled: true,
+    enabled: false,
     minOrderValue: 150,
     tiers: [
       { minQty: 10, multiplier: 0.95, label: "Tier 1 (10+ units)" },
