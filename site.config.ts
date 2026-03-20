@@ -13,6 +13,9 @@ export const siteConfig = {
   shopDescription: "Premium meats & poultry, expertly butchered and delivered fresh.",
   shopUrl: "https://meatdrop.mt",
   logo: "/logo.svg", // Place in /public
+  // "logo-only"       = just the logo image in the header
+  // "logo-and-name"   = logo image (left) + shop name text (right)
+  logoDisplay: "logo-and-name" as "logo-only" | "logo-and-name",
 
   // ── Locale & Currency ─────────────────────────────────────────────────
   currency: {
@@ -57,6 +60,9 @@ export const siteConfig = {
     primaryCta: { label: "Shop Prime Cuts", href: "/products" },
     secondaryCta: { label: "Restaurant Wholesale", href: "/wholesale" },
     backgroundImage: "/images/hero-bg.jpg",
+    // "dark" = dark/moody image → light text & buttons
+    // "light" = light/bright image → dark text & buttons
+    theme: "dark" as "dark" | "light",
   },
 
   announcement: {
@@ -166,7 +172,7 @@ export const siteConfig = {
     pendingMessage: "Your wholesale account will be reviewed within 24 hours.",
   },
 
-  // ── Contact & Social ──────────────────────────────────────────────────
+  // ── Contact & Social ──────────────────────────────────��───────────────
   whatsapp: {
     enabled: false,
     number: "",

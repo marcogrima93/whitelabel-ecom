@@ -158,7 +158,7 @@ export function Header() {
               </SheetContent>
             </Sheet>
 
-            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+            <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
               <Image
                 src={siteConfig.logo}
                 alt={siteConfig.shopName}
@@ -167,6 +167,11 @@ export function Header() {
                 className="h-9 w-auto object-contain"
                 priority
               />
+              {siteConfig.logoDisplay === "logo-and-name" && (
+                <span className="font-bold text-lg tracking-tight hidden sm:block">
+                  {siteConfig.shopName}
+                </span>
+              )}
             </Link>
           </div>
 

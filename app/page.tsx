@@ -42,26 +42,49 @@ export default async function HomePage() {
           className="object-cover object-center"
           sizes="100vw"
         />
-        {/* Dark overlay */}
-        <div className="absolute inset-0 bg-black/55" />
+        {/* Overlay — dark image gets a dark scrim, light image gets a light scrim */}
+        <div
+          className={
+            siteConfig.hero.theme === "dark"
+              ? "absolute inset-0 bg-black/55"
+              : "absolute inset-0 bg-white/60"
+          }
+        />
 
         <div className="relative z-10 container mx-auto px-4 py-20 md:py-32">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-white text-balance">
+            <h1
+              className={`text-4xl md:text-6xl font-bold tracking-tight mb-6 text-balance ${
+                siteConfig.hero.theme === "dark" ? "text-white" : "text-foreground"
+              }`}
+            >
               {siteConfig.hero.headline}
             </h1>
-            <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto text-pretty">
+            <p
+              className={`text-lg md:text-xl mb-8 max-w-2xl mx-auto text-pretty ${
+                siteConfig.hero.theme === "dark" ? "text-white/80" : "text-foreground/70"
+              }`}
+            >
               {siteConfig.hero.subheadline}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="xl" asChild>
+              <Button size="xl" asChild variant={siteConfig.hero.theme === "dark" ? "default" : "default"}>
                 <Link href={siteConfig.hero.primaryCta.href}>
                   {siteConfig.hero.primaryCta.label}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               {siteConfig.wholesale.enabled && (
-                <Button size="xl" variant="outline" className="border-white/40 text-white hover:bg-white/10" asChild>
+                <Button
+                  size="xl"
+                  variant="outline"
+                  className={
+                    siteConfig.hero.theme === "dark"
+                      ? "border-white/40 text-white hover:bg-white/10"
+                      : "border-foreground/30 text-foreground hover:bg-foreground/10"
+                  }
+                  asChild
+                >
                   <Link href={siteConfig.hero.secondaryCta.href}>
                     {siteConfig.hero.secondaryCta.label}
                   </Link>
