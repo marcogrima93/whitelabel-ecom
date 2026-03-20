@@ -23,7 +23,8 @@ export async function POST(req: Request) {
       deliveryMethod,
       deliveryAddress,
       deliverySlot,
-      notes 
+      notes,
+      paymentMethod,
     } = await req.json();
 
     if (!items || items.length === 0) {
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
     // Delivery fee logic
     let deliveryFee = 0;
     if (deliveryMethod === "DELIVERY") {
-      const town = deliveryAddress?.town || deliveryAddress?.region;
+      const town = deliveryAddress?.town || deliveryAddress?.city || deliveryAddress?.region;
       const townConfig = siteConfig.delivery.towns.find((t) => t.name === town);
       deliveryFee = subtotal >= siteConfig.delivery.freeThreshold 
         ? 0 
@@ -58,7 +59,32 @@ export async function POST(req: Request) {
     const total = subtotal + vatAmount + deliveryFee;
     const orderNumber = generateOrderNumber();
 
-    if (!stripe) {
+    // ── Cash on Delivery ───────────────────────────────────────────────
+    if (paymentMethod === "CASH") {
+      const order = await createOrder({
+        orderNumber,
+        userId: user?.id,
+        email: customerEmail,
+        deliveryMethod: deliveryMethod || "DELIVERY",
+        deliveryAddress: deliveryAddress || null,
+        deliveryFee,
+        deliverySlot: deliverySlot || null,
+        subtotal,
+        vatAmount,
+        total,
+        notes: notes || null,
+        stripePaymentIntentId: null,
+        items: items.map((item: any) => ({
+          productId: item.productId,
+          productName: item.name,
+          productImage: item.image || "",
+          selectedOption: item.selectedOption || "",
+          pricePerUnit: item.pricePerUnit,
+          quantity: item.quantity,
+        })),
+      });
+      return NextResponse.json({ orderNumber: order?.order_number || orderNumber });
+    }
       // Mock mode for development without Stripe
       console.warn("Stripe is not configured. Creating order without payment.");
       
