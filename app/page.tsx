@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { siteConfig } from "@/site.config";
 import { getFeaturedProducts } from "@/lib/supabase/products";
 import { formatPrice } from "@/lib/utils";
@@ -31,13 +32,25 @@ export default async function HomePage() {
   return (
     <>
       {/* ── Hero Section ──────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-primary/5 via-background to-accent/10">
-        <div className="container mx-auto px-4 py-20 md:py-32">
+      <section className="relative overflow-hidden min-h-[560px] md:min-h-[680px] flex items-center">
+        {/* Background image */}
+        <Image
+          src={siteConfig.hero.backgroundImage}
+          alt="Hero background"
+          fill
+          priority
+          className="object-cover object-center"
+          sizes="100vw"
+        />
+        {/* Dark overlay */}
+        <div className="absolute inset-0 bg-black/55" />
+
+        <div className="relative z-10 container mx-auto px-4 py-20 md:py-32">
           <div className="max-w-3xl mx-auto text-center">
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 text-white text-balance">
               {siteConfig.hero.headline}
             </h1>
-            <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+            <p className="text-lg md:text-xl text-white/80 mb-8 max-w-2xl mx-auto text-pretty">
               {siteConfig.hero.subheadline}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -48,7 +61,7 @@ export default async function HomePage() {
                 </Link>
               </Button>
               {siteConfig.wholesale.enabled && (
-                <Button size="xl" variant="outline" asChild>
+                <Button size="xl" variant="outline" className="border-white/40 text-white hover:bg-white/10" asChild>
                   <Link href={siteConfig.hero.secondaryCta.href}>
                     {siteConfig.hero.secondaryCta.label}
                   </Link>
@@ -57,9 +70,6 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-        {/* Decorative gradient orbs */}
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-primary/5 rounded-full blur-3xl -translate-y-1/2" />
-        <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl translate-y-1/2" />
       </section>
 
       {/* ── Category Grid ─────────────────────────────────────────────── */}

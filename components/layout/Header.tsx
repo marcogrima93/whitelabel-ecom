@@ -158,8 +158,15 @@ export function Header() {
               </SheetContent>
             </Sheet>
 
-            <Link href="/" className="font-bold text-xl tracking-tight hover:opacity-80 transition-opacity">
-              {siteConfig.shopName}
+            <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+              <Image
+                src={siteConfig.logo}
+                alt={siteConfig.shopName}
+                width={140}
+                height={40}
+                className="h-9 w-auto object-contain"
+                priority
+              />
             </Link>
           </div>
 
