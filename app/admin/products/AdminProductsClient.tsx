@@ -26,6 +26,7 @@ import {
 import { Plus, Pencil, Archive, Search, Package, Inbox, Loader2, X } from "lucide-react";
 import type { Product } from "@/lib/supabase/types";
 import { archiveProductAction, upsertProductAction } from "./actions";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 interface Category { id: string; name: string; slug: string; }
 interface ProductFilter { id: string; label: string; options: string[]; }
@@ -70,7 +71,6 @@ export default function AdminProductsClient({ initialProducts, categories, produ
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [optionInput, setOptionInput] = useState("");
-  const [imageInput, setImageInput] = useState("");
   const [formError, setFormError] = useState("");
 
   const openDialog = (product?: Product) => {
@@ -94,7 +94,6 @@ export default function AdminProductsClient({ initialProducts, categories, produ
       setForm(EMPTY_FORM);
     }
     setOptionInput("");
-    setImageInput("");
     setDialogOpen(true);
   };
 
@@ -109,13 +108,6 @@ export default function AdminProductsClient({ initialProducts, categories, produ
     if (!val || form.options.includes(val)) return;
     update("options", [...form.options, val]);
     setOptionInput("");
-  };
-
-  const addImage = () => {
-    const val = imageInput.trim();
-    if (!val || form.images.includes(val)) return;
-    update("images", [...form.images, val]);
-    setImageInput("");
   };
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -452,31 +444,13 @@ export default function AdminProductsClient({ initialProducts, categories, produ
               </div>
 
               {/* Images */}
-              <div className="space-y-2">
-                <Label>Images (URL paths)</Label>
-                <div className="flex gap-2">
-                  <Input
-                    value={imageInput}
-                    onChange={(e) => setImageInput(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addImage(); } }}
-                    placeholder="/images/products/ribeye.jpg"
-                    className="h-8 text-sm"
-                  />
-                  <Button type="button" size="sm" variant="outline" className="h-8" onClick={addImage}>Add</Button>
-                </div>
-                {form.images.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {form.images.map((img) => (
-                      <Badge key={img} variant="secondary" className="gap-1 pr-1 max-w-xs truncate">
-                        {img}
-                        <button type="button" onClick={() => update("images", form.images.filter((i) => i !== img))} className="hover:text-destructive ml-0.5 shrink-0">
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ImageUpload
+                label="Product Images"
+                folder="products"
+                value={form.images}
+                onChange={(urls) => update("images", urls as string[])}
+                multiple
+              />
             </div>
 
             <DialogFooter>
