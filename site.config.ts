@@ -72,16 +72,86 @@ export const siteConfig = {
 
   // ── Delivery ──────────────────────────────────────────────────────────
   delivery: {
-    regions: [
-      { name: "Region 1", fee: 5 },
-      { name: "Region 2", fee: 10 },
+    // Malta & Gozo towns with individual delivery fees (EUR)
+    towns: [
+      // Malta – Central
+      { name: "Birkirkara",   fee: 3 },
+      { name: "Gżira",        fee: 3 },
+      { name: "Hamrun",       fee: 3 },
+      { name: "Msida",        fee: 3 },
+      { name: "Pietà",        fee: 3 },
+      { name: "Santa Venera", fee: 3 },
+      { name: "Tal-Pietà",    fee: 3 },
+      // Malta – Northern
+      { name: "Bugibba",      fee: 4 },
+      { name: "Mellieħa",     fee: 5 },
+      { name: "Mġarr",        fee: 5 },
+      { name: "Mosta",        fee: 4 },
+      { name: "Naxxar",       fee: 4 },
+      { name: "Pembroke",     fee: 4 },
+      { name: "Qawra",        fee: 4 },
+      { name: "St Paul's Bay", fee: 4 },
+      // Malta – Southern
+      { name: "Birżebbuġa",   fee: 5 },
+      { name: "Fgura",        fee: 4 },
+      { name: "Gudja",        fee: 4 },
+      { name: "Luqa",         fee: 4 },
+      { name: "Marsa",        fee: 3 },
+      { name: "Marsaskala",   fee: 5 },
+      { name: "Marsaxlokk",   fee: 5 },
+      { name: "Qrendi",       fee: 5 },
+      { name: "Safi",         fee: 5 },
+      { name: "Żabbar",       fee: 4 },
+      { name: "Żejtun",       fee: 5 },
+      { name: "Żurrieq",      fee: 5 },
+      // Malta – Eastern
+      { name: "Kalkara",      fee: 4 },
+      { name: "Marsaskala",   fee: 5 },
+      { name: "Paola",        fee: 3 },
+      { name: "San Ġwann",    fee: 3 },
+      { name: "Swieqi",       fee: 4 },
+      { name: "Tarxien",      fee: 4 },
+      { name: "Żejtun",       fee: 5 },
+      // Valletta & Harbour
+      { name: "Floriana",     fee: 3 },
+      { name: "Senglea",      fee: 4 },
+      { name: "Three Cities", fee: 4 },
+      { name: "Valletta",     fee: 3 },
+      // Malta – North-West
+      { name: "Attard",       fee: 4 },
+      { name: "Balzan",       fee: 3 },
+      { name: "Dingli",       fee: 5 },
+      { name: "Lija",         fee: 3 },
+      { name: "Mdina",        fee: 4 },
+      { name: "Rabat",        fee: 4 },
+      { name: "Siġġiewi",     fee: 5 },
+      // Gozo
+      { name: "Fontana",      fee: 8 },
+      { name: "Għajnsielem",  fee: 8 },
+      { name: "Għarb",        fee: 9 },
+      { name: "Għasri",       fee: 9 },
+      { name: "Għajnsielem",  fee: 8 },
+      { name: "Kerċem",       fee: 9 },
+      { name: "Marsalforn",   fee: 8 },
+      { name: "Munxar",       fee: 9 },
+      { name: "Nadur",        fee: 8 },
+      { name: "Qala",         fee: 9 },
+      { name: "Rabat (Gozo)", fee: 8 },
+      { name: "San Lawrenz",  fee: 9 },
+      { name: "Sannat",       fee: 9 },
+      { name: "Victoria",     fee: 8 },
+      { name: "Xlendi",       fee: 9 },
+      { name: "Xagħra",       fee: 8 },
+      { name: "Żebbuġ (Gozo)", fee: 9 },
+      // Comino
+      { name: "Comino",       fee: 15 },
     ],
     freeThreshold: 80, // Free delivery over this amount
     slots: [
       { label: "Morning 8–12", value: "morning" },
       { label: "Afternoon 12–5", value: "afternoon" },
     ],
-    pickupAddress: "123 Main Street, Your City",
+    pickupAddress: "123 Main Street, Birkirkara",
   },
 
   // ── Wholesale ─────────────────────────────────────────────────────────
