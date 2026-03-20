@@ -25,8 +25,8 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
     return applyFiltersToMock(mockProducts, filters);
   }
 
-  const { createServerSupabaseClient } = await import("./server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("./server");
+  const supabase = await createServiceRoleClient();
 
   let query = supabase
     .from("products")
@@ -86,8 +86,8 @@ export async function getProductBySlug(slug: string): Promise<Product | null> {
     return mockProducts.find((p) => p.slug === slug) || null;
   }
 
-  const { createServerSupabaseClient } = await import("./server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("./server");
+  const supabase = await createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("products")
@@ -114,8 +114,8 @@ export async function getRelatedProducts(
       .slice(0, limit);
   }
 
-  const { createServerSupabaseClient } = await import("./server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("./server");
+  const supabase = await createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("products")
@@ -139,8 +139,8 @@ export async function getFeaturedProducts(limit = 4): Promise<Product[]> {
     return mockProducts.filter((p) => p.stock_status === "IN_STOCK").slice(0, limit);
   }
 
-  const { createServerSupabaseClient } = await import("./server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("./server");
+  const supabase = await createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("products")
