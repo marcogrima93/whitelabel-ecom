@@ -39,13 +39,13 @@ interface Category {
   name: string;
   slug: string;
   image: string;
-  position: number;
+  position?: number;
 }
 
 interface FilterGroup {
   id: string;
   label: string;
-  position: number;
+  position?: number;
 }
 
 interface FilterOption {
