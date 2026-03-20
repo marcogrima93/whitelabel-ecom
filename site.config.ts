@@ -103,9 +103,9 @@ export const siteConfig = {
   },
 
   contact: {
-    email: "hello@yourstore.com",
-    phone: "+1 234 567 890",
-    address: "123 Main Street, Your City",
+    email: "hello@meatdrop.mt",
+    phone: "+356 9999 9999",
+    address: "123 Main Street, Birkirkara",
   },
 
   social: {
@@ -116,7 +116,7 @@ export const siteConfig = {
 
   // ── Legal / GDPR ─────────────────────────────────────────────────────
   legal: {
-    companyName: "Your Company Ltd",
+    companyName: "Meat Drop Malta",
     vatNumber: "",
     registrationNumber: "",
   },
