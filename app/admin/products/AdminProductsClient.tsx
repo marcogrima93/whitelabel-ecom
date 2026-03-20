@@ -41,7 +41,7 @@ const EMPTY_FORM = {
   slug: "",
   description: "",
   category: "",
-  filter_field: "",
+  filter_field: "none",
   retail_price: "",
   wholesale_price: "",
   stock_status: "IN_STOCK" as Product["stock_status"],
@@ -82,7 +82,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         slug: product.slug,
         description: product.description,
         category: product.category,
-        filter_field: product.filter_field,
+        filter_field: product.filter_field || "none",
         retail_price: String(product.retail_price),
         wholesale_price: String(product.wholesale_price ?? ""),
         stock_status: product.stock_status,
@@ -127,7 +127,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         slug: form.slug || autoSlug(form.name),
         description: form.description,
         category: form.category,
-        filter_field: form.filter_field,
+        filter_field: form.filter_field === "none" ? "" : form.filter_field,
         retail_price: parseFloat(form.retail_price) || 0,
         wholesale_price: parseFloat(form.wholesale_price) || 0,
         stock_status: form.stock_status,
@@ -369,7 +369,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                       <SelectValue placeholder="Select filter value" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">— None —</SelectItem>
+                      <SelectItem value="none">— None —</SelectItem>
                       {allFilterOptions.map((opt) => (
                         <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                       ))}
