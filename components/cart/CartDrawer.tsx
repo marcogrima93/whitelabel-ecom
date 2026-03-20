@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
 import { useCartStore, type CartItem } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
@@ -130,9 +129,18 @@ function CartItemRow({
     <div className="flex gap-3 group">
       {/* Image */}
       <div className="relative h-20 w-20 rounded-md overflow-hidden bg-muted shrink-0">
-        <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/10 flex items-center justify-center">
-          <ShoppingBag className="h-6 w-6 text-muted-foreground/30" />
-        </div>
+        {item.image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.image}
+            alt={item.name}
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-muted to-muted-foreground/10 flex items-center justify-center">
+            <ShoppingBag className="h-6 w-6 text-muted-foreground/30" />
+          </div>
+        )}
       </div>
 
       {/* Info */}

@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 import { siteConfig } from "@/site.config";
 import { getFeaturedProducts } from "@/lib/supabase/products";
 import { getCategories } from "@/lib/supabase/queries";
@@ -37,15 +36,14 @@ export default async function HomePage() {
     <>
       {/* ── Hero Section ──────────────────────────────────────────────── */}
       <section className="relative overflow-hidden min-h-[560px] md:min-h-[680px] flex items-center">
-        {/* Background image */}
-        <Image
-          src={siteConfig.hero.backgroundImage}
-          alt="Hero background"
-          fill
-          priority
-          className="object-cover object-center"
-          sizes="100vw"
-        />
+        {/* Hero Background — use next/image for static /images/ */}
+        <picture>
+          <img
+            src={siteConfig.hero.backgroundImage}
+            alt="Hero background"
+            className="absolute inset-0 w-full h-full object-cover object-center"
+          />
+        </picture>
         {/* Overlay — dark image gets a dark scrim, light image gets a light scrim */}
         <div
           className={
@@ -177,11 +175,20 @@ export default async function HomePage() {
           {featuredProducts.map((product) => (
             <Link key={product.id} href={`/products/${product.slug}`} className="group">
               <Card className="overflow-hidden border-0 shadow-sm hover:shadow-lg transition-all duration-300 group-hover:-translate-y-1">
-                {/* Image placeholder */}
+                {/* Image */}
                 <div className="aspect-square bg-gradient-to-br from-muted to-muted/50 relative overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <ShoppingBag className="h-12 w-12 text-muted-foreground/20 group-hover:scale-110 transition-transform duration-300" />
-                  </div>
+                  {product.images && product.images[0] ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={product.images[0]}
+                      alt={product.name}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <ShoppingBag className="h-12 w-12 text-muted-foreground/20 group-hover:scale-110 transition-transform duration-300" />
+                    </div>
+                  )}
                   {product.stock_status === "LOW_STOCK" && (
                     <Badge variant="warning" className="absolute top-3 left-3">
                       Low Stock
