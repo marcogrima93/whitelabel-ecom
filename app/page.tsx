@@ -68,7 +68,16 @@ export default async function HomePage() {
               {siteConfig.hero.subheadline}
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="xl" asChild variant={siteConfig.hero.theme === "dark" ? "default" : "default"}>
+              {/* Primary CTA: light bg + dark text on dark hero; default brand on light hero */}
+              <Button
+                size="xl"
+                asChild
+                className={
+                  siteConfig.hero.theme === "dark"
+                    ? "bg-white text-foreground hover:bg-white/90"
+                    : ""
+                }
+              >
                 <Link href={siteConfig.hero.primaryCta.href}>
                   {siteConfig.hero.primaryCta.label}
                   <ArrowRight className="ml-2 h-4 w-4" />
