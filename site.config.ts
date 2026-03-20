@@ -15,7 +15,7 @@ export const siteConfig = {
   logo: "/logo.svg", // Place in /public
   // "logo-only"       = just the logo image in the header
   // "logo-and-name"   = logo image (left) + shop name text (right)
-  logoDisplay: "logo-and-name",
+  logoDisplay: "logo-only" as "logo-only" | "logo-and-name",
 
   // ── Locale & Currency ─────────────────────────────────────────────────
   currency: {
@@ -104,11 +104,11 @@ export const siteConfig = {
       { name: "Żejtun", fee: 5 },
       { name: "Żurrieq", fee: 5 },
       // Malta – Eastern
-      { name: "Kalkara",      fee: 4 },
-      { name: "Paola",        fee: 3 },
-      { name: "San Ġwann",    fee: 3 },
-      { name: "Swieqi",       fee: 4 },
-      { name: "Tarxien",      fee: 4 },
+      { name: "Kalkara", fee: 4 },
+      { name: "Paola", fee: 3 },
+      { name: "San Ġwann", fee: 3 },
+      { name: "Swieqi", fee: 4 },
+      { name: "Tarxien", fee: 4 },
       // Valletta & Harbour
       { name: "Floriana", fee: 3 },
       { name: "Senglea", fee: 4 },
@@ -123,10 +123,10 @@ export const siteConfig = {
       { name: "Rabat", fee: 4 },
       { name: "Siġġiewi", fee: 5 },
       // Gozo
-      { name: "Fontana",       fee: 8 },
-      { name: "Għajnsielem",   fee: 8 },
-      { name: "Għarb",         fee: 9 },
-      { name: "Għasri",        fee: 9 },
+      { name: "Fontana", fee: 8 },
+      { name: "Għajnsielem", fee: 8 },
+      { name: "Għarb", fee: 9 },
+      { name: "Għasri", fee: 9 },
       { name: "Kerċem", fee: 9 },
       { name: "Marsalforn", fee: 8 },
       { name: "Munxar", fee: 9 },
