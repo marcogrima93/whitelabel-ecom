@@ -27,11 +27,19 @@ import {
   ArrowRight,
   Package,
 } from "lucide-react";
-import { loadStripe } from "@stripe/stripe-js";
-import { Elements } from "@stripe/react-stripe-js";
-import StripeForm from "@/components/checkout/StripeForm";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "");
+const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
+
+// Lazily load Stripe to prevent SSR evaluation of window.location
+let stripePromise: ReturnType<typeof import("@stripe/stripe-js").loadStripe> | null = null;
+function getStripe() {
+  if (!stripePromise) {
+    stripePromise = import("@stripe/stripe-js").then(({ loadStripe }) =>
+      loadStripe(stripePublishableKey)
+    );
+  }
+  return stripePromise;
+}
 
 type CheckoutStep = "delivery" | "payment" | "confirmation";
 type DeliveryType = "DELIVERY" | "COLLECTION";
@@ -338,7 +346,7 @@ export default function CheckoutPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                   </div>
                 ) : (
-                  <Elements stripe={stripePromise} options={{ clientSecret }}>
+                  <Elements stripe={getStripe()} options={{ clientSecret }}>
                     <StripeForm 
                       amount={total}
                       orderNumber={checkoutOrderNumber}
