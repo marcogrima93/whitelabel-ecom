@@ -1,6 +1,6 @@
 "use client";
-
-import { useState, useEffect } from "react";
+// Checkout page — client component (uses hooks, Stripe Elements, cart store)
+import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
@@ -31,9 +31,53 @@ import {
   Package,
   BookUser,
   Banknote,
+  CalendarDays,
 } from "lucide-react";
 import StripeForm from "@/components/checkout/StripeForm";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
+
+// ── Malta date helpers ────────────────────────────────────────────────────────
+// Malta is UTC+1 (CET) or UTC+2 (CEST). We use the browser's locale-aware
+// Date so it works correctly for customers in Malta.
+function getMaltaNow(): Date {
+  // "Europe/Malta" gives the correct wall-clock time in Malta
+  const maltaStr = new Date().toLocaleString("en-GB", { timeZone: "Europe/Malta" });
+  // maltaStr: "DD/MM/YYYY, HH:MM:SS"
+  const [datePart, timePart] = maltaStr.split(", ");
+  const [day, month, year] = datePart.split("/").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+  const d = new Date(year, month - 1, day, hour, minute, 0);
+  return d;
+}
+
+/** Earliest selectable date (Malta time):
+ *  - before noon → tomorrow
+ *  - noon or after → day after tomorrow
+ */
+function getMinSelectableDate(): Date {
+  const now = getMaltaNow();
+  const minDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (now.getHours() < 12) {
+    minDate.setDate(minDate.getDate() + 1); // tomorrow
+  } else {
+    minDate.setDate(minDate.getDate() + 2); // day after tomorrow
+  }
+  return minDate;
+}
+
+function toDateInputValue(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function formatDateLabel(iso: string): string {
+  if (!iso) return "";
+  const [y, m, d] = iso.split("-").map(Number);
+  const date = new Date(y, m - 1, d);
+  return date.toLocaleDateString("en-MT", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
 
 const stripePublishableKey = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY || "";
 
@@ -91,6 +135,9 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [loadingAddresses, setLoadingAddresses] = useState(false);
 
+  // Compute min date once on mount (avoids hydration mismatch)
+  const minDate = useMemo(() => toDateInputValue(getMinSelectableDate()), []);
+
   // Form state
   const [deliveryForm, setDeliveryForm] = useState({
     fullName: "",
@@ -101,10 +148,18 @@ export default function CheckoutPage() {
     town: defaultTown,
     postcode: "",
     deliverySlot: siteConfig.delivery.slots[0]?.value || "",
-    preferredDay: "monday",
+    preferredDate: "", // filled on mount below
   });
   const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [phoneNumber, setPhoneNumber] = useState("");
+  // Separate phone state for collection form
+  const [colPhoneCountryCode, setColPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
+  const [colPhoneNumber, setColPhoneNumber] = useState("");
+
+  // Set default date after mount so SSR doesn't mismatch
+  useEffect(() => {
+    setDeliveryForm((prev) => ({ ...prev, preferredDate: toDateInputValue(getMinSelectableDate()) }));
+  }, []);
 
   const updateForm = (field: string, value: string) =>
     setDeliveryForm((prev) => ({ ...prev, [field]: value }));
@@ -211,7 +266,7 @@ export default function CheckoutPage() {
             customerName: getCustomerName(),
             deliveryMethod: deliveryType,
             deliveryAddress,
-            deliverySlot: `${deliveryForm.preferredDay} - ${deliveryForm.deliverySlot}`,
+            deliverySlot: `${formatDateLabel(deliveryForm.preferredDate)} - ${deliveryForm.deliverySlot}`,
             paymentMethod: "CASH",
           }),
         });
@@ -247,7 +302,7 @@ export default function CheckoutPage() {
           customerName: getCustomerName(),
           deliveryMethod: deliveryType,
           deliveryAddress,
-          deliverySlot: `${deliveryForm.preferredDay} - ${deliveryForm.deliverySlot}`,
+          deliverySlot: `${formatDateLabel(deliveryForm.preferredDate)} - ${deliveryForm.deliverySlot}`,
           paymentMethod: "STRIPE",
         }),
       });
@@ -403,38 +458,36 @@ export default function CheckoutPage() {
                   )}
 
                   {/* Contact details — always shown */}
-                  <div className="grid grid-cols-2 gap-4">
-                    {(addressMode === "new" || savedAddresses.length === 0) && (
-                      <>
-                        <div className="space-y-2">
-                          <Label htmlFor="ck-name">Full Name</Label>
-                          <Input
-                            id="ck-name"
-                            value={deliveryForm.fullName}
-                            onChange={(e) => updateForm("fullName", e.target.value)}
-                            required
-                          />
-                        </div>
-                        <div className="space-y-2">
-                          <Label htmlFor="ck-phone">Phone</Label>
-                          <PhoneInput
-                            id="ck-phone"
-                            countryCode={phoneCountryCode}
-                            number={phoneNumber}
-                            onCountryCodeChange={(c) => {
-                              setPhoneCountryCode(c);
-                              updateForm("phone", joinPhone(c, phoneNumber));
-                            }}
-                            onNumberChange={(n) => {
-                              setPhoneNumber(n);
-                              updateForm("phone", joinPhone(phoneCountryCode, n));
-                            }}
-                            required
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
+                  {(addressMode === "new" || savedAddresses.length === 0) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ck-name">Full Name</Label>
+                        <Input
+                          id="ck-name"
+                          value={deliveryForm.fullName}
+                          onChange={(e) => updateForm("fullName", e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ck-phone">Phone</Label>
+                        <PhoneInput
+                          id="ck-phone"
+                          countryCode={phoneCountryCode}
+                          number={phoneNumber}
+                          onCountryCodeChange={(c) => {
+                            setPhoneCountryCode(c);
+                            updateForm("phone", joinPhone(c, phoneNumber));
+                          }}
+                          onNumberChange={(n) => {
+                            setPhoneNumber(n);
+                            updateForm("phone", joinPhone(phoneCountryCode, n));
+                          }}
+                          required
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-2">
                     <Label htmlFor="ck-email">Email</Label>
@@ -505,25 +558,27 @@ export default function CheckoutPage() {
                     </>
                   )}
 
-                  {/* Delivery slot */}
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Delivery date + slot */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Preferred Day</Label>
-                      <Select
-                        value={deliveryForm.preferredDay}
-                        onValueChange={(v) => updateForm("preferredDay", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"].map((d) => (
-                            <SelectItem key={d} value={d}>
-                              {d.charAt(0).toUpperCase() + d.slice(1)}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Label htmlFor="ck-date">
+                        <CalendarDays className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+                        Preferred Date
+                      </Label>
+                      <Input
+                        id="ck-date"
+                        type="date"
+                        value={deliveryForm.preferredDate}
+                        min={minDate}
+                        onChange={(e) => updateForm("preferredDate", e.target.value)}
+                        required
+                        className="cursor-pointer"
+                      />
+                      {deliveryForm.preferredDate && (
+                        <p className="text-xs text-muted-foreground">
+                          {formatDateLabel(deliveryForm.preferredDate)}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-2">
                       <Label>Time Slot</Label>
@@ -559,14 +614,34 @@ export default function CheckoutPage() {
                     {siteConfig.delivery.pickupAddress}
                   </p>
                   <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="ck-col-name">Your Name</Label>
-                      <Input
-                        id="ck-col-name"
-                        value={deliveryForm.fullName}
-                        onChange={(e) => updateForm("fullName", e.target.value)}
-                        required
-                      />
+                    {/* Name + phone on separate lines on mobile */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ck-col-name">Your Name</Label>
+                        <Input
+                          id="ck-col-name"
+                          value={deliveryForm.fullName}
+                          onChange={(e) => updateForm("fullName", e.target.value)}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="ck-col-phone">Phone</Label>
+                        <PhoneInput
+                          id="ck-col-phone"
+                          countryCode={colPhoneCountryCode}
+                          number={colPhoneNumber}
+                          onCountryCodeChange={(c) => {
+                            setColPhoneCountryCode(c);
+                            updateForm("phone", joinPhone(c, colPhoneNumber));
+                          }}
+                          onNumberChange={(n) => {
+                            setColPhoneNumber(n);
+                            updateForm("phone", joinPhone(colPhoneCountryCode, n));
+                          }}
+                          required
+                        />
+                      </div>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="ck-col-email">Email</Label>
@@ -578,23 +653,46 @@ export default function CheckoutPage() {
                         required
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Collection Slot</Label>
-                      <Select
-                        value={deliveryForm.deliverySlot}
-                        onValueChange={(v) => updateForm("deliverySlot", v)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {siteConfig.delivery.slots.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    {/* Date picker */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="ck-col-date">
+                          <CalendarDays className="inline h-3.5 w-3.5 mr-1 -mt-0.5" />
+                          Collection Date
+                        </Label>
+                        <Input
+                          id="ck-col-date"
+                          type="date"
+                          value={deliveryForm.preferredDate}
+                          min={minDate}
+                          onChange={(e) => updateForm("preferredDate", e.target.value)}
+                          required
+                          className="cursor-pointer"
+                        />
+                        {deliveryForm.preferredDate && (
+                          <p className="text-xs text-muted-foreground">
+                            {formatDateLabel(deliveryForm.preferredDate)}
+                          </p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Collection Slot</Label>
+                        <Select
+                          value={deliveryForm.deliverySlot}
+                          onValueChange={(v) => updateForm("deliverySlot", v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {siteConfig.delivery.slots.map((s) => (
+                              <SelectItem key={s.value} value={s.value}>
+                                {s.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                 </div>
