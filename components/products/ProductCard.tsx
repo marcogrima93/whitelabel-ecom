@@ -81,9 +81,9 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
                 {stockBadge()}
               </div>
 
-              {/* Filter badge */}
+              {/* Filter badge — hidden on mobile */}
               {product.filter_field && (
-                <Badge variant="secondary" className="absolute top-3 right-3 z-10">
+                <Badge variant="secondary" className="hidden sm:flex absolute top-3 right-3 z-10">
                   {product.filter_field}
                 </Badge>
               )}
