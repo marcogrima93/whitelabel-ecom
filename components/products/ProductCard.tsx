@@ -81,9 +81,9 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
                 {stockBadge()}
               </div>
 
-              {/* Filter badge */}
+              {/* Filter badge — hidden on mobile */}
               {product.filter_field && (
-                <Badge variant="secondary" className="absolute top-3 right-3 z-10">
+                <Badge variant="secondary" className="hidden sm:flex absolute top-3 right-3 z-10">
                   {product.filter_field}
                 </Badge>
               )}
@@ -108,29 +108,30 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
             </div>
 
             {/* Content */}
-            <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-              {categoryName ?? product.category}
+            <CardContent className="p-3 sm:p-4">
+              <p className="hidden sm:block text-xs text-muted-foreground uppercase tracking-wider mb-1 truncate">
+                {categoryName ?? product.category}
               </p>
-              <h3 className="font-semibold line-clamp-1 group-hover:text-primary transition-colors">
+              <h3 className="font-semibold text-sm sm:text-base line-clamp-2 group-hover:text-primary transition-colors leading-tight">
                 {product.name}
               </h3>
-              <div className="flex items-center justify-between mt-3">
-                <p className="font-bold text-lg">
+              <div className="flex items-center justify-between mt-2 sm:mt-3">
+                <p className="font-bold text-sm sm:text-lg">
                   {formatPrice(product.retail_price, siteConfig.currency.code, siteConfig.currency.locale)}
-                  <span className="text-xs font-normal text-muted-foreground ml-1">
+                  <span className="text-xs font-normal text-muted-foreground ml-1 hidden sm:inline">
                     / {siteConfig.filters.unit}
                   </span>
                 </p>
               </div>
               <Button
-                className="w-full mt-3"
+                className="w-full mt-2 sm:mt-3 text-xs sm:text-sm"
                 size="sm"
                 disabled={isOutOfStock}
                 onClick={handleAddToCart}
               >
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                {isOutOfStock ? "Out of Stock" : "Add to Cart"}
+                <ShoppingCart className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                <span className="hidden sm:inline">{isOutOfStock ? "Out of Stock" : "Add to Cart"}</span>
+                <span className="sm:hidden">{isOutOfStock ? "Sold Out" : "Add"}</span>
               </Button>
             </CardContent>
           </Card>
