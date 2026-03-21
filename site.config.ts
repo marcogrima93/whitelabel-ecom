@@ -150,6 +150,18 @@ export const siteConfig = {
     pickupAddress: "Triq Andrea Bogdan, Ħaż-Żebbuġ, ZBG306",
   },
 
+  // ── Payments ──────────────────────────────────────────────────────────
+  payments: {
+    stripe: {
+      enabled: true, // Set to false to hide Stripe card payment option
+    },
+    cashOnDelivery: {
+      enabled: true,  // Set to true to offer cash on delivery / cash on collection
+      label: "Cash on Delivery / Collection", // Shown to the customer
+      description: "Pay with cash when your order arrives or when you collect.",
+    },
+  },
+
   // ── Wholesale ─────────────────────────────────────────────────────────
   // Set to false to run as a retail-only store (hides all wholesale features)
   wholesale: {

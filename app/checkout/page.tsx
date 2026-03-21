@@ -29,6 +29,7 @@ import {
   ArrowRight,
   Package,
   BookUser,
+  Banknote,
 } from "lucide-react";
 import StripeForm from "@/components/checkout/StripeForm";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
@@ -48,6 +49,7 @@ function getStripe() {
 type CheckoutStep = "delivery" | "payment" | "confirmation";
 type DeliveryType = "DELIVERY" | "COLLECTION";
 type AddressMode = "saved" | "new";
+type PaymentMethod = "STRIPE" | "CASH";
 
 interface SavedAddress {
   id: string;
@@ -75,6 +77,12 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [checkoutOrderNumber, setCheckoutOrderNumber] = useState("");
+
+  // Determine default payment method from config
+  const stripeEnabled = siteConfig.payments.stripe.enabled;
+  const codEnabled = siteConfig.payments.cashOnDelivery.enabled;
+  const defaultPaymentMethod: PaymentMethod = stripeEnabled ? "STRIPE" : "CASH";
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(defaultPaymentMethod);
 
   // Saved address
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -179,11 +187,49 @@ export default function CheckoutPage() {
     }
 
     setStep("payment");
-    if (clientSecret) return;
 
+    // COD: create order immediately, no Stripe needed
+    if (selectedPaymentMethod === "CASH") {
+      if (loading) return;
+      setLoading(true);
+      try {
+        const deliveryAddress = deliveryType === "DELIVERY" ? buildDeliveryAddress() : null;
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            items: items.map((item) => ({
+              productId: item.productId,
+              name: item.name,
+              image: item.image,
+              selectedOption: item.selectedOption,
+              pricePerUnit: item.pricePerUnit,
+              quantity: item.quantity,
+            })),
+            customerEmail: deliveryForm.email,
+            customerName: getCustomerName(),
+            deliveryMethod: deliveryType,
+            deliveryAddress,
+            deliverySlot: `${deliveryForm.preferredDay} - ${deliveryForm.deliverySlot}`,
+            paymentMethod: "CASH",
+          }),
+        });
+        const data = await res.json();
+        if (data.orderNumber) {
+          handlePaymentSuccess(data.orderNumber);
+        }
+      } catch (err) {
+        console.error("COD checkout error:", err);
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Stripe: get client secret as before
+    if (clientSecret) return;
     try {
       const deliveryAddress = deliveryType === "DELIVERY" ? buildDeliveryAddress() : null;
-
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -201,6 +247,7 @@ export default function CheckoutPage() {
           deliveryMethod: deliveryType,
           deliveryAddress,
           deliverySlot: `${deliveryForm.preferredDay} - ${deliveryForm.deliverySlot}`,
+          paymentMethod: "STRIPE",
         }),
       });
       const data = await res.json();
@@ -552,6 +599,49 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* Payment Method Selection */}
+              {(stripeEnabled || codEnabled) && (
+                <div className="space-y-3 pt-2">
+                  <h3 className="font-semibold text-sm">Payment Method</h3>
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    {stripeEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMethod("STRIPE")}
+                        className={`flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
+                          selectedPaymentMethod === "STRIPE"
+                            ? "border-primary bg-primary/5 ring-2 ring-primary"
+                            : "border-input hover:bg-accent"
+                        }`}
+                      >
+                        <CreditCard className="h-5 w-5 shrink-0" />
+                        <div>
+                          <p className="font-medium text-sm">Card / Online</p>
+                          <p className="text-xs text-muted-foreground">Pay securely via Stripe</p>
+                        </div>
+                      </button>
+                    )}
+                    {codEnabled && (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedPaymentMethod("CASH")}
+                        className={`flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
+                          selectedPaymentMethod === "CASH"
+                            ? "border-primary bg-primary/5 ring-2 ring-primary"
+                            : "border-input hover:bg-accent"
+                        }`}
+                      >
+                        <Banknote className="h-5 w-5 shrink-0" />
+                        <div>
+                          <p className="font-medium text-sm">{siteConfig.payments.cashOnDelivery.label}</p>
+                          <p className="text-xs text-muted-foreground">{siteConfig.payments.cashOnDelivery.description}</p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div className="flex justify-between pt-4">
                 <Button variant="ghost" asChild>
                   <Link href="/cart">
@@ -575,39 +665,52 @@ export default function CheckoutPage() {
           {step === "payment" && (
             <div className="space-y-6">
               <h2 className="text-2xl font-bold">Payment</h2>
-              <div className="p-6 rounded-lg border bg-card space-y-4">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CreditCard className="h-4 w-4" />
-                  Secure payment via Stripe
+
+              {selectedPaymentMethod === "CASH" ? (
+                /* COD — order was already created in initPayment, show spinner then it redirects to confirmation */
+                <div className="p-6 rounded-lg border bg-card space-y-4 text-center">
+                  <Banknote className="h-10 w-10 mx-auto text-muted-foreground" />
+                  <p className="text-muted-foreground text-sm">
+                    {loading ? "Placing your order..." : "Order placed. Redirecting..."}
+                  </p>
+                  {loading && <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />}
                 </div>
-                {!clientSecret ? (
-                  <div className="flex justify-center py-10">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              ) : (
+                /* Stripe */
+                <div className="p-6 rounded-lg border bg-card space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    Secure payment via Stripe
                   </div>
-                ) : (
-                  <Elements stripe={getStripe()} options={{ clientSecret }}>
-                    <StripeForm
-                      amount={total}
-                      orderNumber={checkoutOrderNumber}
-                      onSuccess={handlePaymentSuccess}
-                      onBack={() => setStep("delivery")}
-                    />
-                  </Elements>
-                )}
-                <label className="flex items-start gap-2 text-sm">
-                  <input type="checkbox" className="mt-1 rounded" required />
-                  <span>
-                    I agree to the{" "}
-                    <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                      Terms & Conditions
-                    </Link>{" "}
-                    and{" "}
-                    <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                      Privacy Policy
-                    </Link>
-                  </span>
-                </label>
-              </div>
+                  {!clientSecret ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <Elements stripe={getStripe()} options={{ clientSecret }}>
+                      <StripeForm
+                        amount={total}
+                        orderNumber={checkoutOrderNumber}
+                        onSuccess={handlePaymentSuccess}
+                        onBack={() => setStep("delivery")}
+                      />
+                    </Elements>
+                  )}
+                  <label className="flex items-start gap-2 text-sm">
+                    <input type="checkbox" className="mt-1 rounded" required />
+                    <span>
+                      I agree to the{" "}
+                      <Link href="/terms" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        Terms & Conditions
+                      </Link>{" "}
+                      and{" "}
+                      <Link href="/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                        Privacy Policy
+                      </Link>
+                    </span>
+                  </label>
+                </div>
+              )}
             </div>
           )}
 
