@@ -454,16 +454,32 @@ export interface Category {
   name: string;
   slug: string;
   image: string;
-  position: number;
+  featured: boolean;
 }
 
 export async function getCategories(): Promise<Category[]> {
   const supabase = await createServiceRoleClient();
   const { data, error } = await supabase
     .from("categories")
-    .select("*");
+    .select("*")
+    .order("name", { ascending: true });
   if (error) { console.error("Error fetching categories:", error); return []; }
   return data || [];
+}
+
+// Returns up to 4 featured categories, randomly sampled if more than 4 are marked featured
+export async function getFeaturedCategories(): Promise<Category[]> {
+  const supabase = await createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .eq("featured", true)
+    .order("name", { ascending: true });
+  if (error) { console.error("Error fetching featured categories:", error); return []; }
+  const all = data || [];
+  if (all.length <= 4) return all;
+  const shuffled = [...all].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, 4);
 }
 
 // ── Dashboard Stats ─────────────────────────────────────────────────────

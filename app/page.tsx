@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { siteConfig } from "@/site.config";
 import { getFeaturedProducts } from "@/lib/supabase/products";
-import { getCategories } from "@/lib/supabase/queries";
+import { getFeaturedCategories } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -29,7 +29,7 @@ const iconMap: Record<string, React.ElementType> = {
 export default async function HomePage() {
   const [featuredProducts, categories] = await Promise.all([
     getFeaturedProducts(4),
-    getCategories(),
+    getFeaturedCategories(),
   ]);
 
   return (
@@ -117,10 +117,20 @@ export default async function HomePage() {
             <Link
               key={cat.slug}
               href={`/products?category=${cat.slug}`}
-              className="group relative overflow-hidden rounded-xl aspect-square bg-gradient-to-br from-muted to-muted/50 flex items-end"
+              className="group relative overflow-hidden rounded-xl aspect-square flex items-end"
             >
+              {/* Background image or gradient fallback */}
+              {cat.image ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={cat.image}
+                  alt={cat.name}
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                />
+              ) : (
+                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 group-hover:scale-110 transition-transform duration-500" />
+              )}
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent z-10 group-hover:from-black/70 transition-all duration-300" />
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-accent/10 group-hover:scale-110 transition-transform duration-500" />
               <div className="relative z-20 p-4 md:p-6 w-full">
                 <h3 className="text-white font-bold text-lg md:text-xl">
                   {cat.name}

@@ -142,19 +142,23 @@ export async function getFeaturedProducts(limit = 4): Promise<Product[]> {
   const { createServiceRoleClient } = await import("./server");
   const supabase = await createServiceRoleClient();
 
-  const { data, error } = await supabase
+  let query = supabase
     .from("products")
     .select("*")
     .eq("is_archived", false)
-    .eq("stock_status", "IN_STOCK")
-    .order("created_at", { ascending: false })
-    .limit(limit);
+    .eq("is_featured", true)
+    .order("created_at", { ascending: false });
+
+  const { data, error } = await query;
 
   if (error) {
     return mockProducts.filter((p) => p.stock_status === "IN_STOCK").slice(0, limit);
   }
 
-  return (data as Product[]).map(normaliseImages);
+  const featured = (data as Product[]).map(normaliseImages).filter((p) => p.stock_status !== "OUT_OF_STOCK");
+  if (featured.length <= limit) return featured;
+  // Randomly sample if more than limit
+  return [...featured].sort(() => Math.random() - 0.5).slice(0, limit);
 }
 
 // ── Helper: normalise images column ──────────────────────────────────────

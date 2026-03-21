@@ -183,7 +183,7 @@ export const siteConfig = {
   contact: {
     email: "hello@meatdrop.mt",
     phone: "+356 9999 9999",
-    address: "123 Main Street, Birkirkara",
+    address: "Triq Andrea Bogdan, Ħaż-Żebbuġ, ZBG306",
   },
 
   social: {

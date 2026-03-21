@@ -23,6 +23,7 @@ export interface Product {
   stock_status: StockStatus;
   options: string[];
   is_archived: boolean;
+  is_featured: boolean;
   created_at: string;
   updated_at: string;
 }

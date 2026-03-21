@@ -9,7 +9,8 @@ export async function addCategoryAction(data: {
   name: string;
   slug: string;
   image: string;
-}): Promise<{ id: string; name: string; slug: string; image: string } | null> {
+  featured: boolean;
+}): Promise<{ id: string; name: string; slug: string; image: string; featured: boolean } | null> {
   const supabase = await createServiceRoleClient();
   const { data: row, error } = await supabase
     .from("categories")
@@ -19,18 +20,20 @@ export async function addCategoryAction(data: {
   if (error) { console.error(error); return null; }
   revalidatePath("/admin/catalogue");
   revalidatePath("/products");
+  revalidatePath("/");
   return row;
 }
 
 export async function updateCategoryAction(
   id: string,
-  data: { name: string; slug: string; image: string }
+  data: { name: string; slug: string; image: string; featured: boolean }
 ): Promise<boolean> {
   const supabase = await createServiceRoleClient();
   const { error } = await supabase.from("categories").update(data).eq("id", id);
   if (error) { console.error(error); return false; }
   revalidatePath("/admin/catalogue");
   revalidatePath("/products");
+  revalidatePath("/");
   return true;
 }
 
@@ -40,6 +43,7 @@ export async function deleteCategoryAction(id: string): Promise<boolean> {
   if (error) { console.error(error); return false; }
   revalidatePath("/admin/catalogue");
   revalidatePath("/products");
+  revalidatePath("/");
   return true;
 }
 
