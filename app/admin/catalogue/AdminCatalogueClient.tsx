@@ -41,6 +41,7 @@ interface Category {
   slug: string;
   image: string;
   position?: number;
+  featured?: boolean;
 }
 
 interface FilterGroup {
@@ -66,11 +67,11 @@ export default function AdminCatalogueClient({
   // ── Category form state ─────────────────────────────────────────────
   const [catDialogOpen, setCatDialogOpen] = useState(false);
   const [editingCat, setEditingCat] = useState<Category | null>(null);
-  const [catForm, setCatForm] = useState({ name: "", slug: "", image: "" });
+  const [catForm, setCatForm] = useState({ name: "", slug: "", image: "", featured: false });
 
   const openCatDialog = (cat?: Category) => {
     setEditingCat(cat ?? null);
-    setCatForm(cat ? { name: cat.name, slug: cat.slug, image: cat.image } : { name: "", slug: "", image: "" });
+    setCatForm(cat ? { name: cat.name, slug: cat.slug, image: cat.image, featured: cat.featured ?? false } : { name: "", slug: "", image: "", featured: false });
     setCatDialogOpen(true);
   };
 
@@ -227,6 +228,20 @@ export default function AdminCatalogueClient({
                     Upload an image or leave blank for no image.
                   </p>
                 </div>
+
+                {/* Featured toggle */}
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={catForm.featured}
+                    onChange={(e) => setCatForm((p) => ({ ...p, featured: e.target.checked }))}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <div>
+                    <p className="text-sm font-medium leading-none">Show on homepage</p>
+                    <p className="text-xs text-muted-foreground mt-1">Featured categories appear in the homepage category grid (max 4 shown).</p>
+                  </div>
+                </label>
                 <DialogFooter>
                   <Button type="submit" disabled={isPending}>
                     {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : editingCat ? "Save Changes" : "Add Category"}

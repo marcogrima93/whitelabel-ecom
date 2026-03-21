@@ -48,6 +48,7 @@ const EMPTY_FORM = {
   stock_status: "IN_STOCK" as Product["stock_status"],
   options: [] as string[],
   images: [] as string[],
+  is_featured: false,
 };
 
 const stockBadge = (status: string) => {
@@ -88,6 +89,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         stock_status: product.stock_status,
         options: product.options ?? [],
         images: product.images ?? [],
+        is_featured: product.is_featured ?? false,
       });
     } else {
       setEditingProduct(null);
@@ -126,6 +128,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         options: form.options,
         images: form.images,
         is_archived: false,
+        is_featured: form.is_featured,
       };
       const result = await upsertProductAction(editingProduct?.id ?? null, payload);
       if (!result.success) {
@@ -451,6 +454,20 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                 onChange={(urls) => update("images", urls as string[])}
                 multiple
               />
+
+              {/* Featured toggle */}
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={form.is_featured}
+                  onChange={(e) => update("is_featured", e.target.checked)}
+                  className="h-4 w-4 rounded border-input accent-primary"
+                />
+                <div>
+                  <p className="text-sm font-medium leading-none">Featured product</p>
+                  <p className="text-xs text-muted-foreground mt-1">Shown in the homepage featured products grid (max 4 shown).</p>
+                </div>
+              </label>
             </div>
 
             <DialogFooter>

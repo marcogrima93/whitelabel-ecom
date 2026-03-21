@@ -35,19 +35,34 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(results);
   }
 
-  const { createServerSupabaseClient } = await import("@/lib/supabase/server");
-  const supabase = await createServerSupabaseClient();
+  const { createServiceRoleClient } = await import("@/lib/supabase/server");
+  const supabase = await createServiceRoleClient();
 
   const { data, error } = await supabase
     .from("products")
     .select("id, name, slug, category, retail_price, images, stock_status")
     .eq("is_archived", false)
     .ilike("name", `%${q}%`)
-    .limit(3);
+    .limit(5);
 
   if (error) {
     return NextResponse.json([]);
   }
 
-  return NextResponse.json(data ?? []);
+  const normalised = (data ?? []).map((p: any) => {
+    let imgs = p.images as unknown;
+    if (!imgs) imgs = [];
+    else if (typeof imgs === "string") {
+      try { imgs = JSON.parse(imgs); } catch { imgs = [imgs]; }
+    }
+    if (!Array.isArray(imgs)) imgs = [String(imgs)];
+    return {
+      ...p,
+      images: (imgs as unknown[])
+        .map((u) => String(u).trim())
+        .filter((u: string) => u.startsWith("http") || u.startsWith("/")),
+    };
+  });
+
+  return NextResponse.json(normalised);
 }

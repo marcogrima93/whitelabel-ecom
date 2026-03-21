@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { siteConfig } from "@/site.config";
 import { useCartStore } from "@/lib/store/cart";
@@ -259,14 +258,13 @@ export function Header({ categories = [], isAdmin = false }: HeaderProps) {
                         onClick={() => handleResultClick(item.slug)}
                         className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-accent transition-colors text-left"
                       >
-                        <div className="h-10 w-10 rounded-md bg-muted flex-shrink-0 overflow-hidden">
+                        <div className="h-10 w-10 rounded-md bg-muted flex-shrink-0 overflow-hidden relative">
                           {item.images?.[0] ? (
-                            <Image
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
                               src={item.images[0]}
                               alt={item.name}
-                              width={40}
-                              height={40}
-                              className="h-full w-full object-cover"
+                              className="absolute inset-0 w-full h-full object-cover"
                             />
                           ) : (
                             <div className="h-full w-full flex items-center justify-center">
