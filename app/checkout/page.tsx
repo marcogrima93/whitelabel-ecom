@@ -1,3 +1,5 @@
+"use client";
+// Checkout page — client component (uses hooks, Stripe Elements, cart store)
 import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
