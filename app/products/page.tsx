@@ -4,7 +4,7 @@ import { siteConfig } from "@/site.config";
 import { getProducts } from "@/lib/supabase/products";
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { ProductCard } from "@/components/products/ProductCard";
-import { FilterSidebar } from "@/components/products/FilterSidebar";
+import { FilterSidebar, MobileFilterSheet } from "@/components/products/FilterSidebar";
 import { Package } from "lucide-react";
 
 export const metadata: Metadata = {
@@ -63,21 +63,38 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </p>
       </div>
 
+      {/* Mobile: filter button row + sort row */}
+      <div className="lg:hidden mb-4 flex items-center gap-3">
+        <MobileFilterSheet
+          currentCategory={params.category}
+          currentFilter={params.filter}
+          currentSort={params.sort}
+          currentSearch={params.q}
+          categories={resolvedCategories}
+          productFilters={productFilters ?? []}
+        />
+        <p className="text-sm text-muted-foreground ml-auto">
+          {products.length} item{products.length !== 1 ? "s" : ""}
+        </p>
+      </div>
+
       <div className="flex gap-8">
-        {/* Filter Sidebar */}
+        {/* Desktop Filter Sidebar */}
         <Suspense fallback={<div className="hidden lg:block w-64 shrink-0" />}>
-          <FilterSidebar
-            currentCategory={params.category}
-            currentFilter={params.filter}
-            currentSort={params.sort}
-            currentSearch={params.q}
-            categories={resolvedCategories}
-            productFilters={productFilters ?? []}
-          />
+          <div className="hidden lg:block">
+            <FilterSidebar
+              currentCategory={params.category}
+              currentFilter={params.filter}
+              currentSort={params.sort}
+              currentSearch={params.q}
+              categories={resolvedCategories}
+              productFilters={productFilters ?? []}
+            />
+          </div>
         </Suspense>
 
         {/* Product Grid */}
-        <div className="flex-1">
+        <div className="flex-1 min-w-0">
           {products.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <Package className="h-16 w-16 text-muted-foreground/30 mb-4" />
@@ -87,7 +104,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
               </p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-6">
               {products.map((product) => (
                 <ProductCard
                   key={product.id}
