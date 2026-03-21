@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
-import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import { siteConfig } from "@/site.config";
 import { useCartStore } from "@/lib/store/cart";
@@ -176,13 +175,13 @@ export function Header({ categories = [], isAdmin = false }: HeaderProps) {
             </Sheet>
 
             <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-              <NextImage
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={siteConfig.logo}
                 alt={siteConfig.shopName}
                 width={140}
                 height={40}
                 className="h-9 w-auto object-contain"
-                priority
               />
               {siteConfig.logoDisplay === "logo-and-name" && (
                 <span className="font-bold text-lg tracking-tight hidden sm:block">
