@@ -78,7 +78,7 @@ export async function POST(req: Request) {
 
     // ── Cash on Delivery ─────────────────────────────────────────────────
     if (paymentMethod === "CASH") {
-      const order = await createOrder({ ...orderBase, stripePaymentIntentId: null });
+      const order = await createOrder({ ...orderBase, stripePaymentIntentId: undefined });
       return NextResponse.json({ orderNumber: order?.order_number || orderNumber });
     }
 
