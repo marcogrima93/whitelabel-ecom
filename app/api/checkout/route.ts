@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { siteConfig } from "@/site.config";
+import { calcVatAmount, calcTotal } from "@/lib/pricing";
 import { createOrder } from "@/lib/supabase/queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import Stripe from "stripe";
@@ -37,7 +38,7 @@ export async function POST(req: Request) {
     const { data: { user } } = await supabase.auth.getUser();
 
     const subtotal = items.reduce((acc: number, item: any) => acc + item.pricePerUnit * item.quantity, 0);
-    const vatAmount = subtotal * siteConfig.vatRate;
+    const vatAmount = calcVatAmount(subtotal);
 
     let deliveryFee = 0;
     if (deliveryMethod === "DELIVERY") {
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
           : townConfig?.fee || siteConfig.delivery.towns[0]?.fee || 0;
     }
 
-    const total = subtotal + vatAmount + deliveryFee;
+    const total = calcTotal(subtotal, deliveryFee);
     const orderNumber = generateOrderNumber();
 
     const orderItems = items.map((item: any) => ({

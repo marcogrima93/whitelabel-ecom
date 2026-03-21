@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
 import { useCartStore } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
+import { calcTotal } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,7 +141,7 @@ export default function CheckoutPage() {
     return towns.find((t) => t.name === town)?.fee ?? towns[0]?.fee ?? 0;
   })();
 
-  const total = subtotal + vatAmount + deliveryTownFee;
+  const total = calcTotal(subtotal, deliveryTownFee);
 
   if (items.length === 0 && step !== "confirmation") {
     router.push("/cart");
@@ -777,7 +778,7 @@ export default function CheckoutPage() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    VAT ({(siteConfig.vatRate * 100).toFixed(0)}%)
+                    VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})
                   </span>
                   <span>{formatPrice(vatAmount, currency.code, currency.locale)}</span>
                 </div>

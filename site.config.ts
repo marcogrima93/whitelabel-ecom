@@ -24,6 +24,9 @@ export const siteConfig = {
     locale: "en-MT",
   },
   vatRate: 0.18, // 18%
+  // true  = prices in DB already include VAT (Malta standard — show "inc. VAT" on receipts)
+  // false = prices in DB are ex-VAT and VAT is added on top at checkout
+  vatIncluded: true,
   locale: "en-MT",
 
   // ── Theme (shadcn CSS variables – HSL values) ─────────────────────────
