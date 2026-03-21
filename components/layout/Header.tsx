@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
+import NextImage from "next/image";
 import { useRouter } from "next/navigation";
 import { siteConfig } from "@/site.config";
 import { useCartStore } from "@/lib/store/cart";
@@ -175,7 +176,7 @@ export function Header({ categories = [], isAdmin = false }: HeaderProps) {
             </Sheet>
 
             <Link href="/" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity">
-              <Image
+              <NextImage
                 src={siteConfig.logo}
                 alt={siteConfig.shopName}
                 width={140}
