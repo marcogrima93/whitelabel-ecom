@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCartStore } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
+import { calcTotal } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,7 +22,7 @@ export default function CartPage() {
 
   const subtotal = getSubtotal();
   const vatAmount = getVatAmount();
-  const total = subtotal + vatAmount;
+  const total = calcTotal(subtotal, 0);
 
   if (items.length === 0) {
     return (
@@ -163,7 +164,7 @@ export default function CartPage() {
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
-                  VAT ({(siteConfig.vatRate * 100).toFixed(0)}%)
+                    VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})
                 </span>
                 <span>{formatPrice(vatAmount, currency.code, currency.locale)}</span>
               </div>

@@ -4,7 +4,7 @@
 
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { siteConfig } from "@/site.config";
+import { calcVatAmount } from "@/lib/pricing";
 
 export interface CartItem {
   productId: string;
@@ -89,7 +89,7 @@ export const useCartStore = create<CartStore>()(
           0
         ),
 
-      getVatAmount: () => get().getSubtotal() * siteConfig.vatRate,
+      getVatAmount: () => calcVatAmount(get().getSubtotal()),
 
       getItemCount: () =>
         get().items.reduce((count, item) => count + item.quantity, 0),

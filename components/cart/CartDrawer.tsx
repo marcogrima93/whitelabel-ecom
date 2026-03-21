@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCartStore, type CartItem } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
+import { calcTotal } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,7 +26,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
 
   const subtotal = getSubtotal();
   const vatAmount = getVatAmount();
-  const total = subtotal + vatAmount;
+  const total = calcTotal(subtotal, 0);
   const { currency } = siteConfig;
 
   if (items.length === 0) {
@@ -83,7 +84,7 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
         </div>
         <div className="flex justify-between">
           <span className="text-muted-foreground">
-            VAT ({(siteConfig.vatRate * 100).toFixed(0)}%)
+                    VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})
           </span>
           <span>{formatPrice(vatAmount, currency.code, currency.locale)}</span>
         </div>

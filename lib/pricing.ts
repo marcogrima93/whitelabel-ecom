@@ -1,5 +1,5 @@
 // ============================================================================
-// Pricing Utility — Tiered wholesale pricing
+// Pricing Utility — Tiered wholesale pricing + VAT helpers
 // ============================================================================
 
 import { siteConfig } from "@/site.config";
@@ -29,7 +29,6 @@ export function getPriceForUser(
     };
   }
 
-  // Find applicable tier (highest matching)
   let basePrice = product.wholesale_price;
   let tierLabel: string | null = "Wholesale";
 
@@ -53,7 +52,39 @@ export function getPriceForUser(
   };
 }
 
+// ── VAT helpers ──────────────────────────────────────────────────────────────
+
+/**
+ * Given a subtotal (sum of item prices), returns the VAT amount.
+ *
+ * vatIncluded = true  → prices already include VAT; extract it:
+ *   vatAmount = subtotal − subtotal / (1 + rate)
+ *
+ * vatIncluded = false → prices are ex-VAT; add it on top:
+ *   vatAmount = subtotal × rate
+ */
+export function calcVatAmount(subtotal: number): number {
+  if (siteConfig.vatIncluded) {
+    return subtotal - subtotal / (1 + siteConfig.vatRate);
+  }
+  return subtotal * siteConfig.vatRate;
+}
+
+/**
+ * Grand total charged to the customer.
+ *   vatIncluded → subtotal + deliveryFee   (VAT already in price)
+ *   vatExcluded → subtotal + vatAmount + deliveryFee
+ */
+export function calcTotal(subtotal: number, deliveryFee: number): number {
+  if (siteConfig.vatIncluded) {
+    return subtotal + deliveryFee;
+  }
+  return subtotal + calcVatAmount(subtotal) + deliveryFee;
+}
+
 export function formatVatNote(): string {
   const pct = (siteConfig.vatRate * 100).toFixed(0);
-  return `Price includes ${pct}% VAT`;
+  return siteConfig.vatIncluded
+    ? `Price includes ${pct}% VAT`
+    : `${pct}% VAT will be added at checkout`;
 }
