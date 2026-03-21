@@ -454,7 +454,6 @@ export interface Category {
   name: string;
   slug: string;
   image: string;
-  position: number;
   featured: boolean;
 }
 
@@ -463,7 +462,7 @@ export async function getCategories(): Promise<Category[]> {
   const { data, error } = await supabase
     .from("categories")
     .select("*")
-    .order("position", { ascending: true });
+    .order("name", { ascending: true });
   if (error) { console.error("Error fetching categories:", error); return []; }
   return data || [];
 }
@@ -475,11 +474,10 @@ export async function getFeaturedCategories(): Promise<Category[]> {
     .from("categories")
     .select("*")
     .eq("featured", true)
-    .order("position", { ascending: true });
+    .order("name", { ascending: true });
   if (error) { console.error("Error fetching featured categories:", error); return []; }
   const all = data || [];
   if (all.length <= 4) return all;
-  // Randomly sample 4
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, 4);
 }

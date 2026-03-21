@@ -1,5 +1,6 @@
 "use client";
 
+// Header component — logo uses <img> (not next/image) to avoid browser Image constructor conflict
 import { useState, useRef, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

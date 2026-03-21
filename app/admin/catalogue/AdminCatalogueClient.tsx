@@ -40,7 +40,6 @@ interface Category {
   name: string;
   slug: string;
   image: string;
-  position?: number;
   featured?: boolean;
 }
 
