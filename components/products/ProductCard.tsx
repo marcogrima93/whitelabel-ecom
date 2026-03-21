@@ -109,7 +109,7 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
 
             {/* Content */}
             <CardContent className="p-3 sm:p-4">
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1 truncate">
+              <p className="hidden sm:block text-xs text-muted-foreground uppercase tracking-wider mb-1 truncate">
                 {categoryName ?? product.category}
               </p>
               <h3 className="font-semibold text-sm sm:text-base line-clamp-2 group-hover:text-primary transition-colors leading-tight">
