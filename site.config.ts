@@ -9,7 +9,7 @@ export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
   // ── Branding ──────────────────────────────────────────────────────────
-  shopName: "Meat Drop Malta.",
+  shopName: "Meat Drop Malta",
   shopDescription: "Premium meats & poultry, expertly butchered and delivered fresh.",
   shopUrl: "https://meatdrop.mt",
   logo: "/logo.svg", // Place in /public
