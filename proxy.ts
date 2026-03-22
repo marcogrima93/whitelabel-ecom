@@ -33,6 +33,11 @@ export async function proxy(request: NextRequest) {
   const url = request.nextUrl.clone();
   const path = url.pathname;
 
+  // Let reset-password through — Supabase token exchange happens client-side
+  if (path.startsWith("/reset-password")) {
+    return supabaseResponse;
+  }
+
   // Protect account routes
   if (path.startsWith("/account") && !user) {
     url.pathname = "/login";
@@ -62,7 +67,9 @@ export async function proxy(request: NextRequest) {
 
   // Redirect auth pages if already logged in
   if ((path.startsWith("/login") || path.startsWith("/register")) && user) {
-    url.pathname = "/account";
+    const redirectTo = url.searchParams.get("redirect") || "/account";
+    url.pathname = redirectTo;
+    url.searchParams.delete("redirect");
     return NextResponse.redirect(url);
   }
 

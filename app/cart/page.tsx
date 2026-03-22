@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCartStore } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
 import { calcTotal } from "@/lib/pricing";
@@ -14,6 +15,7 @@ import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag } from "lucide-react"
 import { useState } from "react";
 
 export default function CartPage() {
+  const router = useRouter();
   const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, clearCart } =
     useCartStore();
   const [discountCode, setDiscountCode] = useState("");
@@ -23,6 +25,17 @@ export default function CartPage() {
   const subtotal = getSubtotal();
   const vatAmount = getVatAmount();
   const total = calcTotal(subtotal, 0);
+
+  const handleCheckout = async () => {
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      router.push("/checkout");
+    } else {
+      router.push("/checkout-auth");
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -181,10 +194,8 @@ export default function CartPage() {
               <span>{formatPrice(total, currency.code, currency.locale)}</span>
             </div>
 
-            <Button size="xl" className="w-full" asChild>
-              <Link href="/checkout">
-                Proceed to Checkout <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
+            <Button size="xl" className="w-full" onClick={handleCheckout}>
+              Proceed to Checkout <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
 
             <Button variant="ghost" size="sm" className="w-full" asChild>
