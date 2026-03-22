@@ -62,7 +62,9 @@ export async function proxy(request: NextRequest) {
 
   // Redirect auth pages if already logged in
   if ((path.startsWith("/login") || path.startsWith("/register")) && user) {
-    url.pathname = "/account";
+    const redirectTo = url.searchParams.get("redirect") || "/account";
+    url.pathname = redirectTo;
+    url.searchParams.delete("redirect");
     return NextResponse.redirect(url);
   }
 

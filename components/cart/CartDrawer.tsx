@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCartStore, type CartItem } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
 import { calcTotal } from "@/lib/pricing";
@@ -21,6 +22,7 @@ interface CartDrawerProps {
 }
 
 export function CartDrawer({ onClose }: CartDrawerProps) {
+  const router = useRouter();
   const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getItemCount } =
     useCartStore();
 
@@ -28,6 +30,18 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
   const vatAmount = getVatAmount();
   const total = calcTotal(subtotal, 0);
   const { currency } = siteConfig;
+
+  const handleCheckout = async () => {
+    onClose();
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      router.push("/checkout");
+    } else {
+      router.push("/checkout-auth");
+    }
+  };
 
   if (items.length === 0) {
     return (
@@ -104,8 +118,8 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
         )}
 
       <SheetFooter className="flex-col gap-2 sm:flex-col">
-        <Button className="w-full" size="lg" asChild onClick={onClose}>
-          <Link href="/checkout">Proceed to Checkout</Link>
+        <Button className="w-full" size="lg" onClick={handleCheckout}>
+          Proceed to Checkout
         </Button>
         <Button variant="outline" className="w-full" onClick={onClose}>
           Continue Shopping
