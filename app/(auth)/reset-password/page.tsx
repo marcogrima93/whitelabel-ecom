@@ -1,4 +1,5 @@
 "use client";
+// Password reset page — handles token exchange and password update flow
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
