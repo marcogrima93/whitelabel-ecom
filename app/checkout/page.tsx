@@ -851,7 +851,9 @@ export default function CheckoutPage() {
                           <p className="font-medium text-sm">
                             {deliveryType === "DELIVERY" ? "Cash on Delivery" : "Cash on Collection"}
                           </p>
-                          <p className="text-xs text-muted-foreground">{siteConfig.payments.cashOnDelivery.description}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {deliveryType === "DELIVERY" ? "Pay when your order arrives" : "Pay when you collect"}
+                          </p>
                         </div>
                       </button>
                     )}
