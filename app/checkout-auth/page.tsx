@@ -157,16 +157,18 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
             Click the link to verify and you&apos;ll be taken straight to checkout.
           </p>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Want to checkout now?{" "}
-          <button
-            type="button"
-            className="text-primary font-medium hover:underline"
-            onClick={onSuccess}
-          >
-            Continue as guest
-          </button>
-        </p>
+        {siteConfig.allowGuestCheckout && (
+          <p className="text-sm text-muted-foreground">
+            Want to checkout now?{" "}
+            <button
+              type="button"
+              className="text-primary font-medium hover:underline"
+              onClick={onSuccess}
+            >
+              Continue as guest
+            </button>
+          </p>
+        )}
       </div>
     );
   }
@@ -320,23 +322,25 @@ export default function CheckoutAuthPage() {
           </div>
         </div>
 
-        {/* Guest CTA */}
-        <div className="flex flex-col items-center gap-3 text-center">
-          <Separator className="w-full max-w-sm" />
-          <p className="text-sm text-muted-foreground">Prefer not to create an account?</p>
-          <Button
-            variant="outline"
-            size="lg"
-            className="gap-2"
-            onClick={handleGuest}
-          >
-            Continue as Guest
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-          <p className="text-xs text-muted-foreground">
-            Your cart is preserved — no items will be lost.
-          </p>
-        </div>
+        {/* Guest CTA — hidden when allowGuestCheckout is false */}
+        {siteConfig.allowGuestCheckout && (
+          <div className="flex flex-col items-center gap-3 text-center">
+            <Separator className="w-full max-w-sm" />
+            <p className="text-sm text-muted-foreground">Prefer not to create an account?</p>
+            <Button
+              variant="outline"
+              size="lg"
+              className="gap-2"
+              onClick={handleGuest}
+            >
+              Continue as Guest
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              Your cart is preserved — no items will be lost.
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );

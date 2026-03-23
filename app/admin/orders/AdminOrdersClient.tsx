@@ -159,7 +159,22 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                     <tr key={order.id} className="hover:bg-muted/50 transition-colors">
                       <td className="p-4 font-mono font-medium">{order.orderNumber}</td>
                       <td className="p-4">
-                        <p className="text-sm text-muted-foreground">{order.email}</p>
+                        {(() => {
+                          const isGuest = order.email.endsWith(" (guest)");
+                          const displayEmail = isGuest
+                            ? order.email.replace(/ \(guest\)$/, "")
+                            : order.email;
+                          return (
+                            <div className="flex flex-col gap-0.5">
+                              <p className="text-sm text-muted-foreground">{displayEmail}</p>
+                              {isGuest && (
+                                <span className="inline-flex items-center w-fit text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                                  guest
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </td>
                       <td className="p-4">
                         <Badge variant={order.deliveryMethod === "COLLECTION" ? "secondary" : "outline"}>

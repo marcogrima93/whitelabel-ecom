@@ -214,4 +214,9 @@ export const siteConfig = {
     retailLabel: "Retail Customer",
     wholesaleLabel: "Wholesale / Business Customer",
   },
+
+  // ── Guest Checkout ────────────────────────────────────────────────────
+  // true  = show "Continue as Guest" on the checkout auth page (default)
+  // false = force users to register or log in before checking out
+  allowGuestCheckout: true,
 } as const;

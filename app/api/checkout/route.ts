@@ -37,6 +37,10 @@ export async function POST(req: Request) {
     const supabase = await createServerSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
 
+    // Tag guest orders so staff can identify them in the admin panel
+    const isGuest = !user;
+    const storedEmail = isGuest ? `${customerEmail} (guest)` : customerEmail;
+
     const subtotal = items.reduce((acc: number, item: any) => acc + item.pricePerUnit * item.quantity, 0);
     const vatAmount = calcVatAmount(subtotal);
 
@@ -65,7 +69,7 @@ export async function POST(req: Request) {
     const orderBase = {
       orderNumber,
       userId: user?.id,
-      email: customerEmail,
+      email: storedEmail,
       deliveryMethod: deliveryMethod || "DELIVERY",
       deliveryAddress: deliveryAddress || null,
       deliveryFee,
@@ -101,11 +105,12 @@ export async function POST(req: Request) {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: Math.round(total * 100),
       currency: siteConfig.currency.code.toLowerCase(),
-      receipt_email: customerEmail,
+      receipt_email: customerEmail, // always use plain email for Stripe receipts
       automatic_payment_methods: { enabled: true },
       metadata: {
         orderNumber,
         customerEmail,
+        isGuest: isGuest ? "true" : "false",
         userId: user?.id || "",
         itemCount: items.length.toString(),
       },
