@@ -29,6 +29,13 @@ export default function CartPage() {
   const vatAmount = getVatAmount();
   const total = calcTotal(subtotal, 0);
 
+  const handleCheckout = async () => {
+    const { createClient } = await import("@/lib/supabase/client");
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    router.push(user ? "/checkout" : "/checkout-auth");
+  };
+
   // Avoid hydration mismatch — Zustand rehydrates from localStorage only client-side
   // Render a consistent skeleton on both server and client until mounted
   if (!mounted) {
