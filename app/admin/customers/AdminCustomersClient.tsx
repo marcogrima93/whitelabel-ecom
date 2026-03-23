@@ -258,7 +258,7 @@ export default function AdminCustomersClient({
           {customerDetail && (
             <>
               <DialogHeader>
-                <DialogTitle>{customerDetail.profile.full_name || "Customer"}</DialogTitle>
+                <DialogTitle>{customerDetail.profile.name || "Customer"}</DialogTitle>
               </DialogHeader>
 
               {/* Profile info */}

@@ -30,7 +30,19 @@ export default function CartPage() {
   const total = calcTotal(subtotal, 0);
 
   // Avoid hydration mismatch — Zustand rehydrates from localStorage only client-side
-  if (!mounted) return null;
+  // Render a consistent skeleton on both server and client until mounted
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="h-10 w-48 bg-muted rounded animate-pulse mb-8" />
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-28 rounded-lg border bg-muted animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (

@@ -244,8 +244,21 @@ export default function CheckoutPage() {
 
   const total = calcTotal(subtotal, deliveryTownFee);
 
-  // Show nothing until hydrated (avoids flash and hydration mismatch)
-  if (!mounted) return null;
+  // Show a consistent skeleton until hydrated (avoids server/client mismatch)
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-5xl">
+        <div className="h-8 w-40 bg-muted rounded animate-pulse mb-8" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-4">
+            <div className="h-64 rounded-lg border bg-muted animate-pulse" />
+            <div className="h-48 rounded-lg border bg-muted animate-pulse" />
+          </div>
+          <div className="h-72 rounded-lg border bg-muted animate-pulse" />
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0 && step !== "confirmation") {
     return null;
