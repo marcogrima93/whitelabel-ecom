@@ -231,14 +231,21 @@ export default function CheckoutPage() {
     return towns.find((t) => t.name === town)?.fee ?? towns[0]?.fee ?? 0;
   })();
 
-  // Redirect to cart if no items (must be in effect, not during render)
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
+  // Redirect to cart if no items — only after hydration so Zustand has rehydrated from localStorage
   useEffect(() => {
+    if (!mounted) return;
     if (items.length === 0 && step !== "confirmation") {
       router.push("/cart");
     }
-  }, [items.length, step, router]);
+  }, [mounted, items.length, step, router]);
 
   const total = calcTotal(subtotal, deliveryTownFee);
+
+  // Show nothing until hydrated (avoids flash and hydration mismatch)
+  if (!mounted) return null;
 
   if (items.length === 0 && step !== "confirmation") {
     return null;

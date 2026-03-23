@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function CartPage() {
   const router = useRouter();
@@ -20,22 +20,17 @@ export default function CartPage() {
     useCartStore();
   const [discountCode, setDiscountCode] = useState("");
   const [notes, setNotes] = useState("");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const { currency } = siteConfig;
 
   const subtotal = getSubtotal();
   const vatAmount = getVatAmount();
   const total = calcTotal(subtotal, 0);
 
-  const handleCheckout = async () => {
-    const { createClient } = await import("@/lib/supabase/client");
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      router.push("/checkout");
-    } else {
-      router.push("/checkout-auth");
-    }
-  };
+  // Avoid hydration mismatch — Zustand rehydrates from localStorage only client-side
+  if (!mounted) return null;
 
   if (items.length === 0) {
     return (
