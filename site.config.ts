@@ -218,5 +218,5 @@ export const siteConfig = {
   // ── Guest Checkout ────────────────────────────────────────────────────
   // true  = show "Continue as Guest" on the checkout auth page (default)
   // false = force users to register or log in before checking out
-  allowGuestCheckout: true,
+  allowGuestCheckout: false,
 } as const;
