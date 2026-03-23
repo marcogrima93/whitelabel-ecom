@@ -231,10 +231,16 @@ export default function CheckoutPage() {
     return towns.find((t) => t.name === town)?.fee ?? towns[0]?.fee ?? 0;
   })();
 
+  // Redirect to cart if no items (must be in effect, not during render)
+  useEffect(() => {
+    if (items.length === 0 && step !== "confirmation") {
+      router.push("/cart");
+    }
+  }, [items.length, step, router]);
+
   const total = calcTotal(subtotal, deliveryTownFee);
 
   if (items.length === 0 && step !== "confirmation") {
-    router.push("/cart");
     return null;
   }
 

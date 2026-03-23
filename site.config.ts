@@ -159,9 +159,8 @@ export const siteConfig = {
       enabled: true, // Set to false to hide Stripe card payment option
     },
     cashOnDelivery: {
-      enabled: true,  // Set to true to offer cash on delivery / cash on collection
-      label: "Cash on Delivery / Collection", // Shown to the customer
-      description: "Pay with cash when your order arrives or when you collect.",
+      enabled: true, // Set to true to offer cash on delivery / cash on collection
+      // Label and description are now dynamic in checkout/page.tsx based on delivery type
     },
   },
 
