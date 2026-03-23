@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -32,6 +33,7 @@ import {
   BookUser,
   Banknote,
   CalendarDays,
+  User,
 } from "lucide-react";
 import StripeForm from "@/components/checkout/StripeForm";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
@@ -135,6 +137,13 @@ export default function CheckoutPage() {
   const [selectedAddressId, setSelectedAddressId] = useState<string>("");
   const [loadingAddresses, setLoadingAddresses] = useState(false);
 
+  // Logged-in user profile (pre-fills contact fields)
+  const [userProfile, setUserProfile] = useState<{ name: string; email: string; phone: string | null } | null>(null);
+
+  // Save-address checkbox (only shown for logged-in users entering a new address)
+  const [saveAddress, setSaveAddress] = useState(false);
+  const [saveAddressLabel, setSaveAddressLabel] = useState("Home");
+
   // Compute min date once on mount (avoids hydration mismatch)
   const minDate = useMemo(() => toDateInputValue(getMinSelectableDate()), []);
 
@@ -159,6 +168,32 @@ export default function CheckoutPage() {
   // Set default date after mount so SSR doesn't mismatch
   useEffect(() => {
     setDeliveryForm((prev) => ({ ...prev, preferredDate: toDateInputValue(getMinSelectableDate()) }));
+  }, []);
+
+  // Fetch logged-in user profile and pre-fill contact fields
+  useEffect(() => {
+    fetch("/api/account/profile")
+      .then((r) => r.json())
+      .then((profile) => {
+        if (profile?.email) {
+          setUserProfile({ name: profile.name || "", email: profile.email, phone: profile.phone || null });
+          setDeliveryForm((prev) => ({
+            ...prev,
+            fullName: profile.name || prev.fullName,
+            email: profile.email || prev.email,
+            phone: profile.phone || prev.phone,
+          }));
+          // Split stored phone back into country code + number for PhoneInput
+          if (profile.phone) {
+            const { countryCode, number } = splitPhone(profile.phone);
+            setPhoneCountryCode(countryCode);
+            setPhoneNumber(number);
+            setColPhoneCountryCode(countryCode);
+            setColPhoneNumber(number);
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const updateForm = (field: string, value: string) =>
@@ -236,6 +271,30 @@ export default function CheckoutPage() {
       ? selectedAddress.full_name
       : deliveryForm.fullName;
 
+  const saveNewAddressIfRequested = async () => {
+    if (!saveAddress || addressMode !== "new" || deliveryType !== "DELIVERY" || !userProfile) return;
+    if (!deliveryForm.line1 || !deliveryForm.town || !deliveryForm.postcode) return;
+    try {
+      await fetch("/api/account/addresses", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          label: saveAddressLabel || "Home",
+          full_name: deliveryForm.fullName,
+          phone: deliveryForm.phone,
+          line_1: deliveryForm.line1,
+          line_2: deliveryForm.line2 || null,
+          city: deliveryForm.town,
+          region: deliveryForm.town,
+          postcode: deliveryForm.postcode,
+          is_default: savedAddresses.length === 0,
+        }),
+      });
+    } catch {
+      // Non-blocking — order continues even if address save fails
+    }
+  };
+
   const initPayment = async () => {
     if (!deliveryForm.email || !getCustomerName()) {
       alert("Please fill in your name and email first.");
@@ -249,6 +308,7 @@ export default function CheckoutPage() {
       if (loading) return;
       setLoading(true);
       try {
+        await saveNewAddressIfRequested();
         const deliveryAddress = deliveryType === "DELIVERY" ? buildDeliveryAddress() : null;
         const res = await fetch("/api/checkout", {
           method: "POST",
@@ -285,6 +345,7 @@ export default function CheckoutPage() {
     // Stripe: get client secret as before
     if (clientSecret) return;
     try {
+      await saveNewAddressIfRequested();
       const deliveryAddress = deliveryType === "DELIVERY" ? buildDeliveryAddress() : null;
       const res = await fetch("/api/checkout", {
         method: "POST",
@@ -457,48 +518,63 @@ export default function CheckoutPage() {
                     </div>
                   )}
 
-                  {/* Contact details — always shown */}
+                  {/* Contact details — hidden for logged-in users (pre-filled from profile) */}
                   {(addressMode === "new" || savedAddresses.length === 0) && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="ck-name">Full Name</Label>
-                        <Input
-                          id="ck-name"
-                          value={deliveryForm.fullName}
-                          onChange={(e) => updateForm("fullName", e.target.value)}
-                          required
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="ck-phone">Phone</Label>
-                        <PhoneInput
-                          id="ck-phone"
-                          countryCode={phoneCountryCode}
-                          number={phoneNumber}
-                          onCountryCodeChange={(c) => {
-                            setPhoneCountryCode(c);
-                            updateForm("phone", joinPhone(c, phoneNumber));
-                          }}
-                          onNumberChange={(n) => {
-                            setPhoneNumber(n);
-                            updateForm("phone", joinPhone(phoneCountryCode, n));
-                          }}
-                          required
-                        />
-                      </div>
-                    </div>
+                    <>
+                      {userProfile ? (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2 border">
+                          <User className="h-4 w-4 shrink-0" />
+                          <span>
+                            Ordering as <span className="font-medium text-foreground">{userProfile.name}</span>
+                            {" "}({userProfile.email})
+                          </span>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="ck-name">Full Name</Label>
+                            <Input
+                              id="ck-name"
+                              value={deliveryForm.fullName}
+                              onChange={(e) => updateForm("fullName", e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="ck-phone">Phone</Label>
+                            <PhoneInput
+                              id="ck-phone"
+                              countryCode={phoneCountryCode}
+                              number={phoneNumber}
+                              onCountryCodeChange={(c) => {
+                                setPhoneCountryCode(c);
+                                updateForm("phone", joinPhone(c, phoneNumber));
+                              }}
+                              onNumberChange={(n) => {
+                                setPhoneNumber(n);
+                                updateForm("phone", joinPhone(phoneCountryCode, n));
+                              }}
+                              required
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
 
-                  <div className="space-y-2">
-                    <Label htmlFor="ck-email">Email</Label>
-                    <Input
-                      id="ck-email"
-                      type="email"
-                      value={deliveryForm.email}
-                      onChange={(e) => updateForm("email", e.target.value)}
-                      required
-                    />
-                  </div>
+                  {/* Email — hidden for logged-in users */}
+                  {!userProfile && (
+                    <div className="space-y-2">
+                      <Label htmlFor="ck-email">Email</Label>
+                      <Input
+                        id="ck-email"
+                        type="email"
+                        value={deliveryForm.email}
+                        onChange={(e) => updateForm("email", e.target.value)}
+                        required
+                      />
+                    </div>
+                  )}
 
                   {/* Address fields — only shown for new address */}
                   {(addressMode === "new" || savedAddresses.length === 0) && (
@@ -558,6 +634,34 @@ export default function CheckoutPage() {
                     </>
                   )}
 
+                  {/* Save address checkbox — only for logged-in users on new addresses */}
+                  {userProfile && (addressMode === "new" || savedAddresses.length === 0) && (
+                    <div className="rounded-lg border bg-muted/40 p-4 space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="ck-save-addr"
+                          checked={saveAddress}
+                          onCheckedChange={(v) => setSaveAddress(!!v)}
+                        />
+                        <Label htmlFor="ck-save-addr" className="cursor-pointer font-normal">
+                          Save this address to my account
+                        </Label>
+                      </div>
+                      {saveAddress && (
+                        <div className="space-y-2">
+                          <Label htmlFor="ck-addr-label">Address label</Label>
+                          <Input
+                            id="ck-addr-label"
+                            value={saveAddressLabel}
+                            onChange={(e) => setSaveAddressLabel(e.target.value)}
+                            placeholder="e.g. Home, Office, Parents"
+                            maxLength={40}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   {/* Delivery date + slot */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
@@ -614,45 +718,57 @@ export default function CheckoutPage() {
                     {siteConfig.delivery.pickupAddress}
                   </p>
                   <div className="space-y-4">
-                    {/* Name + phone on separate lines on mobile */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="ck-col-name">Your Name</Label>
-                        <Input
-                          id="ck-col-name"
-                          value={deliveryForm.fullName}
-                          onChange={(e) => updateForm("fullName", e.target.value)}
-                          required
-                        />
+                    {userProfile ? (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground bg-background rounded-md px-3 py-2 border">
+                        <User className="h-4 w-4 shrink-0" />
+                        <span>
+                          Collecting as <span className="font-medium text-foreground">{userProfile.name}</span>
+                          {" "}({userProfile.email})
+                        </span>
                       </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="ck-col-phone">Phone</Label>
-                        <PhoneInput
-                          id="ck-col-phone"
-                          countryCode={colPhoneCountryCode}
-                          number={colPhoneNumber}
-                          onCountryCodeChange={(c) => {
-                            setColPhoneCountryCode(c);
-                            updateForm("phone", joinPhone(c, colPhoneNumber));
-                          }}
-                          onNumberChange={(n) => {
-                            setColPhoneNumber(n);
-                            updateForm("phone", joinPhone(colPhoneCountryCode, n));
-                          }}
-                          required
-                        />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="ck-col-email">Email</Label>
-                      <Input
-                        id="ck-col-email"
-                        type="email"
-                        value={deliveryForm.email}
-                        onChange={(e) => updateForm("email", e.target.value)}
-                        required
-                      />
-                    </div>
+                    ) : (
+                      <>
+                        {/* Name + phone on separate lines on mobile */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="ck-col-name">Your Name</Label>
+                            <Input
+                              id="ck-col-name"
+                              value={deliveryForm.fullName}
+                              onChange={(e) => updateForm("fullName", e.target.value)}
+                              required
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="ck-col-phone">Phone</Label>
+                            <PhoneInput
+                              id="ck-col-phone"
+                              countryCode={colPhoneCountryCode}
+                              number={colPhoneNumber}
+                              onCountryCodeChange={(c) => {
+                                setColPhoneCountryCode(c);
+                                updateForm("phone", joinPhone(c, colPhoneNumber));
+                              }}
+                              onNumberChange={(n) => {
+                                setColPhoneNumber(n);
+                                updateForm("phone", joinPhone(colPhoneCountryCode, n));
+                              }}
+                              required
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="ck-col-email">Email</Label>
+                          <Input
+                            id="ck-col-email"
+                            type="email"
+                            value={deliveryForm.email}
+                            onChange={(e) => updateForm("email", e.target.value)}
+                            required
+                          />
+                        </div>
+                      </>
+                    )}
                     {/* Date picker */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
