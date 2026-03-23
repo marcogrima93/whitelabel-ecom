@@ -848,7 +848,9 @@ export default function CheckoutPage() {
                       >
                         <Banknote className="h-5 w-5 shrink-0" />
                         <div>
-                          <p className="font-medium text-sm">{siteConfig.payments.cashOnDelivery.label}</p>
+                          <p className="font-medium text-sm">
+                            {deliveryType === "DELIVERY" ? "Cash on Delivery" : "Cash on Collection"}
+                          </p>
                           <p className="text-xs text-muted-foreground">{siteConfig.payments.cashOnDelivery.description}</p>
                         </div>
                       </button>
@@ -866,10 +868,10 @@ export default function CheckoutPage() {
                 <Button onClick={initPayment} disabled={loading}>
                   {loading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : selectedPaymentMethod === "CASH" ? (
+                    <>Place Order <ArrowRight className="ml-2 h-4 w-4" /></>
                   ) : (
-                    <>
-                      Continue to Payment <ArrowRight className="ml-2 h-4 w-4" />
-                    </>
+                    <>Continue to Payment <ArrowRight className="ml-2 h-4 w-4" /></>
                   )}
                 </Button>
               </div>
