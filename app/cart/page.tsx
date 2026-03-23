@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function CartPage() {
   const router = useRouter();
@@ -20,6 +20,9 @@ export default function CartPage() {
     useCartStore();
   const [discountCode, setDiscountCode] = useState("");
   const [notes, setNotes] = useState("");
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+
   const { currency } = siteConfig;
 
   const subtotal = getSubtotal();
@@ -30,12 +33,23 @@ export default function CartPage() {
     const { createClient } = await import("@/lib/supabase/client");
     const supabase = createClient();
     const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      router.push("/checkout");
-    } else {
-      router.push("/checkout-auth");
-    }
+    router.push(user ? "/checkout" : "/checkout-auth");
   };
+
+  // Avoid hydration mismatch — Zustand rehydrates from localStorage only client-side
+  // Render a consistent skeleton on both server and client until mounted
+  if (!mounted) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="h-10 w-48 bg-muted rounded animate-pulse mb-8" />
+        <div className="space-y-4">
+          {[1, 2].map((i) => (
+            <div key={i} className="h-28 rounded-lg border bg-muted animate-pulse" />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   if (items.length === 0) {
     return (

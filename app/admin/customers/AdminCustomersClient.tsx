@@ -5,6 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -12,8 +19,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, CheckCircle, XCircle, Users, Inbox, Loader2 } from "lucide-react";
-import { approveWholesaleAction, rejectWholesaleAction } from "./actions";
+import { Search, CheckCircle, XCircle, Users, Inbox, Loader2, Mail, Phone, Calendar, Package } from "lucide-react";
+import { approveWholesaleAction, rejectWholesaleAction, getCustomerDetailAction } from "./actions";
+import { siteConfig } from "@/site.config";
+import { formatPrice } from "@/lib/utils";
+import type { Profile, Order, OrderItem } from "@/lib/supabase/types";
 
 interface CustomerRow {
   id: string;
@@ -38,6 +48,19 @@ export default function AdminCustomersClient({
   const [search, setSearch] = useState("");
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+
+  // Customer detail modal
+  const [viewingId, setViewingId] = useState<string | null>(null);
+  const [customerDetail, setCustomerDetail] = useState<{ profile: Profile; orders: (Order & { items?: OrderItem[] })[] } | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const handleViewCustomer = async (customerId: string) => {
+    setViewingId(customerId);
+    const detail = await getCustomerDetailAction(customerId);
+    setCustomerDetail(detail);
+    setDetailOpen(true);
+    setViewingId(null);
+  };
 
   const filtered = customers.filter((c) => {
     const matchRole = roleFilter === "all" || c.role === roleFilter;
@@ -79,6 +102,7 @@ export default function AdminCustomersClient({
   };
 
   return (
+    <>
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Customers</h1>
@@ -204,7 +228,18 @@ export default function AdminCustomersClient({
                             </Button>
                           </div>
                         ) : (
-                          <Button variant="ghost" size="sm">View</Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewCustomer(customer.id)}
+                            disabled={viewingId === customer.id}
+                          >
+                            {viewingId === customer.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              "View"
+                            )}
+                          </Button>
                         )}
                       </td>
                     </tr>
@@ -216,5 +251,82 @@ export default function AdminCustomersClient({
         </CardContent>
       </Card>
     </div>
+
+      {/* Customer detail modal */}
+      <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+          {customerDetail && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{customerDetail.profile.name || "Customer"}</DialogTitle>
+              </DialogHeader>
+
+              {/* Profile info */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Mail className="h-4 w-4 shrink-0" />
+                  <span>{customerDetail.profile.email}</span>
+                </div>
+                {customerDetail.profile.phone && (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Phone className="h-4 w-4 shrink-0" />
+                    <span>{customerDetail.profile.phone}</span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Calendar className="h-4 w-4 shrink-0" />
+                  <span>Joined {new Date(customerDetail.profile.created_at).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" })}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge variant={customerDetail.profile.role === "WHOLESALE" ? "default" : customerDetail.profile.role === "ADMIN" ? "destructive" : "outline"}>
+                    {customerDetail.profile.role}
+                  </Badge>
+                  {customerDetail.profile.wholesale_approved && (
+                    <Badge variant="success">Approved</Badge>
+                  )}
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Order history */}
+              <div>
+                <h4 className="font-semibold text-sm uppercase tracking-wide text-muted-foreground mb-3 flex items-center gap-1.5">
+                  <Package className="h-4 w-4" /> Orders ({customerDetail.orders.length})
+                </h4>
+                {customerDetail.orders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No orders yet.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {customerDetail.orders.map((order) => (
+                      <div key={order.id} className="flex items-center justify-between rounded-lg border px-3 py-2 text-sm">
+                        <div>
+                          <span className="font-mono font-medium">{order.order_number}</span>
+                          <span className="text-muted-foreground ml-2">
+                            {new Date(order.created_at).toLocaleDateString("en-GB")}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">
+                            {formatPrice(Number(order.total), siteConfig.currency.code, siteConfig.currency.locale)}
+                          </span>
+                          <Badge variant={
+                            order.status === "DELIVERED" ? "success" :
+                            order.status === "CANCELLED" ? "destructive" :
+                            order.status === "PENDING" ? "warning" : "secondary"
+                          }>
+                            {order.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
