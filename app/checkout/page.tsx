@@ -342,6 +342,17 @@ export default function CheckoutPage() {
       return;
     }
 
+    // Block submission if the selected date is a blocked day or specific date
+    const iso = deliveryForm.preferredDate;
+    if (iso) {
+      const [y, m, d] = iso.split("-").map(Number);
+      const date = new Date(y, m - 1, d);
+      if (blockedDays.includes(date.getDay()) || blockedDates.includes(iso)) {
+        alert("The selected date is unavailable. Please choose another date.");
+        return;
+      }
+    }
+
     setStep("payment");
 
     // COD: create order immediately, no Stripe needed
@@ -842,13 +853,28 @@ export default function CheckoutPage() {
                           min={minDate}
                           onChange={(e) => updateForm("preferredDate", e.target.value)}
                           required
-                          className="cursor-pointer"
+                          className={`cursor-pointer ${(() => {
+                            const iso = deliveryForm.preferredDate;
+                            if (!iso) return "";
+                            const [y, m, d] = iso.split("-").map(Number);
+                            const date = new Date(y, m - 1, d);
+                            return (blockedDays.includes(date.getDay()) || blockedDates.includes(iso))
+                              ? "border-destructive"
+                              : "";
+                          })()}`}
                         />
-                        {deliveryForm.preferredDate && (
-                          <p className="text-xs text-muted-foreground">
-                            {formatDateLabel(deliveryForm.preferredDate)}
-                          </p>
-                        )}
+                        {(() => {
+                          const iso = deliveryForm.preferredDate;
+                          if (!iso) return null;
+                          const [y, m, d] = iso.split("-").map(Number);
+                          const date = new Date(y, m - 1, d);
+                          const isBlocked = blockedDays.includes(date.getDay()) || blockedDates.includes(iso);
+                          return isBlocked ? (
+                            <p className="text-xs text-destructive">This date is unavailable. Please select another.</p>
+                          ) : (
+                            <p className="text-xs text-muted-foreground">{formatDateLabel(iso)}</p>
+                          );
+                        })()}
                       </div>
                       <div className="space-y-2">
                         <Label>Collection Slot</Label>
