@@ -144,6 +144,10 @@ export default function CheckoutPage() {
   const [saveAddress, setSaveAddress] = useState(false);
   const [saveAddressLabel, setSaveAddressLabel] = useState("Home");
 
+  // Delivery settings (blocked days/dates from admin)
+  const [blockedDays, setBlockedDays] = useState<number[]>([]);
+  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+
   // Compute min date once on mount (avoids hydration mismatch)
   const minDate = useMemo(() => toDateInputValue(getMinSelectableDate()), []);
 
@@ -168,6 +172,17 @@ export default function CheckoutPage() {
   // Set default date after mount so SSR doesn't mismatch
   useEffect(() => {
     setDeliveryForm((prev) => ({ ...prev, preferredDate: toDateInputValue(getMinSelectableDate()) }));
+  }, []);
+
+  // Fetch delivery settings (blocked days/dates)
+  useEffect(() => {
+    fetch("/api/delivery-settings")
+      .then((r) => r.json())
+      .then((s) => {
+        if (s?.blocked_days) setBlockedDays(s.blocked_days);
+        if (s?.blocked_dates) setBlockedDates(s.blocked_dates);
+      })
+      .catch(() => {});
   }, []);
 
   // Fetch logged-in user profile and pre-fill contact fields
@@ -689,6 +704,17 @@ export default function CheckoutPage() {
                   )}
 
                   {/* Delivery date + slot */}
+                  {(() => {
+                    const isDeliveryDateBlocked = (iso: string) => {
+                      if (!iso) return false;
+                      const [y, m, d] = iso.split("-").map(Number);
+                      const date = new Date(y, m - 1, d);
+                      if (blockedDays.includes(date.getDay())) return true;
+                      if (blockedDates.includes(iso)) return true;
+                      return false;
+                    };
+                    const dateBlocked = isDeliveryDateBlocked(deliveryForm.preferredDate);
+                    return (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="ck-date">
@@ -702,9 +728,14 @@ export default function CheckoutPage() {
                         min={minDate}
                         onChange={(e) => updateForm("preferredDate", e.target.value)}
                         required
-                        className="cursor-pointer"
+                        className={`cursor-pointer ${dateBlocked ? "border-destructive" : ""}`}
                       />
-                      {deliveryForm.preferredDate && (
+                      {dateBlocked && (
+                        <p className="text-xs text-destructive">
+                          This date is unavailable. Please select another.
+                        </p>
+                      )}
+                      {deliveryForm.preferredDate && !dateBlocked && (
                         <p className="text-xs text-muted-foreground">
                           {formatDateLabel(deliveryForm.preferredDate)}
                         </p>
@@ -729,6 +760,8 @@ export default function CheckoutPage() {
                       </Select>
                     </div>
                   </div>
+                    );
+                  })()}
 
                   {subtotal >= siteConfig.delivery.freeThreshold && (
                     <p className="text-sm text-emerald-600 bg-emerald-50 p-3 rounded-md">
