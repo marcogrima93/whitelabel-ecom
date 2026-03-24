@@ -40,7 +40,7 @@ export default function LoginPage() {
       <Card className="w-full max-w-md">
         <CardHeader>
           <CardTitle>Sign In</CardTitle>
-          <CardDescription>Welcome back to {siteConfig.name}</CardDescription>
+          <CardDescription>Welcome back to {siteConfig.shopName}</CardDescription>
         </CardHeader>
         <form onSubmit={handleLogin}>
           <CardContent className="space-y-4">

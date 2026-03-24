@@ -16,7 +16,7 @@ export function Footer() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Store Info */}
           <div>
-            <h3 className="font-bold text-lg mb-4">{siteConfig.name}</h3>
+            <h3 className="font-bold text-lg mb-4">{siteConfig.shopName}</h3>
             <p className="text-sm text-muted-foreground mb-4">{siteConfig.description}</p>
             {siteConfig.contact.address && (
               <p className="text-sm text-muted-foreground">{siteConfig.contact.address}</p>
@@ -69,7 +69,7 @@ export function Footer() {
         </div>
 
         <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
-          <p>&copy; {new Date().getFullYear()} {siteConfig.name}. All rights reserved.</p>
+          <p>&copy; {new Date().getFullYear()} {siteConfig.shopName}. All rights reserved.</p>
         </div>
       </div>
     </footer>

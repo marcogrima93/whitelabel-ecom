@@ -7,7 +7,7 @@ import { siteConfig } from "../../../../site.config";
 
 export const metadata: Metadata = {
   title: "Products",
-  description: `Browse all products at ${siteConfig.name}`,
+  description: `Browse all products at ${siteConfig.shopName}`,
 };
 
 interface ProductsPageProps {

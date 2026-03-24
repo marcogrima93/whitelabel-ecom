@@ -56,7 +56,7 @@ export function Header() {
 
           {/* Logo */}
           <Link href="/" className="font-bold text-xl flex-shrink-0">
-            {siteConfig.name}
+            {siteConfig.shopName}
           </Link>
 
           {/* Desktop Nav */}

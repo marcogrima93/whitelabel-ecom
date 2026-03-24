@@ -8,7 +8,7 @@ import { siteConfig } from "../../site.config";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: { default: siteConfig.name, template: `%s | ${siteConfig.name}` },
+  title: { default: siteConfig.shopName, template: `%s | ${siteConfig.shopName}` },
   description: siteConfig.description,
 };
 
