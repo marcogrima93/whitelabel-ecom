@@ -18,14 +18,19 @@ export async function getDeliverySettings(): Promise<DeliverySettings | null> {
 export async function updateDeliverySettings(
   blockedDays: number[],
   blockedDates: string[]
-): Promise<boolean> {
+): Promise<{ ok: boolean; error?: string }> {
   const supabase = await createServiceRoleClient();
   const { error } = await supabase
     .from("delivery_settings")
-    .update({
+    .upsert({
+      id: 1,
       blocked_days: blockedDays,
       blocked_dates: blockedDates,
-    })
-    .eq("id", 1);
-  return !error;
+    }, { onConflict: "id" });
+
+  if (error) {
+    console.error("[v0] updateDeliverySettings error:", error.message, error.code, error.details);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
 }

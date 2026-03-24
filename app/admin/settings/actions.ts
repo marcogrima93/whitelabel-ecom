@@ -12,7 +12,12 @@ export async function saveDeliverySettingsAction(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Unauthorized" };
 
-  const ok = await updateDeliverySettings(blockedDays, blockedDates);
-  if (ok) revalidatePath("/admin/settings");
-  return ok ? { success: true } : { success: false, error: "Failed to save settings" };
+  const result = await updateDeliverySettings(blockedDays, blockedDates);
+  if (!result.ok) {
+    console.error("[v0] saveDeliverySettingsAction failed:", result.error);
+    return { success: false, error: result.error };
+  }
+
+  revalidatePath("/admin/settings");
+  return { success: true };
 }
