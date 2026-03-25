@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useCartStore, type CartItem } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
 import { calcTotal } from "@/lib/pricing";
@@ -23,6 +23,7 @@ interface CartDrawerProps {
 
 export function CartDrawer({ onClose }: CartDrawerProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getItemCount } =
     useCartStore();
 
@@ -121,7 +122,21 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
         <Button className="w-full" size="lg" onClick={handleCheckout}>
           Proceed to Checkout
         </Button>
-        <Button variant="outline" className="w-full" onClick={onClose}>
+        <Button variant="outline" className="w-full" asChild>
+          <Link href="/cart" onClick={onClose}>View Cart</Link>
+        </Button>
+        <Button
+          variant="ghost"
+          className="w-full"
+          onClick={() => {
+            if (pathname === "/products") {
+              onClose();
+            } else {
+              onClose();
+              router.push("/products");
+            }
+          }}
+        >
           Continue Shopping
         </Button>
       </SheetFooter>
