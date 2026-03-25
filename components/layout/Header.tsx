@@ -153,7 +153,7 @@ export function Header({ categories = [], isAdmin = false }: HeaderProps) {
                 <SheetHeader>
                   <SheetTitle className="text-left">{siteConfig.shopName}</SheetTitle>
                 </SheetHeader>
-                <nav className="mt-6 overflow-y-auto flex-1 max-h-[calc(100dvh-5rem)] pr-1" aria-label="Mobile navigation">
+                <nav className="mt-6 overflow-y-auto flex-1 max-h-[calc(100dvh-5rem)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Mobile navigation">
                   <ul className="space-y-1">
                     <li>
                       <Link href="/" onClick={() => setMobileOpen(false)} className="flex items-center justify-between py-3 px-2 rounded-md hover:bg-accent transition-colors">
