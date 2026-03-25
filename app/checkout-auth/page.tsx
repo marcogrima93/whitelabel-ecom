@@ -129,7 +129,7 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
         password: formData.password,
         options: {
           data: { name: formData.name, phone: formData.phone, role: "RETAIL" },
-          emailRedirectTo: `${window.location.origin}/checkout`,
+          emailRedirectTo: `${window.location.origin}/login?redirect=/checkout`,
         },
       });
       if (authError) { setError(authError.message); return; }
@@ -154,7 +154,7 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
           <p className="font-semibold">Check your email</p>
           <p className="text-sm text-muted-foreground mt-1">
             We sent a confirmation link to <span className="font-medium">{formData.email}</span>.
-            Click the link to verify and you&apos;ll be taken straight to checkout.
+            Click the link to verify your email — you&apos;ll then be taken to sign in and returned straight to checkout.
           </p>
         </div>
         {siteConfig.allowGuestCheckout && (

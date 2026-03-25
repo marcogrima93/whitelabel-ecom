@@ -45,6 +45,16 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Enforce login-required checkout when allowGuestCheckout is false
+  if (path === "/checkout" && !user) {
+    // Import is static — site.config is a plain TS module with no side effects
+    const { siteConfig } = await import("./site.config");
+    if (!siteConfig.allowGuestCheckout) {
+      url.pathname = "/checkout-auth";
+      return NextResponse.redirect(url);
+    }
+  }
+
   // Protect admin routes with role check
   if (path.startsWith("/admin")) {
     if (!user) {
