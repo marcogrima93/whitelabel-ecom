@@ -121,6 +121,17 @@ export type OrderItemUpdate = Partial<Omit<OrderItem, "id">>;
 export type QuoteRequestInsert = Omit<QuoteRequest, "id" | "created_at">;
 export type QuoteRequestUpdate = Partial<Omit<QuoteRequest, "id" | "created_at">>;
 
+export interface DiscountCode {
+  id: string;
+  code: string;
+  percentage: number;
+  active: boolean;
+  created_at: string;
+}
+
+export type DiscountCodeInsert = Omit<DiscountCode, "id" | "created_at">;
+export type DiscountCodeUpdate = Partial<Omit<DiscountCode, "id" | "created_at">>;
+
 // ── Supabase Database Type Map ──────────────────────────────────────────
 export interface Database {
   public: {
@@ -159,6 +170,12 @@ export interface Database {
         Row: QuoteRequest;
         Insert: QuoteRequestInsert;
         Update: QuoteRequestUpdate;
+        Relationships: [];
+      };
+      discount_codes: {
+        Row: DiscountCode;
+        Insert: DiscountCodeInsert;
+        Update: DiscountCodeUpdate;
         Relationships: [];
       };
     };

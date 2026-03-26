@@ -7,18 +7,17 @@ import { siteConfig } from "@/site.config";
 import { calcTotal } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
-import { Minus, Plus, Trash2, ShoppingBag, ArrowRight, Tag } from "lucide-react";
+import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
+import { DiscountInput } from "@/components/cart/DiscountInput";
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, clearCart } =
+  const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getDiscountAmount, discountCode, clearCart } =
     useCartStore();
-  const [discountCode, setDiscountCode] = useState("");
   const [notes, setNotes] = useState("");
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -26,8 +25,9 @@ export default function CartPage() {
   const { currency } = siteConfig;
 
   const subtotal = getSubtotal();
+  const discountAmount = getDiscountAmount();
   const vatAmount = getVatAmount();
-  const total = calcTotal(subtotal, 0);
+  const total = calcTotal(subtotal - discountAmount, 0);
 
   const handleCheckout = async () => {
     const { createClient } = await import("@/lib/supabase/client");
@@ -170,17 +170,7 @@ export default function CartPage() {
             <h2 className="font-bold text-lg">Order Summary</h2>
 
             {/* Discount code */}
-            <div className="flex gap-2">
-              <Input
-                placeholder="Discount code"
-                value={discountCode}
-                onChange={(e) => setDiscountCode(e.target.value)}
-                aria-label="Discount code"
-              />
-              <Button variant="outline" size="sm">
-                <Tag className="h-4 w-4" />
-              </Button>
-            </div>
+            <DiscountInput />
 
             <Separator />
 
@@ -189,6 +179,12 @@ export default function CartPage() {
                 <span className="text-muted-foreground">Subtotal</span>
                 <span>{formatPrice(subtotal, currency.code, currency.locale)}</span>
               </div>
+              {discountAmount > 0 && (
+                <div className="flex justify-between text-primary">
+                  <span>Discount ({discountCode})</span>
+                  <span>-{formatPrice(discountAmount, currency.code, currency.locale)}</span>
+                </div>
+              )}
               <div className="flex justify-between">
                 <span className="text-muted-foreground">
                     VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})
