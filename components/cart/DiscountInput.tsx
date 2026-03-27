@@ -14,16 +14,11 @@ interface DiscountInputProps {
 }
 
 export function DiscountInput({ className }: DiscountInputProps) {
-  const { discountCode, discountPercentage, discountAmount, setDiscount, clearDiscount, getDiscountAmount, getSubtotal } =
-    useCartStore((s) => ({
-      discountCode: s.discountCode,
-      discountPercentage: s.discountPercentage,
-      discountAmount: s.getDiscountAmount(),
-      setDiscount: s.setDiscount,
-      clearDiscount: s.clearDiscount,
-      getDiscountAmount: s.getDiscountAmount,
-      getSubtotal: s.getSubtotal,
-    }));
+  const discountCode = useCartStore((s) => s.discountCode);
+  const discountPercentage = useCartStore((s) => s.discountPercentage);
+  const setDiscount = useCartStore((s) => s.setDiscount);
+  const clearDiscount = useCartStore((s) => s.clearDiscount);
+  const discountAmount = useCartStore((s) => s.getDiscountAmount());
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

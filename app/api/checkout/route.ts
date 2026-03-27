@@ -24,6 +24,8 @@ export async function POST(req: Request) {
       deliverySlot,
       notes,
       paymentMethod,
+      discountCode,
+      discountAmount: clientDiscountAmount,
     } = await req.json();
 
     if (!items || items.length === 0) {
@@ -42,7 +44,8 @@ export async function POST(req: Request) {
     const storedEmail = isGuest ? `${customerEmail} (guest)` : customerEmail;
 
     const subtotal = items.reduce((acc: number, item: any) => acc + item.pricePerUnit * item.quantity, 0);
-    const vatAmount = calcVatAmount(subtotal);
+    const discountAmountValue = typeof clientDiscountAmount === "number" ? clientDiscountAmount : 0;
+    const vatAmount = calcVatAmount(subtotal - discountAmountValue);
 
     let deliveryFee = 0;
     if (deliveryMethod === "DELIVERY") {
@@ -54,7 +57,7 @@ export async function POST(req: Request) {
           : townConfig?.fee || siteConfig.delivery.towns[0]?.fee || 0;
     }
 
-    const total = calcTotal(subtotal, deliveryFee);
+    const total = calcTotal(subtotal - discountAmountValue, deliveryFee);
     const orderNumber = generateOrderNumber();
 
     const orderItems = items.map((item: any) => ({
@@ -79,6 +82,8 @@ export async function POST(req: Request) {
       total,
       notes: notes || null,
       items: orderItems,
+      discountCode: discountCode || undefined,
+      discountAmount: discountAmountValue || undefined,
     };
 
     // ── Cash on Delivery ─────────────────────────────────────────────────

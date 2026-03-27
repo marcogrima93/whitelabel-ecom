@@ -420,6 +420,8 @@ export default function CheckoutPage() {
           deliveryAddress,
           deliverySlot: `${formatDateLabel(deliveryForm.preferredDate)} - ${deliveryForm.deliverySlot}`,
           paymentMethod: "STRIPE",
+          discountCode: discountCode || null,
+          discountAmount: discountAmount || 0,
         }),
       });
       const data = await res.json();

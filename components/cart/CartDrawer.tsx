@@ -25,12 +25,14 @@ interface CartDrawerProps {
 export function CartDrawer({ onClose }: CartDrawerProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getItemCount, getDiscountAmount, discountCode } =
-    useCartStore();
-
-  const subtotal = getSubtotal();
-  const discountAmount = getDiscountAmount();
-  const vatAmount = getVatAmount();
+  const items = useCartStore((s) => s.items);
+  const removeItem = useCartStore((s) => s.removeItem);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const getItemCount = useCartStore((s) => s.getItemCount);
+  const discountCode = useCartStore((s) => s.discountCode);
+  const subtotal = useCartStore((s) => s.getSubtotal());
+  const discountAmount = useCartStore((s) => s.getDiscountAmount());
+  const vatAmount = useCartStore((s) => s.getVatAmount());
   const total = calcTotal(subtotal - discountAmount, 0);
   const { currency } = siteConfig;
 
