@@ -18,7 +18,13 @@ export function DiscountInput({ className }: DiscountInputProps) {
   const discountPercentage = useCartStore((s) => s.discountPercentage);
   const setDiscount = useCartStore((s) => s.setDiscount);
   const clearDiscount = useCartStore((s) => s.clearDiscount);
-  const discountAmount = useCartStore((s) => s.getDiscountAmount());
+  // Derive discount amount from stable primitives — avoids calling a function inside selector
+  const subtotal = useCartStore((s) =>
+    s.items.reduce((sum, item) => sum + item.pricePerUnit * item.quantity, 0)
+  );
+  const discountAmount = discountPercentage > 0
+    ? parseFloat(((subtotal * discountPercentage) / 100).toFixed(2))
+    : 0;
 
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);

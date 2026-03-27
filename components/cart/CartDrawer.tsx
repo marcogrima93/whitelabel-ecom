@@ -30,10 +30,21 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
   const updateQuantity = useCartStore((s) => s.updateQuantity);
   const getItemCount = useCartStore((s) => s.getItemCount);
   const discountCode = useCartStore((s) => s.discountCode);
-  const subtotal = useCartStore((s) => s.getSubtotal());
-  const discountAmount = useCartStore((s) => s.getDiscountAmount());
-  const vatAmount = useCartStore((s) => s.getVatAmount());
-  const total = calcTotal(subtotal - discountAmount, 0);
+  const discountPercentage = useCartStore((s) => s.discountPercentage);
+
+  // Derive totals from stable primitives only — never call functions inside selectors
+  const rawSubtotal = useCartStore((s) =>
+    s.items.reduce((sum, item) => sum + item.pricePerUnit * item.quantity, 0)
+  );
+  const discountAmount = discountPercentage > 0
+    ? parseFloat(((rawSubtotal * discountPercentage) / 100).toFixed(2))
+    : 0;
+  const subtotal = rawSubtotal;
+  const discountedSubtotal = subtotal - discountAmount;
+  const vatAmount = siteConfig.vatIncluded
+    ? discountedSubtotal - discountedSubtotal / (1 + siteConfig.vatRate)
+    : discountedSubtotal * siteConfig.vatRate;
+  const total = calcTotal(discountedSubtotal, 0);
   const { currency } = siteConfig;
 
   const handleCheckout = async () => {
