@@ -1084,6 +1084,12 @@ export default function CheckoutPage() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span>{formatPrice(subtotal, currency.code, currency.locale)}</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span>Discount ({discountCode})</span>
+                    <span>-{formatPrice(discountAmount, currency.code, currency.locale)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
                     VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})
