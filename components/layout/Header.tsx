@@ -29,6 +29,7 @@ import {
   BarChart3,
   Settings,
   ChevronDown,
+  Tag,
 } from "lucide-react";
 import { CartDrawer } from "@/components/cart/CartDrawer";
 import { cn } from "@/lib/utils";
@@ -39,6 +40,7 @@ const adminNavItems = [
   { label: "Catalogue", href: "/admin/catalogue", icon: LayoutGrid },
   { label: "Orders", href: "/admin/orders", icon: ShoppingCart },
   { label: "Customers", href: "/admin/customers", icon: Users },
+  { label: "Discount Codes", href: "/admin/discount-codes", icon: Tag },
   { label: "Reports", href: "/admin/reports", icon: BarChart3 },
   { label: "Settings", href: "/admin/settings", icon: Settings },
 ];

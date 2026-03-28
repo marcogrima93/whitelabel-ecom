@@ -6,7 +6,7 @@
 // ============================================================================
 
 import { createServerSupabaseClient, createServiceRoleClient } from "./server";
-import type { Order, OrderItem, Profile, Address, QuoteRequest, OrderStatus } from "./types";
+import type { Order, OrderItem, Profile, Address, QuoteRequest, OrderStatus, DiscountCode } from "./types";
 
 // ── Orders ──────────────────────────────────────────────────────────────
 
@@ -480,6 +480,55 @@ export async function getFeaturedCategories(): Promise<Category[]> {
   if (all.length <= 4) return all;
   const shuffled = [...all].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, 4);
+}
+
+// ── Discount Codes ─────────────────────────────────────────────────────
+
+export async function getDiscountCodes(): Promise<DiscountCode[]> {
+  const supabase = await createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("discount_codes")
+    .select("*")
+    .order("created_at", { ascending: false });
+  if (error) { console.error("Error fetching discount codes:", error); return []; }
+  return data || [];
+}
+
+export async function validateDiscountCode(code: string): Promise<DiscountCode | null> {
+  const supabase = await createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("discount_codes")
+    .select("*")
+    .ilike("code", code.trim())
+    .eq("active", true)
+    .single();
+  if (error || !data) return null;
+  return data;
+}
+
+export async function createDiscountCode(payload: { code: string; percentage: number; active: boolean }): Promise<DiscountCode | null> {
+  const supabase = await createServiceRoleClient();
+  const { data, error } = await supabase
+    .from("discount_codes")
+    .insert({ code: payload.code.toUpperCase().trim(), percentage: payload.percentage, active: payload.active })
+    .select()
+    .single();
+  if (error) { console.error("Error creating discount code:", error); return null; }
+  return data;
+}
+
+export async function updateDiscountCode(id: string, updates: { active?: boolean; percentage?: number }): Promise<boolean> {
+  const supabase = await createServiceRoleClient();
+  const { error } = await supabase.from("discount_codes").update(updates).eq("id", id);
+  if (error) { console.error("Error updating discount code:", error); return false; }
+  return true;
+}
+
+export async function deleteDiscountCode(id: string): Promise<boolean> {
+  const supabase = await createServiceRoleClient();
+  const { error } = await supabase.from("discount_codes").delete().eq("id", id);
+  if (error) { console.error("Error deleting discount code:", error); return false; }
+  return true;
 }
 
 // ── Dashboard Stats ─────────────────────────────────────────────────────

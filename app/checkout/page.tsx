@@ -114,7 +114,7 @@ const towns = siteConfig.delivery.towns;
 const defaultTown = towns[0]?.name || "";
 
 export default function CheckoutPage() {
-  const { items, getSubtotal, getVatAmount, clearCart } = useCartStore();
+  const { items, getSubtotal, getVatAmount, getDiscountAmount, discountCode, discountPercentage, clearCart } = useCartStore();
   const router = useRouter();
   const { currency } = siteConfig;
 
@@ -234,7 +234,8 @@ export default function CheckoutPage() {
   const selectedAddress = savedAddresses.find((a) => a.id === selectedAddressId);
 
   const subtotal = getSubtotal();
-  const vatAmount = getVatAmount();
+  const discountAmount = getDiscountAmount();
+  const vatAmount = getVatAmount(); // already computed on discounted subtotal
 
   const deliveryTownFee = (() => {
     if (deliveryType === "COLLECTION") return 0;
@@ -257,7 +258,7 @@ export default function CheckoutPage() {
     }
   }, [mounted, items.length, step, router]);
 
-  const total = calcTotal(subtotal, deliveryTownFee);
+  const total = calcTotal(subtotal - discountAmount, deliveryTownFee);
 
   // Show a consistent skeleton until hydrated (avoids server/client mismatch)
   if (!mounted) {
@@ -380,6 +381,8 @@ export default function CheckoutPage() {
             deliveryAddress,
             deliverySlot: `${formatDateLabel(deliveryForm.preferredDate)} - ${deliveryForm.deliverySlot}`,
             paymentMethod: "CASH",
+            discountCode: discountCode || null,
+            discountAmount: discountAmount || 0,
           }),
         });
         const data = await res.json();
@@ -417,6 +420,8 @@ export default function CheckoutPage() {
           deliveryAddress,
           deliverySlot: `${formatDateLabel(deliveryForm.preferredDate)} - ${deliveryForm.deliverySlot}`,
           paymentMethod: "STRIPE",
+          discountCode: discountCode || null,
+          discountAmount: discountAmount || 0,
         }),
       });
       const data = await res.json();
@@ -1079,6 +1084,12 @@ export default function CheckoutPage() {
                   <span className="text-muted-foreground">Subtotal</span>
                   <span>{formatPrice(subtotal, currency.code, currency.locale)}</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-primary">
+                    <span>Discount ({discountCode})</span>
+                    <span>-{formatPrice(discountAmount, currency.code, currency.locale)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
                     VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})

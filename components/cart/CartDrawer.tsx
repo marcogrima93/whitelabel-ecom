@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
+import { DiscountInput } from "@/components/cart/DiscountInput";
 
 interface CartDrawerProps {
   onClose: () => void;
@@ -24,12 +25,26 @@ interface CartDrawerProps {
 export function CartDrawer({ onClose }: CartDrawerProps) {
   const router = useRouter();
   const pathname = usePathname();
-  const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getItemCount } =
-    useCartStore();
+  const items = useCartStore((s) => s.items);
+  const removeItem = useCartStore((s) => s.removeItem);
+  const updateQuantity = useCartStore((s) => s.updateQuantity);
+  const getItemCount = useCartStore((s) => s.getItemCount);
+  const discountCode = useCartStore((s) => s.discountCode);
+  const discountPercentage = useCartStore((s) => s.discountPercentage);
 
-  const subtotal = getSubtotal();
-  const vatAmount = getVatAmount();
-  const total = calcTotal(subtotal, 0);
+  // Derive totals from stable primitives only — never call functions inside selectors
+  const rawSubtotal = useCartStore((s) =>
+    s.items.reduce((sum, item) => sum + item.pricePerUnit * item.quantity, 0)
+  );
+  const discountAmount = discountPercentage > 0
+    ? parseFloat(((rawSubtotal * discountPercentage) / 100).toFixed(2))
+    : 0;
+  const subtotal = rawSubtotal;
+  const discountedSubtotal = subtotal - discountAmount;
+  const vatAmount = siteConfig.vatIncluded
+    ? discountedSubtotal - discountedSubtotal / (1 + siteConfig.vatRate)
+    : discountedSubtotal * siteConfig.vatRate;
+  const total = calcTotal(discountedSubtotal, 0);
   const { currency } = siteConfig;
 
   const handleCheckout = async () => {
@@ -91,15 +106,26 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
 
       <Separator />
 
+      {/* Discount code input */}
+      <div className="py-3">
+        <DiscountInput />
+      </div>
+
       {/* Totals */}
-      <div className="space-y-2 py-4 text-sm">
+      <div className="space-y-2 pb-4 text-sm">
         <div className="flex justify-between">
           <span className="text-muted-foreground">Subtotal</span>
           <span>{formatPrice(subtotal, currency.code, currency.locale)}</span>
         </div>
+        {discountAmount > 0 && (
+          <div className="flex justify-between text-primary">
+            <span>Discount ({discountCode})</span>
+            <span>-{formatPrice(discountAmount, currency.code, currency.locale)}</span>
+          </div>
+        )}
         <div className="flex justify-between">
           <span className="text-muted-foreground">
-                    VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})
+            VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})
           </span>
           <span>{formatPrice(vatAmount, currency.code, currency.locale)}</span>
         </div>
