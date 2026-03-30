@@ -42,7 +42,16 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
   if (filters?.dynamicFilters) {
     for (const [field, values] of Object.entries(filters.dynamicFilters)) {
       if (values.length > 0) {
-        query = query.in(field, values);
+        // filter_field stores a JSON object e.g. {"cut":"ribeye","grade":"A5"}
+        // Use Postgres containment: filter_field_json @> '{"field":"value"}'
+        // We OR across values within the same field, AND across fields.
+        // Since we can't do OR containment in a single .filter(), we use
+        // the cs (contains) operator on the jsonb-cast column via raw filter.
+        // For simplicity with TEXT column: use ilike matching on the serialised JSON.
+        const orConditions = values
+          .map((v) => `filter_field.ilike.%"${field}":"${v}"%`)
+          .join(",");
+        query = query.or(orConditions);
       }
     }
   }
@@ -196,7 +205,14 @@ function applyFiltersToMock(products: Product[], filters?: ProductFilters): Prod
   if (filters?.dynamicFilters) {
     for (const [field, values] of Object.entries(filters.dynamicFilters)) {
       if (values.length > 0) {
-        result = result.filter((p) => values.includes((p as Record<string, unknown>)[field] as string));
+        result = result.filter((p) => {
+          try {
+            const parsed = JSON.parse(p.filter_field || "{}") as Record<string, string>;
+            return values.includes(parsed[field]);
+          } catch {
+            return false;
+          }
+        });
       }
     }
   }

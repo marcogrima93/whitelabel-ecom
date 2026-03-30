@@ -260,12 +260,14 @@ export function FilterSidebar(props: FilterSidebarProps) {
 export function MobileFilterSheet(props: FilterSidebarProps) {
   const [open, setOpen] = useState(false);
 
+  const safeActiveFilters = props.activeFilters ?? {};
+
   const hasActiveFilters =
     props.currentCategory ||
     props.currentSearch ||
-    Object.values(props.activeFilters).some((v) => v.length > 0);
+    Object.values(safeActiveFilters).some((v) => v.length > 0);
 
-  const activeFilterCount = Object.values(props.activeFilters).reduce(
+  const activeFilterCount = Object.values(safeActiveFilters).reduce(
     (sum, vals) => sum + vals.length,
     0
   );

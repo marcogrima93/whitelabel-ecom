@@ -29,7 +29,7 @@ import { archiveProductAction, upsertProductAction } from "./actions";
 import { ImageUpload } from "@/components/ui/image-upload";
 
 interface Category { id: string; name: string; slug: string; }
-interface ProductFilter { id: string; label: string; options: string[]; }
+interface ProductFilter { id: string; label: string; field: string; options: string[]; }
 
 interface Props {
   initialProducts: Product[];
@@ -42,7 +42,7 @@ const EMPTY_FORM = {
   slug: "",
   description: "",
   category: "",
-  filter_field: "none",
+  filter_values: {} as Record<string, string>, // field -> selected option value
   retail_price: "",
   wholesale_price: "",
   stock_status: "IN_STOCK" as Product["stock_status"],
@@ -78,12 +78,21 @@ export default function AdminProductsClient({ initialProducts, categories, produ
     setFormError("");
     if (product) {
       setEditingProduct(product);
+      // Parse stored JSON filter values e.g. '{"cut":"ribeye","grade":"A5"}'
+      let filter_values: Record<string, string> = {};
+      try {
+        if (product.filter_field) {
+          filter_values = JSON.parse(product.filter_field);
+        }
+      } catch {
+        // legacy plain text value — ignore
+      }
       setForm({
         name: product.name,
         slug: product.slug,
         description: product.description,
         category: product.category,
-        filter_field: product.filter_field || "none",
+        filter_values,
         retail_price: String(product.retail_price),
         wholesale_price: String(product.wholesale_price ?? ""),
         stock_status: product.stock_status,
