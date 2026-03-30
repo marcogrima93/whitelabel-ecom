@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -32,14 +33,15 @@ interface Category { id: string; name: string; slug: string; }
 
 interface FilterSidebarProps {
   currentCategory?: string;
-  /** Map of field → single selected value (one per group) */
-  activeFilters: Record<string, string>;
+  /** Map of field → selected values (parsed from URL params by the page) */
+  activeFilters: Record<string, string[]>;
   currentSort?: string;
   currentSearch?: string;
   categories: Category[];
   productFilters: ProductFilter[];
 }
 
+// ── shared hook for URL manipulation ──────────────────────────────────────────
 function useFilterActions(onNavigate?: () => void) {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -52,15 +54,15 @@ function useFilterActions(onNavigate?: () => void) {
     onNavigate?.();
   };
 
-  /** Toggle a single-select filter: selecting the same value deselects it */
-  const setDynamicFilter = (field: string, value: string) => {
+  const toggleDynamicFilter = (field: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
     const key = `flt_${field}`;
-    if (params.get(key) === value) {
-      params.delete(key);
-    } else {
-      params.set(key, value);
-    }
+    const existing = (params.get(key) ?? "").split(",").filter(Boolean);
+    const next = existing.includes(value)
+      ? existing.filter((v) => v !== value)
+      : [...existing, value];
+    if (next.length > 0) params.set(key, next.join(","));
+    else params.delete(key);
     router.push(`/products?${params.toString()}`);
     onNavigate?.();
   };
@@ -70,9 +72,10 @@ function useFilterActions(onNavigate?: () => void) {
     onNavigate?.();
   };
 
-  return { setParam, setDynamicFilter, clearFilters };
+  return { setParam, toggleDynamicFilter, clearFilters };
 }
 
+// ── Shared filter content ──────────────────────────────────────────────────────
 function FilterContent({
   currentCategory,
   activeFilters,
@@ -82,16 +85,18 @@ function FilterContent({
   productFilters,
   onNavigate,
 }: FilterSidebarProps & { onNavigate?: () => void }) {
-  const { setParam, setDynamicFilter, clearFilters } = useFilterActions(onNavigate);
-
-  const safeFilters = activeFilters ?? {};
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const { setParam, toggleDynamicFilter, clearFilters } = useFilterActions(onNavigate);
 
   const hasActiveFilters =
-    !!currentCategory ||
-    !!currentSearch ||
-    Object.keys(safeFilters).length > 0;
+    currentCategory ||
+    currentSearch ||
+    Object.values(activeFilters).some((v) => v.length > 0);
 
-  const activeFilterCount = Object.keys(safeFilters).length;
+  const activeFilterCount = Object.values(activeFilters).reduce(
+    (sum, vals) => sum + vals.length,
+    0
+  );
 
   return (
     <div className="space-y-1">
@@ -100,15 +105,18 @@ function FilterContent({
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            const q = (new FormData(e.currentTarget).get("q") as string) || "";
+            const formData = new FormData(e.currentTarget);
+            const q = formData.get("q") as string;
             setParam("q", q || null);
           }}
         >
           <Input
+            ref={searchInputRef}
             name="q"
             placeholder="Search products..."
             defaultValue={currentSearch || ""}
             aria-label="Search products"
+            autoFocus={false}
           />
         </form>
       </div>
@@ -145,13 +153,11 @@ function FilterContent({
           <AccordionItem value="category">
             <AccordionTrigger className="text-sm font-semibold">Category</AccordionTrigger>
             <AccordionContent>
-              <div className="space-y-1">
+              <div className="space-y-2">
                 <button
                   onClick={() => setParam("category", null)}
                   className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
-                    !currentCategory
-                      ? "bg-primary text-primary-foreground font-medium"
-                      : "hover:bg-accent"
+                    !currentCategory ? "bg-primary text-primary-foreground" : "hover:bg-accent"
                   }`}
                 >
                   All Categories
@@ -162,7 +168,7 @@ function FilterContent({
                     onClick={() => setParam("category", cat.slug)}
                     className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
                       currentCategory === cat.slug
-                        ? "bg-primary text-primary-foreground font-medium"
+                        ? "bg-primary text-primary-foreground"
                         : "hover:bg-accent"
                     }`}
                   >
@@ -174,36 +180,41 @@ function FilterContent({
           </AccordionItem>
         )}
 
-        {/* Dynamic single-select filter groups */}
+        {/* Dynamic filter groups */}
         {productFilters.map((group) => {
           if (group.options.length === 0) return null;
-          const selected = activeFilters[group.field] ?? null;
+          const selected = activeFilters[group.field] ?? [];
           return (
             <AccordionItem key={group.id} value={group.id}>
               <AccordionTrigger className="text-sm font-semibold">
                 <span className="flex items-center gap-2">
                   {group.label}
-                  {selected && (
-                    <span className="h-2 w-2 rounded-full bg-primary" aria-hidden="true" />
+                  {selected.length > 0 && (
+                    <span className="h-4 w-4 rounded-full bg-primary text-primary-foreground text-[10px] flex items-center justify-center font-bold">
+                      {selected.length}
+                    </span>
                   )}
                 </span>
               </AccordionTrigger>
               <AccordionContent>
-                <div className="space-y-1">
+                <div className="space-y-2.5">
                   {group.options.map((opt) => {
-                    const isActive = selected === opt;
+                    const checked = selected.includes(opt);
+                    const id = `filter-${group.field}-${opt}`;
                     return (
-                      <button
-                        key={opt}
-                        onClick={() => setDynamicFilter(group.field, opt)}
-                        className={`block text-sm w-full text-left px-2 py-1.5 rounded-md transition-colors ${
-                          isActive
-                            ? "bg-primary text-primary-foreground font-medium"
-                            : "hover:bg-accent"
-                        }`}
-                      >
-                        {opt}
-                      </button>
+                      <div key={opt} className="flex items-center gap-2">
+                        <Checkbox
+                          id={id}
+                          checked={checked}
+                          onCheckedChange={() => toggleDynamicFilter(group.field, opt)}
+                        />
+                        <Label
+                          htmlFor={id}
+                          className="text-sm font-normal cursor-pointer leading-none"
+                        >
+                          {opt}
+                        </Label>
+                      </div>
                     );
                   })}
                 </div>
@@ -213,7 +224,7 @@ function FilterContent({
         })}
       </Accordion>
 
-      {safeFilters && (
+      {hasActiveFilters && (
         <Button
           variant="ghost"
           size="sm"
@@ -249,14 +260,15 @@ export function FilterSidebar(props: FilterSidebarProps) {
 export function MobileFilterSheet(props: FilterSidebarProps) {
   const [open, setOpen] = useState(false);
 
-  const safeFilters = props.activeFilters ?? {};
-
   const hasActiveFilters =
-    !!props.currentCategory ||
-    !!props.currentSearch ||
-    Object.keys(safeFilters).length > 0;
+    props.currentCategory ||
+    props.currentSearch ||
+    Object.values(props.activeFilters).some((v) => v.length > 0);
 
-  const activeFilterCount = Object.keys(safeFilters).length;
+  const activeFilterCount = Object.values(props.activeFilters).reduce(
+    (sum, vals) => sum + vals.length,
+    0
+  );
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>

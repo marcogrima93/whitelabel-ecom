@@ -20,13 +20,13 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const params = await searchParams;
   const supabase = await createServiceRoleClient();
 
-  // Parse dynamic filter params: ?flt_<field>=singleValue (one value per group)
-  const activeFilters: Record<string, string> = {};
+  // Parse dynamic filter params: ?flt_<field>=val1,val2
+  const activeFilters: Record<string, string[]> = {};
   for (const [key, raw] of Object.entries(params)) {
     if (key.startsWith("flt_") && raw) {
       const field = key.slice(4); // strip "flt_"
-      const value = String(raw).trim();
-      if (value) activeFilters[field] = value;
+      const values = String(raw).split(",").map((v) => v.trim()).filter(Boolean);
+      if (values.length > 0) activeFilters[field] = values;
     }
   }
 
@@ -37,10 +37,7 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
   const [products, { data: categories }, { data: productFilters }] = await Promise.all([
     getProducts({
       category,
-      // Wrap each single selected value into a one-element array for the data layer
-      dynamicFilters: Object.keys(activeFilters).length > 0
-        ? Object.fromEntries(Object.entries(activeFilters).map(([k, v]) => [k, [v]]))
-        : undefined,
+      dynamicFilters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
       sort: (sort as "featured" | "price_asc" | "price_desc" | "newest") || undefined,
       search,
     }),
