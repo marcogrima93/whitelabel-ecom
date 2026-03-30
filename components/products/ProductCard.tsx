@@ -81,13 +81,6 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
                 {stockBadge()}
               </div>
 
-              {/* Filter badge — hidden on mobile */}
-              {product.filter_field && (
-                <Badge variant="secondary" className="hidden sm:flex absolute top-3 right-3 z-10">
-                  {product.filter_field}
-                </Badge>
-              )}
-
               {/* Hover overlay with actions */}
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors duration-300 flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
                 <DialogTrigger asChild>
@@ -142,7 +135,7 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>{product.name}</DialogTitle>
-          <DialogDescription>{product.filter_field}</DialogDescription>
+          <DialogDescription>{categoryName ?? product.category}</DialogDescription>
         </DialogHeader>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Image */}

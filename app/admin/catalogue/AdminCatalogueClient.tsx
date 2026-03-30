@@ -46,8 +46,9 @@ interface Category {
 interface FilterGroup {
   id: string;
   label: string;
+  field: string;
   options: string[];
-  position?: number;
+  sort_order?: number;
 }
 
 interface Props {
@@ -102,14 +103,16 @@ export default function AdminCatalogueClient({
   // ── Filter group form state ─────────────────────────────────────────
   const [groupDialogOpen, setGroupDialogOpen] = useState(false);
   const [groupLabel, setGroupLabel] = useState("");
+  const [groupField, setGroupField] = useState("");
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
 
   const handleGroupSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     startTransition(async () => {
-      const row = await addFilterGroupAction({ label: groupLabel });
+      const row = await addFilterGroupAction({ label: groupLabel, field: groupField });
       if (row) setFilterGroups((prev) => [...prev, row]);
       setGroupLabel("");
+      setGroupField("");
       setGroupDialogOpen(false);
     });
   };
@@ -322,6 +325,19 @@ export default function AdminCatalogueClient({
                   <p className="text-xs text-muted-foreground">
                     This label appears as the filter heading in the storefront sidebar.
                   </p>
+                  <div className="pt-2 space-y-2">
+                    <Label htmlFor="group-field">Product Field</Label>
+                    <Input
+                      id="group-field"
+                      value={groupField}
+                      onChange={(e) => setGroupField(e.target.value.toLowerCase().replace(/\s+/g, "_"))}
+                      placeholder="e.g. filter_field, cut, grade"
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      The column on the product that this filter targets (e.g. <code>filter_field</code>). Use lowercase with underscores.
+                    </p>
+                  </div>
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={isPending}>
@@ -354,6 +370,7 @@ export default function AdminCatalogueClient({
                       >
                         <ChevronRight className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? "rotate-90" : ""}`} />
                         <CardTitle className="text-base">{group.label}</CardTitle>
+                        <Badge variant="outline" className="text-xs font-mono">{group.field}</Badge>
                         <Badge variant="outline" className="text-xs">{group.options.length} options</Badge>
                       </button>
                       <Button
