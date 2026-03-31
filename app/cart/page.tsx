@@ -11,14 +11,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { DiscountInput } from "@/components/cart/DiscountInput";
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getDiscountAmount, discountCode, clearCart } =
+  const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getDiscountAmount, discountCode, clearCart, additionalNotes, setAdditionalNotes } =
     useCartStore();
-  const [notes, setNotes] = useState("");
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -157,8 +156,8 @@ export default function CartPage() {
             <Textarea
               id="order-notes"
               placeholder="Any special instructions for your order..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={additionalNotes}
+              onChange={(e) => setAdditionalNotes(e.target.value)}
               rows={3}
             />
           </div>

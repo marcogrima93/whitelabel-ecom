@@ -19,7 +19,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Eye, Search, Inbox, Loader2, MapPin, Clock, CreditCard, Banknote } from "lucide-react";
+import { Eye, Search, Inbox, Loader2, MapPin, Clock, CreditCard, Banknote, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
@@ -299,12 +299,16 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
               )}
 
               {/* Notes */}
-              {selectedOrder.notes && (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Notes</p>
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                  <FileText className="h-3 w-3" /> Order Notes
+                </p>
+                {selectedOrder.notes ? (
                   <p className="text-sm bg-muted/50 rounded-lg p-3">{selectedOrder.notes}</p>
-                </div>
-              )}
+                ) : (
+                  <p className="text-sm text-muted-foreground italic">No notes</p>
+                )}
+              </div>
 
               <Separator />
 
