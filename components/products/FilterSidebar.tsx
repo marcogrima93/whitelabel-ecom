@@ -64,7 +64,7 @@ function useFilterActions(onNavigate?: () => void) {
     if (next.length > 0) params.set(key, next.join(","));
     else params.delete(key);
     router.push(`/products?${params.toString()}`);
-    onNavigate?.();
+    // intentionally NOT calling onNavigate() here — keep sheet open for multi-select
   };
 
   const clearFilters = () => {
