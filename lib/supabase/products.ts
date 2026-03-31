@@ -42,14 +42,15 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
   if (filters?.dynamicFilters) {
     for (const [field, values] of Object.entries(filters.dynamicFilters)) {
       if (values.length > 0) {
-        // filter_field stores a JSON object e.g. {"cut":"ribeye","grade":"A5"}
-        // Use Postgres containment: filter_field_json @> '{"field":"value"}'
-        // We OR across values within the same field, AND across fields.
-        // Since we can't do OR containment in a single .filter(), we use
-        // the cs (contains) operator on the jsonb-cast column via raw filter.
-        // For simplicity with TEXT column: use ilike matching on the serialised JSON.
+        // filter_field stores JSON e.g. {"cut":"ribeye","grade":"A5"}
+        // OR within a group (same field, multiple values), AND across groups (chained).
+        // Use ilike with exact value boundaries: "field":"value" followed by " or }
         const orConditions = values
-          .map((v) => `filter_field.ilike.%"${field}":"${v}"%`)
+          .map((v) => {
+            // Match exact key:value pair — value ends with either `"` followed by `,` or `}`
+            const escaped = v.replace(/["%]/g, "\\$&");
+            return `filter_field.ilike.*"${field}":"${escaped}*`;
+          })
           .join(",");
         query = query.or(orConditions);
       }
