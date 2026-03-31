@@ -133,6 +133,19 @@ export type DiscountCodeInsert = Omit<DiscountCode, "id" | "created_at">;
 export type DiscountCodeUpdate = Partial<Omit<DiscountCode, "id" | "created_at">>;
 
 // ── Supabase Database Type Map ──────────────────────────────────────────
+export interface ProductFilter {
+  id: string;
+  label: string;
+  field: string;
+  options: string[];
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export type ProductFilterInsert = Omit<ProductFilter, "id" | "created_at" | "updated_at">;
+export type ProductFilterUpdate = Partial<Omit<ProductFilter, "id" | "created_at" | "updated_at">>;
+
 export interface Database {
   public: {
     Tables: {

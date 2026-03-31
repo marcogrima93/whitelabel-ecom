@@ -52,11 +52,12 @@ export async function deleteCategoryAction(id: string): Promise<boolean> {
 
 export async function addFilterGroupAction(data: {
   label: string;
-}): Promise<{ id: string; label: string; options: string[] } | null> {
+  field: string;
+}): Promise<{ id: string; label: string; field: string; options: string[] } | null> {
   const supabase = await createServiceRoleClient();
   const { data: row, error } = await supabase
     .from("product_filters")
-    .insert({ label: data.label, options: [] })
+    .insert({ label: data.label, field: data.field, options: [] })
     .select()
     .single();
   if (error) { console.error(error); return null; }

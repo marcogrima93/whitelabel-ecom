@@ -12,7 +12,9 @@ const isSupabaseConfigured = () =>
 
 export interface ProductFilters {
   category?: string;
-  filterField?: string;
+  /** Dynamic filters from product_filters table: { fieldName: ["val1","val2"] }
+   *  AND logic across fields, OR logic within each field's values. */
+  dynamicFilters?: Record<string, string[]>;
   search?: string;
   inStockOnly?: boolean;
   minPrice?: number;
@@ -37,8 +39,22 @@ export async function getProducts(filters?: ProductFilters): Promise<Product[]> 
     query = query.eq("category", filters.category);
   }
 
-  if (filters?.filterField) {
-    query = query.eq("filter_field", filters.filterField);
+  if (filters?.dynamicFilters) {
+    for (const [field, values] of Object.entries(filters.dynamicFilters)) {
+      if (values.length > 0) {
+        // filter_field stores JSON e.g. {"cut":"ribeye","grade":"A5"}
+        // OR within a group (same field, multiple values), AND across groups (chained).
+        // Use ilike with exact value boundaries: "field":"value" followed by " or }
+        const orConditions = values
+          .map((v) => {
+            // Match exact key:value pair — value ends with either `"` followed by `,` or `}`
+            const escaped = v.replace(/["%]/g, "\\$&");
+            return `filter_field.ilike.*"${field}":"${escaped}*`;
+          })
+          .join(",");
+        query = query.or(orConditions);
+      }
+    }
   }
 
   if (filters?.search) {
@@ -187,8 +203,19 @@ function applyFiltersToMock(products: Product[], filters?: ProductFilters): Prod
     result = result.filter((p) => p.category === filters.category);
   }
 
-  if (filters?.filterField) {
-    result = result.filter((p) => p.filter_field === filters.filterField);
+  if (filters?.dynamicFilters) {
+    for (const [field, values] of Object.entries(filters.dynamicFilters)) {
+      if (values.length > 0) {
+        result = result.filter((p) => {
+          try {
+            const parsed = JSON.parse(p.filter_field || "{}") as Record<string, string>;
+            return values.includes(parsed[field]);
+          } catch {
+            return false;
+          }
+        });
+      }
+    }
   }
 
   if (filters?.search) {

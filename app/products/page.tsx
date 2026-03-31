@@ -13,33 +13,43 @@ export const metadata: Metadata = {
 };
 
 interface ProductsPageProps {
-  searchParams: Promise<{
-    category?: string;
-    filter?: string;
-    sort?: string;
-    q?: string;
-  }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 export default async function ProductsPage({ searchParams }: ProductsPageProps) {
   const params = await searchParams;
   const supabase = await createServiceRoleClient();
 
+  // Parse dynamic filter params: ?flt_<field>=val1,val2
+  const activeFilters: Record<string, string[]> = {};
+  for (const [key, raw] of Object.entries(params)) {
+    if (key.startsWith("flt_") && raw) {
+      const field = key.slice(4); // strip "flt_"
+      const values = String(raw).split(",").map((v) => v.trim()).filter(Boolean);
+      if (values.length > 0) activeFilters[field] = values;
+    }
+  }
+
+  const category = typeof params.category === "string" ? params.category : undefined;
+  const sort = typeof params.sort === "string" ? params.sort : undefined;
+  const search = typeof params.q === "string" ? params.q : undefined;
+
   const [products, { data: categories }, { data: productFilters }] = await Promise.all([
     getProducts({
-      category: params.category,
-      filterField: params.filter,
-      sort: (params.sort as "featured" | "price_asc" | "price_desc" | "newest") || undefined,
-      search: params.q,
+      category,
+      dynamicFilters: Object.keys(activeFilters).length > 0 ? activeFilters : undefined,
+      sort: (sort as "featured" | "price_asc" | "price_desc" | "newest") || undefined,
+      search,
     }),
     supabase.from("categories").select("*"),
-    supabase.from("product_filters").select("*"),
+    supabase.from("product_filters").select("*").order("sort_order", { ascending: true }),
   ]);
 
   const resolvedCategories = categories ?? [];
+  const resolvedFilters = productFilters ?? [];
 
-  const categoryName = params.category
-    ? resolvedCategories.find((c) => c.slug === params.category)?.name
+  const categoryName = category
+    ? resolvedCategories.find((c) => c.slug === category)?.name
     : null;
 
   return (
@@ -63,15 +73,15 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         </p>
       </div>
 
-      {/* Mobile: filter button row + sort row */}
+      {/* Mobile: filter button row */}
       <div className="lg:hidden mb-4 flex items-center gap-3">
         <MobileFilterSheet
-          currentCategory={params.category}
-          currentFilter={params.filter}
-          currentSort={params.sort}
-          currentSearch={params.q}
+          currentCategory={category}
+          activeFilters={activeFilters}
+          currentSort={sort}
+          currentSearch={search}
           categories={resolvedCategories}
-          productFilters={productFilters ?? []}
+          productFilters={resolvedFilters}
         />
         <p className="text-sm text-muted-foreground ml-auto">
           {products.length} item{products.length !== 1 ? "s" : ""}
@@ -83,12 +93,12 @@ export default async function ProductsPage({ searchParams }: ProductsPageProps) 
         <Suspense fallback={<div className="hidden lg:block w-64 shrink-0" />}>
           <div className="hidden lg:block">
             <FilterSidebar
-              currentCategory={params.category}
-              currentFilter={params.filter}
-              currentSort={params.sort}
-              currentSearch={params.q}
+              currentCategory={category}
+              activeFilters={activeFilters}
+              currentSort={sort}
+              currentSearch={search}
               categories={resolvedCategories}
-              productFilters={productFilters ?? []}
+              productFilters={resolvedFilters}
             />
           </div>
         </Suspense>

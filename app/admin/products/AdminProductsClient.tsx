@@ -29,7 +29,7 @@ import { archiveProductAction, upsertProductAction } from "./actions";
 import { ImageUpload } from "@/components/ui/image-upload";
 
 interface Category { id: string; name: string; slug: string; }
-interface ProductFilter { id: string; label: string; options: string[]; }
+interface ProductFilter { id: string; label: string; field: string; options: string[]; }
 
 interface Props {
   initialProducts: Product[];
@@ -42,7 +42,7 @@ const EMPTY_FORM = {
   slug: "",
   description: "",
   category: "",
-  filter_field: "none",
+  filter_values: {} as Record<string, string>, // field -> selected option value
   retail_price: "",
   wholesale_price: "",
   stock_status: "IN_STOCK" as Product["stock_status"],
@@ -78,12 +78,21 @@ export default function AdminProductsClient({ initialProducts, categories, produ
     setFormError("");
     if (product) {
       setEditingProduct(product);
+      // Parse stored JSON filter values e.g. '{"cut":"ribeye","grade":"A5"}'
+      let filter_values: Record<string, string> = {};
+      try {
+        if (product.filter_field) {
+          filter_values = JSON.parse(product.filter_field);
+        }
+      } catch {
+        // legacy plain text value — ignore
+      }
       setForm({
         name: product.name,
         slug: product.slug,
         description: product.description,
         category: product.category,
-        filter_field: product.filter_field || "none",
+        filter_values,
         retail_price: String(product.retail_price),
         wholesale_price: String(product.wholesale_price ?? ""),
         stock_status: product.stock_status,
@@ -116,12 +125,18 @@ export default function AdminProductsClient({ initialProducts, categories, produ
     e.preventDefault();
     setFormError("");
     startTransition(async () => {
+      // Serialise the per-group filter selections to JSON, omitting empty values
+      const cleanedFilterValues = Object.fromEntries(
+        Object.entries(form.filter_values).filter(([, v]) => v && v !== "__none__")
+      );
       const payload = {
         name: form.name,
         slug: form.slug || autoSlug(form.name),
         description: form.description,
         category: form.category,
-        filter_field: form.filter_field === "none" ? "" : form.filter_field,
+        filter_field: Object.keys(cleanedFilterValues).length > 0
+          ? JSON.stringify(cleanedFilterValues)
+          : "",
         retail_price: parseFloat(form.retail_price) || 0,
         wholesale_price: parseFloat(form.wholesale_price) || 0,
         stock_status: form.stock_status,
@@ -157,9 +172,6 @@ export default function AdminProductsClient({ initialProducts, categories, produ
 
   const getCategoryName = (slug: string) =>
     categories.find((c) => c.slug === slug)?.name ?? slug;
-
-  // All filter options flattened for the filter_field select
-  const allFilterOptions = productFilters.flatMap((g) => g.options);
 
   const filtered = products.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
@@ -245,7 +257,15 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                           </div>
                           <div>
                             <p className="font-medium">{product.name}</p>
-                            <p className="text-xs text-muted-foreground">{product.filter_field}</p>
+                            {product.filter_field && (() => {
+                              try {
+                                const vals = JSON.parse(product.filter_field) as Record<string, string>;
+                                const summary = Object.values(vals).filter(Boolean).join(" · ");
+                                return summary ? <p className="text-xs text-muted-foreground">{summary}</p> : null;
+                              } catch {
+                                return <p className="text-xs text-muted-foreground">{product.filter_field}</p>;
+                              }
+                            })()}
                           </div>
                         </div>
                       </td>
@@ -340,7 +360,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                 />
               </div>
 
-              {/* Category + Filter Field */}
+              {/* Category */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="p-cat">Category *</Label>
@@ -355,23 +375,42 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="p-filter">
-                    {productFilters[0]?.label ?? "Filter"} (optional)
-                  </Label>
-                  <Select value={form.filter_field} onValueChange={(v) => update("filter_field", v)}>
-                    <SelectTrigger id="p-filter">
-                      <SelectValue placeholder="Select filter value" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">— None —</SelectItem>
-                      {allFilterOptions.map((opt) => (
-                        <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
+
+              {/* Dynamic filter group selects — one per group */}
+              {productFilters.length > 0 && (
+                <div className="space-y-3">
+                  <Label>Filter Attributes</Label>
+                  <div className="grid grid-cols-2 gap-4">
+                    {productFilters.map((group) => (
+                      <div key={group.id} className="space-y-2">
+                        <Label htmlFor={`p-filter-${group.field}`} className="text-sm font-normal text-muted-foreground">
+                          {group.label}
+                        </Label>
+                        <Select
+                          value={form.filter_values[group.field] ?? "__none__"}
+                          onValueChange={(v) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              filter_values: { ...prev.filter_values, [group.field]: v },
+                            }))
+                          }
+                        >
+                          <SelectTrigger id={`p-filter-${group.field}`}>
+                            <SelectValue placeholder={`Select ${group.label}`} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— None —</SelectItem>
+                            {group.options.map((opt) => (
+                              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               {/* Prices */}
               <div className="grid grid-cols-2 gap-4">
