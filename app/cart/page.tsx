@@ -11,7 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { DiscountInput } from "@/components/cart/DiscountInput";
 
 export default function CartPage() {
