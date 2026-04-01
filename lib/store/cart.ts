@@ -20,12 +20,14 @@ interface CartStore {
   items: CartItem[];
   discountCode: string | null;
   discountPercentage: number;
+  additionalNotes: string;
   addItem: (item: CartItem) => void;
   removeItem: (productId: string, selectedOption: string) => void;
   updateQuantity: (productId: string, selectedOption: string, quantity: number) => void;
   clearCart: () => void;
   setDiscount: (code: string, percentage: number) => void;
   clearDiscount: () => void;
+  setAdditionalNotes: (notes: string) => void;
   getSubtotal: () => number;
   getDiscountAmount: () => number;
   getDiscountedSubtotal: () => number;
@@ -39,6 +41,7 @@ export const useCartStore = create<CartStore>()(
       items: [],
       discountCode: null,
       discountPercentage: 0,
+      additionalNotes: "",
 
       addItem: (newItem) =>
         set((state) => {
@@ -89,10 +92,12 @@ export const useCartStore = create<CartStore>()(
                 ),
         })),
 
-      clearCart: () => set({ items: [], discountCode: null, discountPercentage: 0 }),
+      clearCart: () => set({ items: [], discountCode: null, discountPercentage: 0, additionalNotes: "" }),
 
       setDiscount: (code, percentage) => set({ discountCode: code, discountPercentage: percentage }),
       clearDiscount: () => set({ discountCode: null, discountPercentage: 0 }),
+
+      setAdditionalNotes: (notes) => set({ additionalNotes: notes }),
 
       getSubtotal: () =>
         get().items.reduce(

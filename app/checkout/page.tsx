@@ -114,7 +114,7 @@ const towns = siteConfig.delivery.towns;
 const defaultTown = towns[0]?.name || "";
 
 export default function CheckoutPage() {
-  const { items, getSubtotal, getVatAmount, getDiscountAmount, discountCode, discountPercentage, clearCart } = useCartStore();
+  const { items, getSubtotal, getVatAmount, getDiscountAmount, discountCode, discountPercentage, clearCart, additionalNotes } = useCartStore();
   const router = useRouter();
   const { currency } = siteConfig;
 
@@ -383,6 +383,7 @@ export default function CheckoutPage() {
             paymentMethod: "CASH",
             discountCode: discountCode || null,
             discountAmount: discountAmount || 0,
+            notes: additionalNotes || null,
           }),
         });
         const data = await res.json();
@@ -422,6 +423,7 @@ export default function CheckoutPage() {
           paymentMethod: "STRIPE",
           discountCode: discountCode || null,
           discountAmount: discountAmount || 0,
+          notes: additionalNotes || null,
         }),
       });
       const data = await res.json();

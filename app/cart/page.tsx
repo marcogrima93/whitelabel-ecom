@@ -16,9 +16,8 @@ import { DiscountInput } from "@/components/cart/DiscountInput";
 
 export default function CartPage() {
   const router = useRouter();
-  const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getDiscountAmount, discountCode, clearCart } =
+  const { items, removeItem, updateQuantity, getSubtotal, getVatAmount, getDiscountAmount, discountCode, clearCart, additionalNotes, setAdditionalNotes } =
     useCartStore();
-  const [notes, setNotes] = useState("");
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
@@ -157,8 +156,8 @@ export default function CartPage() {
             <Textarea
               id="order-notes"
               placeholder="Any special instructions for your order..."
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              value={additionalNotes}
+              onChange={(e) => setAdditionalNotes(e.target.value)}
               rows={3}
             />
           </div>
