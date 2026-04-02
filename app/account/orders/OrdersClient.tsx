@@ -19,13 +19,20 @@ import type { Order, OrderItem } from "@/lib/supabase/types";
 const statusVariant = (status: string) => {
   switch (status) {
     case "DELIVERED": return "success" as const;
-    case "DISPATCHED": return "default" as const;
-    case "CONFIRMED": return "secondary" as const;
     case "PENDING": return "warning" as const;
     case "CANCELLED": return "destructive" as const;
     default: return "outline" as const;
   }
 };
+
+function getStatusLabel(status: string, deliveryMethod: string): string {
+  if (status === "DELIVERED") {
+    return deliveryMethod === "COLLECTION" ? "Collected" : "Delivered";
+  }
+  if (status === "PENDING") return "Pending";
+  if (status === "CANCELLED") return "Cancelled";
+  return status;
+}
 
 function fmt(val: number) {
   return formatPrice(val, siteConfig.currency.code, siteConfig.currency.locale);
@@ -91,7 +98,9 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
                   <td className="p-4">{order.items?.length || 0}</td>
                   <td className="p-4 font-medium">{fmt(Number(order.total))}</td>
                   <td className="p-4">
-                    <Badge variant={statusVariant(order.status)}>{order.status}</Badge>
+                    <Badge variant={statusVariant(order.status)}>
+                      {getStatusLabel(order.status, order.delivery_method)}
+                    </Badge>
                   </td>
                   <td className="p-4 text-right">
                     <Button
@@ -122,7 +131,9 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between flex-wrap gap-2">
                   <span>Order #{selectedOrder.order_number}</span>
-                  <Badge variant={statusVariant(selectedOrder.status)}>{selectedOrder.status}</Badge>
+                  <Badge variant={statusVariant(selectedOrder.status)}>
+                    {getStatusLabel(selectedOrder.status, selectedOrder.delivery_method)}
+                  </Badge>
                 </DialogTitle>
                 <p className="text-sm text-muted-foreground">
                   Placed on {new Date(selectedOrder.created_at).toLocaleDateString("en-GB", {
@@ -132,6 +143,19 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
               </DialogHeader>
 
               <Separator />
+
+              {/* Cancellation reason (shown when order is cancelled) */}
+              {selectedOrder.status === "CANCELLED" && selectedOrder.notes && (() => {
+                const match = selectedOrder.notes.match(/^\[Cancellation reason: (.+?)\]/s);
+                return match ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-destructive">
+                      Cancellation Reason
+                    </p>
+                    <p className="text-sm">{match[1]}</p>
+                  </div>
+                ) : null;
+              })()}
 
               {/* Items */}
               <div className="space-y-3">

@@ -15,12 +15,18 @@ import {
 const statusVariant = (status: string) => {
   switch (status) {
     case "DELIVERED": return "success" as const;
-    case "DISPATCHED": return "default" as const;
-    case "CONFIRMED": return "secondary" as const;
     case "PENDING": return "warning" as const;
+    case "CANCELLED": return "destructive" as const;
     default: return "outline" as const;
   }
 };
+
+function getStatusLabel(status: string, deliveryMethod: string): string {
+  if (status === "DELIVERED") {
+    return deliveryMethod === "COLLECTION" ? "Collected" : "Delivered";
+  }
+  return status.charAt(0) + status.slice(1).toLowerCase();
+}
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -146,7 +152,9 @@ export default async function AdminDashboard() {
                         {formatPrice(Number(order.total), siteConfig.currency.code, siteConfig.currency.locale)}
                       </td>
                       <td className="py-3">
-                        <Badge variant={statusVariant(order.status)}>{order.status}</Badge>
+                        <Badge variant={statusVariant(order.status)}>
+                          {getStatusLabel(order.status, order.delivery_method)}
+                        </Badge>
                       </td>
                     </tr>
                   ))}

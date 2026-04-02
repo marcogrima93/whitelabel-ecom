@@ -109,6 +109,22 @@ export async function updateOrderStatus(orderId: string, status: OrderStatus): P
   return true;
 }
 
+export async function updateOrderNotes(orderId: string, notes: string): Promise<boolean> {
+  const supabase = await createServiceRoleClient();
+  
+  const { error } = await supabase
+    .from("orders")
+    .update({ notes })
+    .eq("id", orderId);
+  
+  if (error) {
+    console.error("Error updating order notes:", error);
+    return false;
+  }
+  
+  return true;
+}
+
 export async function createOrder(orderData: {
   orderNumber: string;
   userId?: string;
@@ -531,7 +547,7 @@ export async function deleteDiscountCode(id: string): Promise<boolean> {
   return true;
 }
 
-// ── Dashboard Stats ─────────────────────────────────────────────────────
+// ── Dashboard Stats ──────────────────────────��──────────────────────────
 
 export async function getDashboardStats(): Promise<{
   todayOrders: number;
@@ -563,7 +579,7 @@ export async function getDashboardStats(): Promise<{
     .from("orders")
     .select("total")
     .gte("created_at", firstOfMonth.toISOString())
-    .in("status", ["CONFIRMED", "DISPATCHED", "DELIVERED"]);
+    .in("status", ["DELIVERED"]);
   
   const monthlyRevenue = (monthOrders || []).reduce((sum, o) => sum + Number(o.total), 0);
   

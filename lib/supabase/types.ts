@@ -7,7 +7,7 @@
 
 export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
 export type UserRole = "RETAIL" | "WHOLESALE" | "ADMIN";
-export type OrderStatus = "PENDING" | "CONFIRMED" | "DISPATCHED" | "DELIVERED" | "CANCELLED";
+export type OrderStatus = "PENDING" | "DELIVERED" | "CANCELLED";
 export type DeliveryMethod = "DELIVERY" | "COLLECTION";
 
 export interface Product {

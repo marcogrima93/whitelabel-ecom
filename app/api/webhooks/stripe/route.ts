@@ -33,16 +33,11 @@ export async function POST(req: Request) {
     case "payment_intent.succeeded": {
       const paymentIntent = event.data.object as Stripe.PaymentIntent;
       console.log(`Payment successful for intent: ${paymentIntent.id}`);
-      
-      // Find the order by payment intent ID and update status to CONFIRMED
+      // Order stays PENDING until admin manually marks it DELIVERED.
+      // Confirmation email is already sent at order creation in the checkout route.
       const order = await getOrderByPaymentIntent(paymentIntent.id);
-      
       if (order) {
-        await updateOrderStatus(order.id, "CONFIRMED");
-        console.log(`Order ${order.order_number} confirmed`);
-        
-        // TODO: Trigger order confirmation email via Resend
-        // await sendOrderConfirmationEmail(order);
+        console.log(`Payment confirmed for order ${order.order_number} — awaiting fulfilment.`);
       } else {
         console.error(`No order found for payment intent: ${paymentIntent.id}`);
       }
@@ -53,7 +48,6 @@ export async function POST(req: Request) {
       const failedIntent = event.data.object as Stripe.PaymentIntent;
       console.error(`Payment failed for intent: ${failedIntent.id}`);
       
-      // Find the order and update status to CANCELLED
       const order = await getOrderByPaymentIntent(failedIntent.id);
       
       if (order) {
