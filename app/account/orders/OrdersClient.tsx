@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -141,11 +142,11 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
                     {getStatusLabel(selectedOrder.status, selectedOrder.delivery_method)}
                   </Badge>
                 </DialogTitle>
-                <p className="text-sm text-muted-foreground">
+                <DialogDescription>
                   Placed on {new Date(selectedOrder.created_at).toLocaleDateString("en-GB", {
                     weekday: "long", day: "numeric", month: "long", year: "numeric",
                   })}
-                </p>
+                </DialogDescription>
               </DialogHeader>
 
               <Separator />

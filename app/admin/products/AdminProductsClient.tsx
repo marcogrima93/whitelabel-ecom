@@ -310,7 +310,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
 
       {/* ── Add / Edit Product Dialog ─────────────────────────────── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto" aria-describedby={undefined}>
           <form onSubmit={handleSubmit}>
             <DialogHeader>
               <DialogTitle>{editingProduct ? "Edit Product" : "Add Product"}</DialogTitle>

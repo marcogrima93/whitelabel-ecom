@@ -406,7 +406,10 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
 
       {/* ── Order Detail Dialog ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          aria-describedby={undefined}
+        >
           <DialogHeader>
             <DialogTitle className="font-mono text-lg">
               Order {selectedOrder?.order_number}

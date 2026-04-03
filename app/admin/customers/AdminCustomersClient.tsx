@@ -254,7 +254,7 @@ export default function AdminCustomersClient({
 
       {/* Customer detail modal */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" aria-describedby={undefined}>
           {customerDetail && (
             <>
               <DialogHeader>
