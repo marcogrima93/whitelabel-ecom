@@ -17,13 +17,12 @@ import type { Order, OrderItem } from "@/lib/supabase/types";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Sender — falls back to Resend's sandbox domain when RESEND_FROM_EMAIL is not set
-const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL
-  ? `${siteConfig.shopName} <${process.env.RESEND_FROM_EMAIL}>`
-  : `${siteConfig.shopName} <onboarding@resend.dev>`;
+// From address: env var takes precedence at deploy time, otherwise use site config.
+const fromEmail = process.env.RESEND_FROM_EMAIL ?? siteConfig.notifications.fromEmail;
+const FROM_ADDRESS = `${siteConfig.shopName} <${fromEmail}>`;
 
-// Business owner recipient — used for the new-order notification
-const OWNER_EMAIL = process.env.OWNER_EMAIL ?? siteConfig.contact.email;
+// Owner notification recipient — configured in site.config.ts notifications block.
+const OWNER_EMAIL = siteConfig.notifications.ownerEmail;
 
 const { code, locale } = siteConfig.currency;
 const fmt = (v: number) => formatPrice(v, code, locale);

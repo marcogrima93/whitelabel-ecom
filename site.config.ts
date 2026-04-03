@@ -177,6 +177,16 @@ export const siteConfig = {
   },
 
   // ── Contact & Social ──────────────────────────────────��───────────────
+  // ── Notifications & Transactional Email ──────────────────────────────
+  notifications: {
+    // Address used as the "From" on all transactional emails.
+    // Must be a verified sender in your Resend account.
+    // Can be overridden at deploy-time with the RESEND_FROM_EMAIL env var.
+    fromEmail: "orders@meatdrop.mt",
+    // Business owner address that receives a copy of every new order.
+    ownerEmail: "hello@meatdrop.mt",
+  },
+
   whatsapp: {
     enabled: true,
     number: "+35699999999",
