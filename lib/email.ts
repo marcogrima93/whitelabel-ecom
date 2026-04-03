@@ -1,10 +1,13 @@
 // ============================================================================
 // Transactional Email Helpers (Resend)
 // ============================================================================
-// Three email types mirror the three valid order statuses:
-//   1. Order Confirmation  — sent when order is created (PENDING)
-//   2. Fulfilment          — sent when status → DELIVERED (wording adapts to delivery_method)
-//   3. Cancellation        — sent when status → CANCELLED (includes reason)
+// Status pipelines:
+//
+//   DELIVERY:   PENDING → OUT_FOR_DELIVERY → DELIVERED → (CANCELLED)
+//   COLLECTION: PENDING → READY_FOR_COLLECTION → COLLECTED → (CANCELLED)
+//
+// Each status change fires a dedicated email to the customer.
+// Order creation (PENDING) also notifies the business owner.
 // ============================================================================
 
 import { Resend } from "resend";
@@ -14,22 +17,29 @@ import type { Order, OrderItem } from "@/lib/supabase/types";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-// Sender address — uses ADMIN_EMAIL env var; falls back to a safe onboarding default.
-const FROM_ADDRESS = process.env.ADMIN_EMAIL
-  ? `${siteConfig.shopName} <${process.env.ADMIN_EMAIL}>`
+// Sender — falls back to Resend's sandbox domain when RESEND_FROM_EMAIL is not set
+const FROM_ADDRESS = process.env.RESEND_FROM_EMAIL
+  ? `${siteConfig.shopName} <${process.env.RESEND_FROM_EMAIL}>`
   : `${siteConfig.shopName} <onboarding@resend.dev>`;
+
+// Business owner recipient — used for the new-order notification
+const OWNER_EMAIL = process.env.OWNER_EMAIL ?? siteConfig.contact.email;
 
 const { code, locale } = siteConfig.currency;
 const fmt = (v: number) => formatPrice(v, code, locale);
 
-// ── Shared helpers ──────────────────────────────────────────────────────────
+// ── Shared building blocks ──────────────────────────────────────────────────
 
 function buildItemsTable(items: OrderItem[]): string {
   const rows = items
     .map(
       (item) =>
         `<tr>
-          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">${item.product_name}${item.selected_option ? ` <span style="color:#888;font-size:13px;">(${item.selected_option})</span>` : ""}</td>
+          <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;">${item.product_name}${
+            item.selected_option
+              ? ` <span style="color:#888;font-size:13px;">(${item.selected_option})</span>`
+              : ""
+          }</td>
           <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;text-align:center;">${item.quantity}</td>
           <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;text-align:right;">${fmt(item.price_per_unit)}</td>
           <td style="padding:8px 0;border-bottom:1px solid #f0f0f0;text-align:right;font-weight:600;">${fmt(item.line_total)}</td>
@@ -55,7 +65,9 @@ function buildTotalsSection(order: Order): string {
   const discountRow =
     Number(order.discount_amount) > 0
       ? `<tr>
-          <td style="padding:4px 0;color:#16a34a;">Discount${order.discount_code ? ` (${order.discount_code})` : ""}</td>
+          <td style="padding:4px 0;color:#16a34a;">Discount${
+            order.discount_code ? ` (${order.discount_code})` : ""
+          }</td>
           <td style="padding:4px 0;text-align:right;color:#16a34a;">-${fmt(Number(order.discount_amount))}</td>
         </tr>`
       : "";
@@ -76,7 +88,9 @@ function buildTotalsSection(order: Order): string {
           <td style="padding:4px 0;text-align:right;">${fmt(Number(order.subtotal))}</td>
         </tr>
         <tr>
-          <td style="padding:4px 0;color:#555;">VAT (${(siteConfig.vatRate * 100).toFixed(0)}%${siteConfig.vatIncluded ? " incl." : ""})</td>
+          <td style="padding:4px 0;color:#555;">VAT (${(siteConfig.vatRate * 100).toFixed(0)}%${
+            siteConfig.vatIncluded ? " incl." : ""
+          })</td>
           <td style="padding:4px 0;text-align:right;">${fmt(Number(order.vat_amount))}</td>
         </tr>
         ${deliveryRow}
@@ -93,7 +107,7 @@ function buildFulfilmentSection(order: Order): string {
   if (order.delivery_method === "COLLECTION") {
     return `
       <div style="background:#f8f8f8;border-radius:8px;padding:16px;margin-top:16px;font-size:14px;">
-        <p style="margin:0 0 4px;font-weight:600;color:#555;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Collection</p>
+        <p style="margin:0 0 4px;font-weight:600;color:#555;font-size:12px;text-transform:uppercase;letter-spacing:.05em;">Collection Address</p>
         <p style="margin:0;">${siteConfig.delivery.pickupAddress}</p>
       </div>`;
   }
@@ -119,19 +133,16 @@ function baseTemplate(content: string): string {
     <tr>
       <td align="center">
         <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;max-width:600px;width:100%;">
-          <!-- Header -->
           <tr>
             <td style="background:#111;padding:28px 32px;">
               <p style="margin:0;font-size:20px;font-weight:700;color:#fff;">${siteConfig.shopName}</p>
             </td>
           </tr>
-          <!-- Body -->
           <tr>
             <td style="padding:32px;">
               ${content}
             </td>
           </tr>
-          <!-- Footer -->
           <tr>
             <td style="padding:20px 32px;background:#f8f8f8;border-top:1px solid #ebebeb;font-size:12px;color:#888;text-align:center;">
               ${siteConfig.shopName} &mdash; ${siteConfig.contact.address}<br>
@@ -146,16 +157,16 @@ function baseTemplate(content: string): string {
 </html>`;
 }
 
-// ── 1. Order Confirmation (PENDING) ──────────────────────────────────────────
+// ── 1. Order Confirmation — PENDING (customer + owner) ───────────────────────
 
 export async function sendOrderConfirmationEmail(
   order: Order,
   items: OrderItem[]
 ): Promise<void> {
-  const fulfilmentMethod =
-    order.delivery_method === "COLLECTION" ? "Collection" : "Delivery";
+  const isCollection = order.delivery_method === "COLLECTION";
+  const fulfilmentLabel = isCollection ? "Collection" : "Delivery";
 
-  const html = baseTemplate(`
+  const customerHtml = baseTemplate(`
     <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">Order Confirmed</h1>
     <p style="margin:0 0 24px;color:#555;font-size:15px;">Thanks for your order! Here&apos;s your invoice.</p>
 
@@ -165,8 +176,8 @@ export async function sendOrderConfirmationEmail(
         <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
       </tr>
       <tr>
-        <td style="color:#555;padding-top:4px;">Fulfilment Method</td>
-        <td style="text-align:right;padding-top:4px;">${fulfilmentMethod}</td>
+        <td style="color:#555;padding-top:4px;">Fulfilment</td>
+        <td style="text-align:right;padding-top:4px;">${fulfilmentLabel}</td>
       </tr>
     </table>
 
@@ -175,7 +186,84 @@ export async function sendOrderConfirmationEmail(
     ${buildFulfilmentSection(order)}
 
     <p style="margin:24px 0 0;font-size:14px;color:#555;">
-      We&apos;ll be in touch shortly. If you have any questions, reply to this email or contact us at
+      We&apos;ll be in touch with an update soon. Questions? Contact us at
+      <a href="mailto:${siteConfig.contact.email}" style="color:#111;">${siteConfig.contact.email}</a>.
+    </p>
+  `);
+
+  const ownerHtml = baseTemplate(`
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">New Order Received</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">A new order has been placed on ${siteConfig.shopName}.</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+      <tr>
+        <td style="color:#555;">Order Number</td>
+        <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
+      </tr>
+      <tr>
+        <td style="color:#555;padding-top:4px;">Customer</td>
+        <td style="text-align:right;padding-top:4px;">${order.email.replace(/ \(guest\)$/, "")}</td>
+      </tr>
+      <tr>
+        <td style="color:#555;padding-top:4px;">Fulfilment</td>
+        <td style="text-align:right;padding-top:4px;">${fulfilmentLabel}</td>
+      </tr>
+    </table>
+
+    ${buildItemsTable(items)}
+    ${buildTotalsSection(order)}
+    ${buildFulfilmentSection(order)}
+  `);
+
+  const customerEmail = order.email.replace(/ \(guest\)$/, "");
+
+  await Promise.all([
+    resend.emails.send({
+      from: FROM_ADDRESS,
+      to: customerEmail,
+      subject: `Order Confirmed – ${order.order_number} | ${siteConfig.shopName}`,
+      html: customerHtml,
+    }),
+    resend.emails.send({
+      from: FROM_ADDRESS,
+      to: OWNER_EMAIL,
+      subject: `New Order: ${order.order_number} – ${customerEmail}`,
+      html: ownerHtml,
+    }),
+  ]);
+}
+
+// ── 2. Out for Delivery — delivery orders only ───────────────────────────────
+
+export async function sendOutForDeliveryEmail(
+  order: Order,
+  items: OrderItem[]
+): Promise<void> {
+  const addressLines = order.delivery_address
+    ? Object.values(order.delivery_address).filter(Boolean).join(", ")
+    : "";
+
+  const html = baseTemplate(`
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">Your Order Is On Its Way</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">Your order is out for delivery. Expect it shortly!</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+      <tr>
+        <td style="color:#555;">Order Number</td>
+        <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
+      </tr>
+      <tr>
+        <td style="color:#555;padding-top:4px;">Delivering to</td>
+        <td style="text-align:right;padding-top:4px;">${addressLines}</td>
+      </tr>
+      ${order.delivery_slot ? `<tr><td style="color:#555;padding-top:4px;">Slot</td><td style="text-align:right;padding-top:4px;">${order.delivery_slot}</td></tr>` : ""}
+    </table>
+
+    ${buildItemsTable(items)}
+    ${buildTotalsSection(order)}
+
+    <p style="margin:24px 0 0;font-size:14px;color:#555;">
+      Please ensure someone is available to receive your order. Questions? Contact us at
       <a href="mailto:${siteConfig.contact.email}" style="color:#111;">${siteConfig.contact.email}</a>.
     </p>
   `);
@@ -183,30 +271,69 @@ export async function sendOrderConfirmationEmail(
   await resend.emails.send({
     from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
-    subject: `Order Confirmation – ${order.order_number} | ${siteConfig.shopName}`,
+    subject: `Your order is out for delivery – ${order.order_number} | ${siteConfig.shopName}`,
     html,
   });
 }
 
-// ── 2. Fulfilment (DELIVERED / COLLECTED) ────────────────────────────────────
+// ── 3. Ready for Collection — collection orders only ─────────────────────────
 
-export async function sendFulfilmentEmail(
+export async function sendReadyForCollectionEmail(
+  order: Order,
+  items: OrderItem[]
+): Promise<void> {
+  const html = baseTemplate(`
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">Your Order Is Ready for Collection</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">
+      Great news — your order is packed and ready. Please come collect it at your earliest convenience.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+      <tr>
+        <td style="color:#555;">Order Number</td>
+        <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
+      </tr>
+      <tr>
+        <td style="color:#555;padding-top:4px;">Collection Address</td>
+        <td style="text-align:right;padding-top:4px;">${siteConfig.delivery.pickupAddress}</td>
+      </tr>
+    </table>
+
+    ${buildItemsTable(items)}
+    ${buildTotalsSection(order)}
+
+    <p style="margin:24px 0 0;font-size:14px;color:#555;">
+      Please bring this confirmation with you. Questions? Contact us at
+      <a href="mailto:${siteConfig.contact.email}" style="color:#111;">${siteConfig.contact.email}</a>.
+    </p>
+  `);
+
+  await resend.emails.send({
+    from: FROM_ADDRESS,
+    to: order.email.replace(/ \(guest\)$/, ""),
+    subject: `Your order is ready for collection – ${order.order_number} | ${siteConfig.shopName}`,
+    html,
+  });
+}
+
+// ── 4. Receipt — DELIVERED (delivery) or COLLECTED (collection) ──────────────
+
+export async function sendReceiptEmail(
   order: Order,
   items: OrderItem[]
 ): Promise<void> {
   const isCollection = order.delivery_method === "COLLECTION";
-  const actionLabel = isCollection ? "ready for collection" : "on its way";
-  const headingLabel = isCollection ? "Ready for Collection" : "Order Delivered";
-  const bodyLabel = isCollection
-    ? "Your order is ready for collection. Please bring this confirmation with you."
-    : "Great news — your order has been delivered.";
-  const subjectLabel = isCollection
-    ? `Your order is ready for collection – ${order.order_number}`
+  const heading = isCollection ? "Order Collected" : "Order Delivered";
+  const body = isCollection
+    ? "Thank you for collecting your order. Here&apos;s your receipt."
+    : "Your order has been delivered. Here&apos;s your receipt.";
+  const subject = isCollection
+    ? `Your order has been collected – ${order.order_number}`
     : `Your order has been delivered – ${order.order_number}`;
 
   const html = baseTemplate(`
-    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">${headingLabel}</h1>
-    <p style="margin:0 0 24px;color:#555;font-size:15px;">${bodyLabel}</p>
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">${heading}</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">${body}</p>
 
     <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
       <tr>
@@ -215,7 +342,9 @@ export async function sendFulfilmentEmail(
       </tr>
       <tr>
         <td style="color:#555;padding-top:4px;">Status</td>
-        <td style="text-align:right;padding-top:4px;color:#16a34a;font-weight:600;">${isCollection ? "Ready for Collection" : "Delivered"}</td>
+        <td style="text-align:right;padding-top:4px;color:#16a34a;font-weight:600;">
+          ${isCollection ? "Collected" : "Delivered"}
+        </td>
       </tr>
     </table>
 
@@ -224,7 +353,7 @@ export async function sendFulfilmentEmail(
     ${buildFulfilmentSection(order)}
 
     <p style="margin:24px 0 0;font-size:14px;color:#555;">
-      Thank you for shopping with us. If you have any questions, contact us at
+      Thank you for shopping with ${siteConfig.shopName}. Questions? Contact us at
       <a href="mailto:${siteConfig.contact.email}" style="color:#111;">${siteConfig.contact.email}</a>.
     </p>
   `);
@@ -232,12 +361,12 @@ export async function sendFulfilmentEmail(
   await resend.emails.send({
     from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
-    subject: `${siteConfig.shopName} – ${subjectLabel}`,
+    subject: `${siteConfig.shopName} – ${subject}`,
     html,
   });
 }
 
-// ── 3. Cancellation (CANCELLED) ──────────────────────────────────────────────
+// ── 5. Cancellation — CANCELLED ──────────────────────────────────────────────
 
 export async function sendCancellationEmail(
   order: Order,

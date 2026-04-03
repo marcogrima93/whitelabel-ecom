@@ -14,18 +14,26 @@ import {
 
 const statusVariant = (status: string) => {
   switch (status) {
-    case "DELIVERED": return "success" as const;
-    case "PENDING": return "warning" as const;
-    case "CANCELLED": return "destructive" as const;
-    default: return "outline" as const;
+    case "DELIVERED":
+    case "COLLECTED":            return "success" as const;
+    case "OUT_FOR_DELIVERY":
+    case "READY_FOR_COLLECTION": return "default" as const;
+    case "PENDING":              return "warning" as const;
+    case "CANCELLED":            return "destructive" as const;
+    default:                     return "outline" as const;
   }
 };
 
-function getStatusLabel(status: string, deliveryMethod: string): string {
-  if (status === "DELIVERED") {
-    return deliveryMethod === "COLLECTION" ? "Collected" : "Delivered";
+function getStatusLabel(status: string, _deliveryMethod: string): string {
+  switch (status) {
+    case "PENDING":              return "Pending";
+    case "OUT_FOR_DELIVERY":     return "Out for Delivery";
+    case "DELIVERED":            return "Delivered";
+    case "READY_FOR_COLLECTION": return "Ready for Collection";
+    case "COLLECTED":            return "Collected";
+    case "CANCELLED":            return "Cancelled";
+    default:                     return status;
   }
-  return status.charAt(0) + status.slice(1).toLowerCase();
 }
 
 function formatRelativeDate(dateStr: string): string {

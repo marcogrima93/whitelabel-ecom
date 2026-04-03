@@ -39,7 +39,13 @@ import { formatPrice } from "@/lib/utils";
 import { updateOrderStatusAction, getOrderDetailAction, resendOrderEmailAction } from "./actions";
 import type { Order, OrderItem, DeliveryMethod } from "@/lib/supabase/types";
 
-type OrderStatus = "PENDING" | "DELIVERED" | "CANCELLED";
+type OrderStatus =
+  | "PENDING"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "READY_FOR_COLLECTION"
+  | "COLLECTED"
+  | "CANCELLED";
 
 interface OrderRow {
   id: string;
@@ -51,24 +57,48 @@ interface OrderRow {
   status: OrderStatus;
 }
 
-// Returns the correct completed-status label based on fulfilment method
+// Human-readable label for any status + delivery method combination
 function getStatusLabel(status: OrderStatus, deliveryMethod: string): string {
-  if (status === "DELIVERED") {
-    return deliveryMethod === "COLLECTION" ? "Collected" : "Delivered";
+  switch (status) {
+    case "PENDING":             return "Pending";
+    case "OUT_FOR_DELIVERY":    return "Out for Delivery";
+    case "DELIVERED":           return "Delivered";
+    case "READY_FOR_COLLECTION": return "Ready for Collection";
+    case "COLLECTED":           return "Collected";
+    case "CANCELLED":           return "Cancelled";
+    default:                    return status;
   }
-  if (status === "PENDING") return "Pending";
-  if (status === "CANCELLED") return "Cancelled";
-  return status;
 }
 
 const statusVariant = (status: OrderStatus) => {
   switch (status) {
-    case "DELIVERED": return "success" as const;
-    case "PENDING": return "warning" as const;
-    case "CANCELLED": return "destructive" as const;
-    default: return "outline" as const;
+    case "DELIVERED":
+    case "COLLECTED":           return "success" as const;
+    case "OUT_FOR_DELIVERY":
+    case "READY_FOR_COLLECTION": return "default" as const;
+    case "PENDING":             return "warning" as const;
+    case "CANCELLED":           return "destructive" as const;
+    default:                    return "outline" as const;
   }
 };
+
+// Status options shown in the dropdown vary by delivery method
+function statusOptionsFor(deliveryMethod: string): { value: OrderStatus; label: string }[] {
+  if (deliveryMethod === "COLLECTION") {
+    return [
+      { value: "PENDING",              label: "Pending" },
+      { value: "READY_FOR_COLLECTION", label: "Ready for Collection" },
+      { value: "COLLECTED",            label: "Collected" },
+      { value: "CANCELLED",            label: "Cancelled" },
+    ];
+  }
+  return [
+    { value: "PENDING",          label: "Pending" },
+    { value: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
+    { value: "DELIVERED",        label: "Delivered" },
+    { value: "CANCELLED",        label: "Cancelled" },
+  ];
+}
 
 export default function AdminOrdersClient({ initialOrders }: { initialOrders: OrderRow[] }) {
   const [orders, setOrders] = useState(initialOrders);
@@ -189,13 +219,16 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48">
+          <SelectTrigger className="w-52">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="DELIVERED">Delivered / Collected</SelectItem>
+            <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
+            <SelectItem value="DELIVERED">Delivered</SelectItem>
+            <SelectItem value="READY_FOR_COLLECTION">Ready for Collection</SelectItem>
+            <SelectItem value="COLLECTED">Collected</SelectItem>
             <SelectItem value="CANCELLED">Cancelled</SelectItem>
           </SelectContent>
         </Select>
@@ -274,15 +307,15 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                             }
                             disabled={updatingId === order.id}
                           >
-                            <SelectTrigger className="h-8 w-36">
+                            <SelectTrigger className="h-8 w-44">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="PENDING">Pending</SelectItem>
-                              <SelectItem value="DELIVERED">
-                                {order.deliveryMethod === "COLLECTION" ? "Collected" : "Delivered"}
-                              </SelectItem>
-                              <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                              {statusOptionsFor(order.deliveryMethod).map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
                             </SelectContent>
                           </Select>
                           {updatingId === order.id && (
@@ -561,15 +594,15 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                   }
                   disabled={!!updatingId}
                 >
-                  <SelectTrigger className="h-9 flex-1 min-w-36">
+                  <SelectTrigger className="h-9 flex-1 min-w-44">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="DELIVERED">
-                      {selectedOrder.delivery_method === "COLLECTION" ? "Collected" : "Delivered"}
-                    </SelectItem>
-                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    {statusOptionsFor(selectedOrder.delivery_method).map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 {updatingId === selectedOrder.id && (
