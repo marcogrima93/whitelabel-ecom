@@ -28,15 +28,19 @@ export async function updateOrderStatusAction(
     await updateOrderNotes(orderId, notes);
   }
 
+  console.log(`[v0] updateOrderStatusAction: orderId=${orderId}, status=${status}`);
   const success = await updateOrderStatus(orderId, status);
+  console.log(`[v0] updateOrderStatus result: ${success}`);
   if (!success) return false;
 
   // Reload the full order (with updated notes) to pass to email helpers
   const order = await getOrderById(orderId);
+  console.log(`[v0] Order loaded for email: ${order ? order.id : "null"}, email: ${order?.email}, delivery_method: ${order?.delivery_method}`);
   if (order) {
     try {
       const items = order.items ?? [];
       const isCollection = order.delivery_method === "COLLECTION";
+      console.log(`[v0] Sending email for status=${status}, isCollection=${isCollection}, items=${items.length}`);
 
       switch (status) {
         case "OUT_FOR_DELIVERY":
