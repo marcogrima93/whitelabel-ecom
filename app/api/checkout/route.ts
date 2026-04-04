@@ -46,7 +46,6 @@ export async function POST(req: Request) {
 
     const subtotal = items.reduce((acc: number, item: any) => acc + item.pricePerUnit * item.quantity, 0);
     const discountAmountValue = typeof clientDiscountAmount === "number" ? clientDiscountAmount : 0;
-    const vatAmount = calcVatAmount(subtotal - discountAmountValue);
 
     let deliveryFee = 0;
     if (deliveryMethod === "DELIVERY") {
@@ -58,7 +57,11 @@ export async function POST(req: Request) {
           : townConfig?.fee || siteConfig.delivery.towns[0]?.fee || 0;
     }
 
-    const total = calcTotal(subtotal - discountAmountValue, deliveryFee);
+    // VAT is computed on (discounted subtotal + delivery) so the delivery charge
+    // is always reflected in the stored vat_amount, regardless of vatIncluded mode.
+    const discountedSubtotal = subtotal - discountAmountValue;
+    const vatAmount = calcVatAmount(discountedSubtotal, deliveryFee);
+    const total = calcTotal(discountedSubtotal, deliveryFee);
     const orderNumber = generateOrderNumber();
 
     const orderItems = items.map((item: any) => ({

@@ -55,31 +55,34 @@ export function getPriceForUser(
 // ── VAT helpers ──────────────────────────────────────────────────────────────
 
 /**
- * Given a subtotal (sum of item prices), returns the VAT amount.
+ * Returns the VAT amount for a given subtotal and optional delivery fee.
  *
- * vatIncluded = true  → prices already include VAT; extract it:
- *   vatAmount = subtotal − subtotal / (1 + rate)
+ * vatIncluded = true  → prices (and delivery) already include VAT; back-calculate
+ *   from the combined grand total:
+ *   vatAmount = grandTotal − grandTotal / (1 + rate)
+ *   where grandTotal = subtotal + deliveryFee
  *
- * vatIncluded = false → prices are ex-VAT; add it on top:
- *   vatAmount = subtotal × rate
+ * vatIncluded = false → prices are ex-VAT; VAT is additive on the combined net:
+ *   vatAmount = (subtotal + deliveryFee) × rate
  */
-export function calcVatAmount(subtotal: number): number {
+export function calcVatAmount(subtotal: number, deliveryFee: number = 0): number {
+  const combined = subtotal + deliveryFee;
   if (siteConfig.vatIncluded) {
-    return subtotal - subtotal / (1 + siteConfig.vatRate);
+    return combined - combined / (1 + siteConfig.vatRate);
   }
-  return subtotal * siteConfig.vatRate;
+  return combined * siteConfig.vatRate;
 }
 
 /**
  * Grand total charged to the customer.
- *   vatIncluded → subtotal + deliveryFee   (VAT already in price)
- *   vatExcluded → subtotal + vatAmount + deliveryFee
+ *   vatIncluded → subtotal + deliveryFee   (VAT already baked into both)
+ *   vatExcluded → subtotal + deliveryFee + VAT on combined net
  */
 export function calcTotal(subtotal: number, deliveryFee: number): number {
   if (siteConfig.vatIncluded) {
     return subtotal + deliveryFee;
   }
-  return subtotal + calcVatAmount(subtotal) + deliveryFee;
+  return subtotal + deliveryFee + calcVatAmount(subtotal, deliveryFee);
 }
 
 export function formatVatNote(): string {

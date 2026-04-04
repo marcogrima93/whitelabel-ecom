@@ -143,6 +143,9 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
                   </Badge>
                 </DialogTitle>
                 <DialogDescription>
+                  Order details and item breakdown for order #{selectedOrder.order_number}.
+                </DialogDescription>
+                <DialogDescription>
                   Placed on {new Date(selectedOrder.created_at).toLocaleDateString("en-GB", {
                     weekday: "long", day: "numeric", month: "long", year: "numeric",
                   })}

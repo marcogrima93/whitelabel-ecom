@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
 import { useCartStore } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
-import { calcTotal } from "@/lib/pricing";
+import { calcTotal, calcVatAmount } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,7 +114,7 @@ const towns = siteConfig.delivery.towns;
 const defaultTown = towns[0]?.name || "";
 
 export default function CheckoutPage() {
-  const { items, getSubtotal, getVatAmount, getDiscountAmount, discountCode, discountPercentage, clearCart, additionalNotes } = useCartStore();
+  const { items, getSubtotal, getDiscountAmount, discountCode, discountPercentage, clearCart, additionalNotes } = useCartStore();
   const router = useRouter();
   const { currency } = siteConfig;
 
@@ -235,7 +235,6 @@ export default function CheckoutPage() {
 
   const subtotal = getSubtotal();
   const discountAmount = getDiscountAmount();
-  const vatAmount = getVatAmount(); // already computed on discounted subtotal
 
   const deliveryTownFee = (() => {
     if (deliveryType === "COLLECTION") return 0;
@@ -246,6 +245,11 @@ export default function CheckoutPage() {
         : deliveryForm.town;
     return towns.find((t) => t.name === town)?.fee ?? towns[0]?.fee ?? 0;
   })();
+
+  // VAT is back-calculated from (discounted subtotal + delivery) so the delivery
+  // charge is always included in the VAT figure, regardless of vatIncluded mode.
+  const discountedSubtotal = subtotal - discountAmount;
+  const vatAmount = calcVatAmount(discountedSubtotal, deliveryTownFee);
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
@@ -258,7 +262,7 @@ export default function CheckoutPage() {
     }
   }, [mounted, items.length, step, router]);
 
-  const total = calcTotal(subtotal - discountAmount, deliveryTownFee);
+  const total = calcTotal(discountedSubtotal, deliveryTownFee);
 
   // Show a consistent skeleton until hydrated (avoids server/client mismatch)
   if (!mounted) {
