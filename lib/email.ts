@@ -226,18 +226,16 @@ export async function sendOrderConfirmationEmail(
   const customerEmail = order.email.replace(/ \(guest\)$/, "");
 
   await Promise.all([
-    send({
-      from: "",
-      to: customerEmail,
-      subject: `Order Confirmed – ${order.order_number} | ${siteConfig.shopName}`,
-      html: customerHtml,
-    }),
-    send({
-      from: "",
-      to: ownerEmail,
-      subject: `New Order: ${order.order_number} – ${customerEmail}`,
-      html: ownerHtml,
-    }),
+    await send({
+    to: customerEmail,
+    subject: `Order Confirmed – ${order.order_number} | ${siteConfig.shopName}`,
+    html: customerHtml,
+  }),
+  send({
+    to: ownerEmail,
+    subject: `New Order: ${order.order_number} – ${customerEmail}`,
+    html: ownerHtml,
+  }),
   ]);
 }
 
@@ -277,7 +275,6 @@ export async function sendOutForDeliveryEmail(
   `);
 
   await send({
-    from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
     subject: `Your order is out for delivery – ${order.order_number} | ${siteConfig.shopName}`,
     html,
@@ -317,7 +314,6 @@ export async function sendReadyForCollectionEmail(
   `);
 
   await send({
-    from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
     subject: `Your order is ready for collection – ${order.order_number} | ${siteConfig.shopName}`,
     html,
@@ -367,7 +363,6 @@ export async function sendReceiptEmail(
   `);
 
   await send({
-    from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
     subject: `${siteConfig.shopName} – ${subject}`,
     html,
@@ -407,7 +402,6 @@ export async function sendCancellationEmail(
   `);
 
   await send({
-    from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
     subject: `Order Cancelled – ${order.order_number} | ${siteConfig.shopName}`,
     html,
