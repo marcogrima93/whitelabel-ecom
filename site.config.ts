@@ -184,7 +184,7 @@ export const siteConfig = {
     // Can be overridden at deploy-time with the RESEND_FROM_EMAIL env var.
     fromEmail: "orders@limitbreakit.com",
     // Business owner address that receives a copy of every new order.
-    ownerEmail: "hello@meatdrop.mt",
+    ownerEmail: "marco@limitbreakit.com",
   },
 
   whatsapp: {
