@@ -82,6 +82,10 @@ const statusVariant = (status: OrderStatus) => {
   }
 };
 
+const TERMINAL_STATUSES: OrderStatus[] = ["DELIVERED", "COLLECTED", "CANCELLED"];
+
+const isTerminal = (status: OrderStatus) => TERMINAL_STATUSES.includes(status);
+
 // Status options shown in the dropdown vary by delivery method
 function statusOptionsFor(deliveryMethod: string): { value: OrderStatus; label: string }[] {
   if (deliveryMethod === "COLLECTION") {
@@ -300,6 +304,11 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {isTerminal(order.status) ? (
+                            <Badge variant={statusVariant(order.status)} className="h-8 px-3 text-xs font-medium">
+                              {getStatusLabel(order.status, order.deliveryMethod)}
+                            </Badge>
+                          ) : (
                           <Select
                             value={order.status}
                             onValueChange={(v) =>
@@ -318,6 +327,7 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                               ))}
                             </SelectContent>
                           </Select>
+                          )}
                           {updatingId === order.id && (
                             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                           )}
@@ -585,7 +595,14 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
 
               {/* Status updater + resend */}
               <div className="flex flex-wrap items-center gap-3 pt-2 border-t">
-                <p className="text-sm text-muted-foreground shrink-0">Update status:</p>
+                <p className="text-sm text-muted-foreground shrink-0">
+                  {isTerminal(selectedOrder.status) ? "Final status:" : "Update status:"}
+                </p>
+                {isTerminal(selectedOrder.status) ? (
+                  <Badge variant={statusVariant(selectedOrder.status)} className="h-9 px-3 text-sm">
+                    {getStatusLabel(selectedOrder.status, selectedOrder.delivery_method)}
+                  </Badge>
+                ) : (
                 <Select
                   value={selectedOrder.status}
                   onValueChange={(v) =>
@@ -608,6 +625,7 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                     ))}
                   </SelectContent>
                 </Select>
+                )}
                 {updatingId === selectedOrder.id && (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
                 )}
