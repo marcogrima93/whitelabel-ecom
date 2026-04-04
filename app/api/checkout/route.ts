@@ -92,7 +92,7 @@ export async function POST(req: Request) {
       const order = await createOrder({ ...orderBase, stripePaymentIntentId: undefined });
       if (order) {
         try {
-          await sendOrderConfirmationEmail(order, order.items ?? orderItems.map((item: any, i: number) => ({
+          await sendOrderConfirmationEmail(order, orderItems.map((item: any, i: number) => ({
             id: `tmp-${i}`,
             order_id: order.id,
             product_id: item.productId,
