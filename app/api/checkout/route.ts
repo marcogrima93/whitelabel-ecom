@@ -3,6 +3,7 @@ import { siteConfig } from "@/site.config";
 import { calcVatAmount, calcTotal } from "@/lib/pricing";
 import { createOrder } from "@/lib/supabase/queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { sendOrderConfirmationEmail } from "@/lib/email";
 import Stripe from "stripe";
 
 const stripeKey = process.env.STRIPE_SECRET_KEY || "";
@@ -89,6 +90,23 @@ export async function POST(req: Request) {
     // ── Cash on Delivery ─────────────────────────────────────────────────
     if (paymentMethod === "CASH") {
       const order = await createOrder({ ...orderBase, stripePaymentIntentId: undefined });
+      if (order) {
+        try {
+          await sendOrderConfirmationEmail(order, orderItems.map((item: any, i: number) => ({
+            id: `tmp-${i}`,
+            order_id: order.id,
+            product_id: item.productId,
+            product_name: item.productName,
+            product_image: item.productImage,
+            selected_option: item.selectedOption,
+            price_per_unit: item.pricePerUnit,
+            quantity: item.quantity,
+            line_total: item.pricePerUnit * item.quantity,
+          })));
+        } catch (emailErr) {
+          console.error("Failed to send confirmation email (cash order):", emailErr);
+        }
+      }
       return NextResponse.json({ orderNumber: order?.order_number || orderNumber });
     }
 
@@ -99,6 +117,23 @@ export async function POST(req: Request) {
         ...orderBase,
         stripePaymentIntentId: "mock_" + Date.now(),
       });
+      if (order) {
+        try {
+          await sendOrderConfirmationEmail(order, orderItems.map((item: any, i: number) => ({
+            id: `tmp-${i}`,
+            order_id: order.id,
+            product_id: item.productId,
+            product_name: item.productName,
+            product_image: item.productImage,
+            selected_option: item.selectedOption,
+            price_per_unit: item.pricePerUnit,
+            quantity: item.quantity,
+            line_total: item.pricePerUnit * item.quantity,
+          })));
+        } catch (emailErr) {
+          console.error("Failed to send confirmation email (mock order):", emailErr);
+        }
+      }
       return NextResponse.json({
         clientSecret: "pi_mock_secret_develop_only",
         orderNumber: order?.order_number || orderNumber,
@@ -129,6 +164,23 @@ export async function POST(req: Request) {
     if (!order) {
       await stripe.paymentIntents.cancel(paymentIntent.id);
       return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+    }
+
+    // Send confirmation email immediately on order creation (status = PENDING)
+    try {
+      await sendOrderConfirmationEmail(order, orderItems.map((item: any, i: number) => ({
+        id: `tmp-${i}`,
+        order_id: order.id,
+        product_id: item.productId,
+        product_name: item.productName,
+        product_image: item.productImage,
+        selected_option: item.selectedOption,
+        price_per_unit: item.pricePerUnit,
+        quantity: item.quantity,
+        line_total: item.pricePerUnit * item.quantity,
+      })));
+    } catch (emailErr) {
+      console.error("Failed to send confirmation email (stripe order):", emailErr);
     }
 
     return NextResponse.json({

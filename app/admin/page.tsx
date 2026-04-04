@@ -14,13 +14,27 @@ import {
 
 const statusVariant = (status: string) => {
   switch (status) {
-    case "DELIVERED": return "success" as const;
-    case "DISPATCHED": return "default" as const;
-    case "CONFIRMED": return "secondary" as const;
-    case "PENDING": return "warning" as const;
-    default: return "outline" as const;
+    case "DELIVERED":
+    case "COLLECTED":            return "success" as const;
+    case "OUT_FOR_DELIVERY":
+    case "READY_FOR_COLLECTION": return "default" as const;
+    case "PENDING":              return "warning" as const;
+    case "CANCELLED":            return "destructive" as const;
+    default:                     return "outline" as const;
   }
 };
+
+function getStatusLabel(status: string, _deliveryMethod: string): string {
+  switch (status) {
+    case "PENDING":              return "Pending";
+    case "OUT_FOR_DELIVERY":     return "Out for Delivery";
+    case "DELIVERED":            return "Delivered";
+    case "READY_FOR_COLLECTION": return "Ready for Collection";
+    case "COLLECTED":            return "Collected";
+    case "CANCELLED":            return "Cancelled";
+    default:                     return status;
+  }
+}
 
 function formatRelativeDate(dateStr: string): string {
   const date = new Date(dateStr);
@@ -146,7 +160,9 @@ export default async function AdminDashboard() {
                         {formatPrice(Number(order.total), siteConfig.currency.code, siteConfig.currency.locale)}
                       </td>
                       <td className="py-3">
-                        <Badge variant={statusVariant(order.status)}>{order.status}</Badge>
+                        <Badge variant={statusVariant(order.status)}>
+                          {getStatusLabel(order.status, order.delivery_method)}
+                        </Badge>
                       </td>
                     </tr>
                   ))}

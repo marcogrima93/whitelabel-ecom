@@ -17,16 +17,35 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import { Eye, Search, Inbox, Loader2, MapPin, Clock, CreditCard, Banknote, FileText } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Eye,
+  Search,
+  Inbox,
+  Loader2,
+  MapPin,
+  Clock,
+  CreditCard,
+  Banknote,
+  FileText,
+  Send,
+} from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
-import { updateOrderStatusAction, getOrderDetailAction } from "./actions";
-import type { Order, OrderItem } from "@/lib/supabase/types";
+import { updateOrderStatusAction, getOrderDetailAction, resendOrderEmailAction } from "./actions";
+import type { Order, OrderItem, DeliveryMethod } from "@/lib/supabase/types";
 
-type OrderStatus = "PENDING" | "CONFIRMED" | "DISPATCHED" | "DELIVERED" | "CANCELLED";
+type OrderStatus =
+  | "PENDING"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "READY_FOR_COLLECTION"
+  | "COLLECTED"
+  | "CANCELLED";
 
 interface OrderRow {
   id: string;
@@ -38,16 +57,52 @@ interface OrderRow {
   status: OrderStatus;
 }
 
-const statusVariant = (status: string) => {
+// Human-readable label for any status + delivery method combination
+function getStatusLabel(status: OrderStatus, deliveryMethod: string): string {
   switch (status) {
-    case "DELIVERED": return "success" as const;
-    case "DISPATCHED": return "default" as const;
-    case "CONFIRMED": return "secondary" as const;
-    case "PENDING": return "warning" as const;
-    case "CANCELLED": return "destructive" as const;
-    default: return "outline" as const;
+    case "PENDING":             return "Pending";
+    case "OUT_FOR_DELIVERY":    return "Out for Delivery";
+    case "DELIVERED":           return "Delivered";
+    case "READY_FOR_COLLECTION": return "Ready for Collection";
+    case "COLLECTED":           return "Collected";
+    case "CANCELLED":           return "Cancelled";
+    default:                    return status;
+  }
+}
+
+const statusVariant = (status: OrderStatus) => {
+  switch (status) {
+    case "DELIVERED":
+    case "COLLECTED":           return "success" as const;
+    case "OUT_FOR_DELIVERY":
+    case "READY_FOR_COLLECTION": return "default" as const;
+    case "PENDING":             return "warning" as const;
+    case "CANCELLED":           return "destructive" as const;
+    default:                    return "outline" as const;
   }
 };
+
+const TERMINAL_STATUSES: OrderStatus[] = ["DELIVERED", "COLLECTED", "CANCELLED"];
+
+const isTerminal = (status: OrderStatus) => TERMINAL_STATUSES.includes(status);
+
+// Status options shown in the dropdown vary by delivery method
+function statusOptionsFor(deliveryMethod: string): { value: OrderStatus; label: string }[] {
+  if (deliveryMethod === "COLLECTION") {
+    return [
+      { value: "PENDING",              label: "Pending" },
+      { value: "READY_FOR_COLLECTION", label: "Ready for Collection" },
+      { value: "COLLECTED",            label: "Collected" },
+      { value: "CANCELLED",            label: "Cancelled" },
+    ];
+  }
+  return [
+    { value: "PENDING",          label: "Pending" },
+    { value: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
+    { value: "DELIVERED",        label: "Delivered" },
+    { value: "CANCELLED",        label: "Cancelled" },
+  ];
+}
 
 export default function AdminOrdersClient({ initialOrders }: { initialOrders: OrderRow[] }) {
   const [orders, setOrders] = useState(initialOrders);
@@ -56,10 +111,19 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Order detail modal state
+  // Order detail modal
   const [selectedOrder, setSelectedOrder] = useState<(Order & { items: OrderItem[] }) | null>(null);
   const [loadingOrderId, setLoadingOrderId] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Cancellation reason modal
+  const [cancelTarget, setCancelTarget] = useState<{ id: string; currentRow: OrderRow } | null>(null);
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelPending, startCancelTransition] = useTransition();
+
+  // Resend email state
+  const [resendingId, setResendingId] = useState<string | null>(null);
+  const [resendResult, setResendResult] = useState<{ id: string; ok: boolean } | null>(null);
 
   const { code, locale } = siteConfig.currency;
 
@@ -71,22 +135,54 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
     return matchStatus && matchSearch;
   });
 
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+  // ── Status change ──────────────────────────────────────────────────────────
+
+  const handleStatusChange = (orderId: string, newStatus: OrderStatus, deliveryMethod: string) => {
+    if (newStatus === "CANCELLED") {
+      const row = orders.find((o) => o.id === orderId);
+      if (row) {
+        setCancelTarget({ id: orderId, currentRow: row });
+        setCancelReason("");
+      }
+      return;
+    }
+    applyStatusChange(orderId, newStatus);
+  };
+
+  const applyStatusChange = (orderId: string, newStatus: OrderStatus, reason?: string) => {
     setUpdatingId(orderId);
     startTransition(async () => {
-      const success = await updateOrderStatusAction(orderId, newStatus);
+      const success = await updateOrderStatusAction(orderId, newStatus, reason);
       if (success) {
         setOrders((prev) =>
           prev.map((o) => (o.id === orderId ? { ...o, status: newStatus } : o))
         );
-        // Update open dialog if it's for the same order
         if (selectedOrder?.id === orderId) {
-          setSelectedOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
+          setSelectedOrder((prev) => (prev ? { ...prev, status: newStatus } : prev));
         }
       }
       setUpdatingId(null);
     });
   };
+
+  const handleConfirmCancel = () => {
+    if (!cancelTarget || !cancelReason.trim()) return;
+    startCancelTransition(async () => {
+      const success = await updateOrderStatusAction(cancelTarget.id, "CANCELLED", cancelReason.trim());
+      if (success) {
+        setOrders((prev) =>
+          prev.map((o) => (o.id === cancelTarget.id ? { ...o, status: "CANCELLED" } : o))
+        );
+        if (selectedOrder?.id === cancelTarget.id) {
+          setSelectedOrder((prev) => (prev ? { ...prev, status: "CANCELLED" } : prev));
+        }
+      }
+      setCancelTarget(null);
+      setCancelReason("");
+    });
+  };
+
+  // ── View detail ────────────────────────────────────────────────────────────
 
   const handleViewOrder = async (orderId: string) => {
     setLoadingOrderId(orderId);
@@ -95,7 +191,18 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
     if (detail) {
       setSelectedOrder(detail);
       setDialogOpen(true);
+      setResendResult(null);
     }
+  };
+
+  // ── Resend email ───────────────────────────────────────────────────────────
+
+  const handleResendEmail = async (orderId: string) => {
+    setResendingId(orderId);
+    setResendResult(null);
+    const ok = await resendOrderEmailAction(orderId);
+    setResendingId(null);
+    setResendResult({ id: orderId, ok });
   };
 
   return (
@@ -116,13 +223,16 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
           />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectTrigger className="w-52">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="PENDING">Pending</SelectItem>
-            <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-            <SelectItem value="DISPATCHED">Dispatched</SelectItem>
+            <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
             <SelectItem value="DELIVERED">Delivered</SelectItem>
+            <SelectItem value="READY_FOR_COLLECTION">Ready for Collection</SelectItem>
+            <SelectItem value="COLLECTED">Collected</SelectItem>
             <SelectItem value="CANCELLED">Cancelled</SelectItem>
           </SelectContent>
         </Select>
@@ -187,42 +297,55 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                       </td>
                       <td className="p-4">
                         <div className="flex items-center gap-2">
-                          <Select
-                            value={order.status}
-                            onValueChange={(v) => handleStatusChange(order.id, v as OrderStatus)}
-                            disabled={updatingId === order.id}
-                          >
-                            <SelectTrigger className="h-8 w-32">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="PENDING">Pending</SelectItem>
-                              <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                              <SelectItem value="DISPATCHED">Dispatched</SelectItem>
-                              <SelectItem value="DELIVERED">Delivered</SelectItem>
-                              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          {updatingId === order.id && (
-                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                          )}
+                          <Badge variant={statusVariant(order.status)}>
+                            {getStatusLabel(order.status, order.deliveryMethod)}
+                          </Badge>
                         </div>
                       </td>
                       <td className="p-4 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleViewOrder(order.id)}
-                          disabled={loadingOrderId === order.id}
-                        >
-                          {loadingOrderId === order.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
+                        <div className="flex items-center justify-end gap-2">
+                          {isTerminal(order.status) ? (
+                            <Badge variant={statusVariant(order.status)} className="h-8 px-3 text-xs font-medium">
+                              {getStatusLabel(order.status, order.deliveryMethod)}
+                            </Badge>
                           ) : (
-                            <>
-                              <Eye className="h-4 w-4 mr-1" /> View
-                            </>
+                          <Select
+                            value={order.status}
+                            onValueChange={(v) =>
+                              handleStatusChange(order.id, v as OrderStatus, order.deliveryMethod)
+                            }
+                            disabled={updatingId === order.id}
+                          >
+                            <SelectTrigger className="h-8 w-44">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {statusOptionsFor(order.deliveryMethod).map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value}>
+                                  {opt.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           )}
-                        </Button>
+                          {updatingId === order.id && (
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewOrder(order.id)}
+                            disabled={loadingOrderId === order.id}
+                          >
+                            {loadingOrderId === order.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <>
+                                <Eye className="h-4 w-4 mr-1" /> View
+                              </>
+                            )}
+                          </Button>
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -233,15 +356,80 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
         </CardContent>
       </Card>
 
-      {/* Order Detail Dialog */}
+      {/* ── Cancellation Reason Modal ── */}
+      <Dialog
+        open={!!cancelTarget}
+        onOpenChange={(open) => {
+          if (!open) {
+            setCancelTarget(null);
+            setCancelReason("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cancel Order</DialogTitle>
+            <DialogDescription>
+              Please provide a reason for cancelling order{" "}
+              <span className="font-mono font-semibold">
+                {cancelTarget?.currentRow.orderNumber}
+              </span>
+              . This will be included in the cancellation email sent to the customer.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Textarea
+              placeholder="e.g. Item out of stock, payment issue, customer requested cancellation..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+            {cancelReason.trim().length === 0 && (
+              <p className="text-xs text-destructive">A cancellation reason is required.</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelTarget(null);
+                setCancelReason("");
+              }}
+              disabled={cancelPending}
+            >
+              Keep Order
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirmCancel}
+              disabled={!cancelReason.trim() || cancelPending}
+            >
+              {cancelPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Cancel Order
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Order Detail Dialog ── */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          aria-describedby={undefined}
+        >
           <DialogHeader>
             <DialogTitle className="font-mono text-lg">
               Order {selectedOrder?.order_number}
             </DialogTitle>
             <DialogDescription>
-              Placed on {selectedOrder && new Date(selectedOrder.created_at).toLocaleDateString("en-GB", { dateStyle: "long" })}
+              Placed on{" "}
+              {selectedOrder &&
+                new Date(selectedOrder.created_at).toLocaleDateString("en-GB", {
+                  dateStyle: "long",
+                })}
             </DialogDescription>
           </DialogHeader>
 
@@ -249,10 +437,20 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
             <div className="space-y-6 mt-2">
               {/* Status + badges */}
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={statusVariant(selectedOrder.status)} className="text-sm px-3 py-1">
-                  {selectedOrder.status}
+                <Badge
+                  variant={statusVariant(selectedOrder.status as OrderStatus)}
+                  className="text-sm px-3 py-1"
+                >
+                  {getStatusLabel(
+                    selectedOrder.status as OrderStatus,
+                    selectedOrder.delivery_method
+                  )}
                 </Badge>
-                <Badge variant={selectedOrder.delivery_method === "COLLECTION" ? "secondary" : "outline"}>
+                <Badge
+                  variant={
+                    selectedOrder.delivery_method === "COLLECTION" ? "secondary" : "outline"
+                  }
+                >
                   {selectedOrder.delivery_method}
                 </Badge>
                 {selectedOrder.stripe_payment_intent_id ? (
@@ -269,7 +467,9 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
               {/* Customer */}
               <div className="grid sm:grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Customer</p>
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Customer
+                  </p>
                   <p className="text-sm font-medium">{selectedOrder.email}</p>
                 </div>
                 {selectedOrder.delivery_slot && (
@@ -283,28 +483,31 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
               </div>
 
               {/* Delivery address */}
-              {selectedOrder.delivery_method === "DELIVERY" && selectedOrder.delivery_address && (
-                <div className="space-y-1">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                    <MapPin className="h-3 w-3" /> Delivery Address
-                  </p>
-                  <div className="text-sm bg-muted/50 rounded-lg p-3 space-y-0.5">
-                    {Object.entries(selectedOrder.delivery_address)
-                      .filter(([, v]) => v)
-                      .map(([k, v]) => (
-                        <p key={k}>{String(v)}</p>
-                      ))}
+              {selectedOrder.delivery_method === "DELIVERY" &&
+                selectedOrder.delivery_address && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                      <MapPin className="h-3 w-3" /> Delivery Address
+                    </p>
+                    <div className="text-sm bg-muted/50 rounded-lg p-3 space-y-0.5">
+                      {Object.entries(selectedOrder.delivery_address)
+                        .filter(([, v]) => v)
+                        .map(([k, v]) => (
+                          <p key={k}>{String(v)}</p>
+                        ))}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {/* Notes */}
+              {/* Notes / cancellation reason */}
               <div className="space-y-1">
                 <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                   <FileText className="h-3 w-3" /> Order Notes
                 </p>
                 {selectedOrder.notes ? (
-                  <p className="text-sm bg-muted/50 rounded-lg p-3">{selectedOrder.notes}</p>
+                  <p className="text-sm bg-muted/50 rounded-lg p-3 whitespace-pre-wrap">
+                    {selectedOrder.notes}
+                  </p>
                 ) : (
                   <p className="text-sm text-muted-foreground italic">No notes</p>
                 )}
@@ -322,9 +525,15 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                     <div className="h-12 w-12 rounded-md bg-muted overflow-hidden shrink-0 relative">
                       {item.product_image ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={item.product_image} alt={item.product_name} className="absolute inset-0 w-full h-full object-cover" />
+                        <img
+                          src={item.product_image}
+                          alt={item.product_name}
+                          className="absolute inset-0 w-full h-full object-cover"
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">?</div>
+                        <div className="w-full h-full flex items-center justify-center text-muted-foreground text-xs">
+                          ?
+                        </div>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -355,7 +564,8 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">
-                    VAT ({(siteConfig.vatRate * 100).toFixed(0)}%{siteConfig.vatIncluded ? " incl." : ""})
+                    VAT ({(siteConfig.vatRate * 100).toFixed(0)}%
+                    {siteConfig.vatIncluded ? " incl." : ""})
                   </span>
                   <span>{formatPrice(Number(selectedOrder.vat_amount), code, locale)}</span>
                 </div>
@@ -367,8 +577,13 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                 )}
                 {Number(selectedOrder.discount_amount) > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Discount{selectedOrder.discount_code ? ` (${selectedOrder.discount_code})` : ""}</span>
-                    <span>-{formatPrice(Number(selectedOrder.discount_amount), code, locale)}</span>
+                    <span>
+                      Discount
+                      {selectedOrder.discount_code ? ` (${selectedOrder.discount_code})` : ""}
+                    </span>
+                    <span>
+                      -{formatPrice(Number(selectedOrder.discount_amount), code, locale)}
+                    </span>
                   </div>
                 )}
                 <Separator />
@@ -378,29 +593,72 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                 </div>
               </div>
 
-              {/* Status updater inside dialog */}
-              <div className="flex items-center gap-3 pt-2">
-                <p className="text-sm text-muted-foreground shrink-0">Update status:</p>
+              {/* Status updater + resend */}
+              <div className="flex flex-wrap items-center gap-3 pt-2 border-t">
+                <p className="text-sm text-muted-foreground shrink-0">
+                  {isTerminal(selectedOrder.status) ? "Final status:" : "Update status:"}
+                </p>
+                {isTerminal(selectedOrder.status) ? (
+                  <Badge variant={statusVariant(selectedOrder.status)} className="h-9 px-3 text-sm">
+                    {getStatusLabel(selectedOrder.status, selectedOrder.delivery_method)}
+                  </Badge>
+                ) : (
                 <Select
                   value={selectedOrder.status}
-                  onValueChange={(v) => handleStatusChange(selectedOrder.id, v as OrderStatus)}
+                  onValueChange={(v) =>
+                    handleStatusChange(
+                      selectedOrder.id,
+                      v as OrderStatus,
+                      selectedOrder.delivery_method
+                    )
+                  }
                   disabled={!!updatingId}
                 >
-                  <SelectTrigger className="h-9 flex-1">
+                  <SelectTrigger className="h-9 flex-1 min-w-44">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="PENDING">Pending</SelectItem>
-                    <SelectItem value="CONFIRMED">Confirmed</SelectItem>
-                    <SelectItem value="DISPATCHED">Dispatched</SelectItem>
-                    <SelectItem value="DELIVERED">Delivered</SelectItem>
-                    <SelectItem value="CANCELLED">Cancelled</SelectItem>
+                    {statusOptionsFor(selectedOrder.delivery_method).map((opt) => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                )}
                 {updatingId === selectedOrder.id && (
                   <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
                 )}
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1.5 shrink-0"
+                  onClick={() => handleResendEmail(selectedOrder.id)}
+                  disabled={resendingId === selectedOrder.id}
+                  title="Re-send the email for this order's current status"
+                >
+                  {resendingId === selectedOrder.id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Resend Email
+                </Button>
               </div>
+
+              {/* Resend feedback */}
+              {resendResult?.id === selectedOrder.id && (
+                <p
+                  className={`text-xs ${
+                    resendResult.ok ? "text-green-600" : "text-destructive"
+                  }`}
+                >
+                  {resendResult.ok
+                    ? "Email sent successfully."
+                    : "Failed to send email. Check server logs."}
+                </p>
+              )}
             </div>
           )}
         </DialogContent>

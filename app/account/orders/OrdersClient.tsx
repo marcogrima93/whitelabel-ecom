@@ -7,6 +7,7 @@ import Link from "next/link";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -18,14 +19,27 @@ import type { Order, OrderItem } from "@/lib/supabase/types";
 
 const statusVariant = (status: string) => {
   switch (status) {
-    case "DELIVERED": return "success" as const;
-    case "DISPATCHED": return "default" as const;
-    case "CONFIRMED": return "secondary" as const;
-    case "PENDING": return "warning" as const;
-    case "CANCELLED": return "destructive" as const;
-    default: return "outline" as const;
+    case "DELIVERED":
+    case "COLLECTED":            return "success" as const;
+    case "OUT_FOR_DELIVERY":
+    case "READY_FOR_COLLECTION": return "default" as const;
+    case "PENDING":              return "warning" as const;
+    case "CANCELLED":            return "destructive" as const;
+    default:                     return "outline" as const;
   }
 };
+
+function getStatusLabel(status: string, _deliveryMethod: string): string {
+  switch (status) {
+    case "PENDING":              return "Pending";
+    case "OUT_FOR_DELIVERY":     return "Out for Delivery";
+    case "DELIVERED":            return "Delivered";
+    case "READY_FOR_COLLECTION": return "Ready for Collection";
+    case "COLLECTED":            return "Collected";
+    case "CANCELLED":            return "Cancelled";
+    default:                     return status;
+  }
+}
 
 function fmt(val: number) {
   return formatPrice(val, siteConfig.currency.code, siteConfig.currency.locale);
@@ -91,7 +105,9 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
                   <td className="p-4">{order.items?.length || 0}</td>
                   <td className="p-4 font-medium">{fmt(Number(order.total))}</td>
                   <td className="p-4">
-                    <Badge variant={statusVariant(order.status)}>{order.status}</Badge>
+                    <Badge variant={statusVariant(order.status)}>
+                      {getStatusLabel(order.status, order.delivery_method)}
+                    </Badge>
                   </td>
                   <td className="p-4 text-right">
                     <Button
@@ -122,16 +138,31 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
               <DialogHeader>
                 <DialogTitle className="flex items-center justify-between flex-wrap gap-2">
                   <span>Order #{selectedOrder.order_number}</span>
-                  <Badge variant={statusVariant(selectedOrder.status)}>{selectedOrder.status}</Badge>
+                  <Badge variant={statusVariant(selectedOrder.status)}>
+                    {getStatusLabel(selectedOrder.status, selectedOrder.delivery_method)}
+                  </Badge>
                 </DialogTitle>
-                <p className="text-sm text-muted-foreground">
+                <DialogDescription>
                   Placed on {new Date(selectedOrder.created_at).toLocaleDateString("en-GB", {
                     weekday: "long", day: "numeric", month: "long", year: "numeric",
                   })}
-                </p>
+                </DialogDescription>
               </DialogHeader>
 
               <Separator />
+
+              {/* Cancellation reason (shown when order is cancelled) */}
+              {selectedOrder.status === "CANCELLED" && selectedOrder.notes && (() => {
+                const match = selectedOrder.notes.match(/^\[Cancellation reason: ([\s\S]+?)\]/);
+                return match ? (
+                  <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4 space-y-1">
+                    <p className="text-xs font-semibold uppercase tracking-wider text-destructive">
+                      Cancellation Reason
+                    </p>
+                    <p className="text-sm">{match[1]}</p>
+                  </div>
+                ) : null;
+              })()}
 
               {/* Items */}
               <div className="space-y-3">
