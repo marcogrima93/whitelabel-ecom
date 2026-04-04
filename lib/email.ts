@@ -24,6 +24,19 @@ const FROM_ADDRESS = `${siteConfig.shopName} <${fromEmail}>`;
 // Owner notification recipient — configured in site.config.ts notifications block.
 const OWNER_EMAIL = siteConfig.notifications.ownerEmail;
 
+async function send(payload: Parameters<typeof resend.emails.send>[0]) {
+  if (!process.env.RESEND_API_KEY) {
+    console.error("[email] RESEND_API_KEY is not set — email not sent:", payload.subject);
+    return;
+  }
+  const { data, error } = await resend.emails.send(payload);
+  if (error) {
+    console.error("[email] Resend error:", error);
+    throw new Error(`Resend send failed: ${error.message}`);
+  }
+  console.log("[email] Sent ok, id:", data?.id, "subject:", payload.subject);
+}
+
 const { code, locale } = siteConfig.currency;
 const fmt = (v: number) => formatPrice(v, code, locale);
 
@@ -217,13 +230,13 @@ export async function sendOrderConfirmationEmail(
   const customerEmail = order.email.replace(/ \(guest\)$/, "");
 
   await Promise.all([
-    resend.emails.send({
+    send({
       from: FROM_ADDRESS,
       to: customerEmail,
       subject: `Order Confirmed – ${order.order_number} | ${siteConfig.shopName}`,
       html: customerHtml,
     }),
-    resend.emails.send({
+    send({
       from: FROM_ADDRESS,
       to: OWNER_EMAIL,
       subject: `New Order: ${order.order_number} – ${customerEmail}`,
@@ -267,7 +280,7 @@ export async function sendOutForDeliveryEmail(
     </p>
   `);
 
-  await resend.emails.send({
+  await send({
     from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
     subject: `Your order is out for delivery – ${order.order_number} | ${siteConfig.shopName}`,
@@ -307,7 +320,7 @@ export async function sendReadyForCollectionEmail(
     </p>
   `);
 
-  await resend.emails.send({
+  await send({
     from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
     subject: `Your order is ready for collection – ${order.order_number} | ${siteConfig.shopName}`,
@@ -357,7 +370,7 @@ export async function sendReceiptEmail(
     </p>
   `);
 
-  await resend.emails.send({
+  await send({
     from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
     subject: `${siteConfig.shopName} – ${subject}`,
@@ -397,7 +410,7 @@ export async function sendCancellationEmail(
     </p>
   `);
 
-  await resend.emails.send({
+  await send({
     from: FROM_ADDRESS,
     to: order.email.replace(/ \(guest\)$/, ""),
     subject: `Order Cancelled – ${order.order_number} | ${siteConfig.shopName}`,
