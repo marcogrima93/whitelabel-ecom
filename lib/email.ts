@@ -15,21 +15,16 @@ import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/supabase/types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-
-// From address: env var takes precedence at deploy time, otherwise use site config.
-const fromEmail = process.env.RESEND_FROM_EMAIL ?? siteConfig.notifications.fromEmail;
-const FROM_ADDRESS = `${siteConfig.shopName} <${fromEmail}>`;
-
-// Owner notification recipient — configured in site.config.ts notifications block.
-const OWNER_EMAIL = siteConfig.notifications.ownerEmail;
-
-async function send(payload: Parameters<typeof resend.emails.send>[0]) {
-  if (!process.env.RESEND_API_KEY) {
+async function send(payload: { to: string; subject: string; html: string }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) {
     console.error("[email] RESEND_API_KEY is not set — email not sent:", payload.subject);
     return;
   }
-  const { data, error } = await resend.emails.send(payload);
+  const resend = new Resend(apiKey);
+  const fromEmail = process.env.RESEND_FROM_EMAIL ?? siteConfig.notifications.fromEmail;
+  const from = `${siteConfig.shopName} <${fromEmail}>`;
+  const { data, error } = await resend.emails.send({ ...payload, from });
   if (error) {
     console.error("[email] Resend error:", error);
     throw new Error(`Resend send failed: ${error.message}`);
@@ -227,18 +222,19 @@ export async function sendOrderConfirmationEmail(
     ${buildFulfilmentSection(order)}
   `);
 
+  const ownerEmail = siteConfig.notifications.ownerEmail;
   const customerEmail = order.email.replace(/ \(guest\)$/, "");
 
   await Promise.all([
     send({
-      from: FROM_ADDRESS,
+      from: "",
       to: customerEmail,
       subject: `Order Confirmed – ${order.order_number} | ${siteConfig.shopName}`,
       html: customerHtml,
     }),
     send({
-      from: FROM_ADDRESS,
-      to: OWNER_EMAIL,
+      from: "",
+      to: ownerEmail,
       subject: `New Order: ${order.order_number} – ${customerEmail}`,
       html: ownerHtml,
     }),
@@ -378,7 +374,7 @@ export async function sendReceiptEmail(
   });
 }
 
-// ── 5. Cancellation — CANCELLED ──────────────────────────────────────────────
+// ── 5. Cancellation — CANCELLED ─────────────────────────────────────���────────
 
 export async function sendCancellationEmail(
   order: Order,

@@ -75,7 +75,7 @@ export async function resendOrderEmailAction(orderId: string): Promise<boolean> 
   if (!order) return false;
 
   const items = order.items ?? [];
-  const reasonMatch = order.notes?.match(/^\[Cancellation reason: (.+?)\]/s);
+  const reasonMatch = order.notes?.match(/^\[Cancellation reason: ([\s\S]+?)\]/);
   const cancellationReason = reasonMatch ? reasonMatch[1] : "No reason provided";
 
   try {
