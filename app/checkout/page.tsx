@@ -168,20 +168,6 @@ export default function CheckoutPage() {
   // Compute min date once on mount (avoids hydration mismatch)
   const minDate = useMemo(() => toDateInputValue(getMinSelectableDate()), []);
 
-  // Derive available slots for the active method + selected date
-  const activeMethod: FulfillmentMethod = deliveryType === "DELIVERY" ? "delivery" : "collection";
-  const availableSlots = useMemo(() => {
-    const iso = deliveryForm.preferredDate;
-    if (!iso) return [];
-    const [y, m, d] = iso.split("-").map(Number);
-    // day_of_week: 0=Mon … 6=Sun  (our DB convention, NOT JS's 0=Sun)
-    const jsDay = new Date(y, m - 1, d).getDay(); // 0=Sun … 6=Sat
-    const dbDay = jsDay === 0 ? 6 : jsDay - 1;    // convert to 0=Mon … 6=Sun
-    const dayMatrix = fulfillmentSettings.slots[activeMethod]?.[dbDay];
-    if (!dayMatrix) return [];
-    return (["morning", "afternoon", "evening"] as SlotName[]).filter((s) => dayMatrix[s]);
-  }, [fulfillmentSettings.slots, activeMethod, deliveryForm.preferredDate]);
-
   // Form state
   const [deliveryForm, setDeliveryForm] = useState({
     fullName: "",
@@ -199,6 +185,20 @@ export default function CheckoutPage() {
   // Separate phone state for collection form
   const [colPhoneCountryCode, setColPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
   const [colPhoneNumber, setColPhoneNumber] = useState("");
+
+  // Derive available slots for the active method + selected date
+  const activeMethod: FulfillmentMethod = deliveryType === "DELIVERY" ? "delivery" : "collection";
+  const availableSlots = useMemo(() => {
+    const iso = deliveryForm.preferredDate;
+    if (!iso) return [];
+    const [y, m, d] = iso.split("-").map(Number);
+    // day_of_week: 0=Mon … 6=Sun (DB convention), JS uses 0=Sun
+    const jsDay = new Date(y, m - 1, d).getDay();
+    const dbDay = jsDay === 0 ? 6 : jsDay - 1;
+    const dayMatrix = fulfillmentSettings.slots[activeMethod]?.[dbDay];
+    if (!dayMatrix) return [];
+    return (["morning", "afternoon", "evening"] as SlotName[]).filter((s) => dayMatrix[s]);
+  }, [fulfillmentSettings.slots, activeMethod, deliveryForm.preferredDate]);
 
   // Set default date after mount so SSR doesn't mismatch
   useEffect(() => {
