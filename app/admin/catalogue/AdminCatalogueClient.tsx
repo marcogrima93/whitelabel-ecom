@@ -185,7 +185,7 @@ export default function AdminCatalogueClient({
                 <Plus className="mr-2 h-4 w-4" /> Add Category
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md">
+            <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
               <form onSubmit={handleCatSubmit}>
                 <DialogHeader>
                   <DialogTitle>{editingCat ? "Edit Category" : "Add Category"}</DialogTitle>
@@ -312,7 +312,7 @@ export default function AdminCatalogueClient({
                 <Plus className="mr-2 h-4 w-4" /> Add Filter Group
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-sm">
+            <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
               <form onSubmit={handleGroupSubmit}>
                 <DialogHeader>
                   <DialogTitle>Add Filter Group</DialogTitle>
