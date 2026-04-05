@@ -26,7 +26,9 @@ export async function POST(req: Request) {
     validateEnabledGatewayEnvVars();
 
     const {
+      items,
       customerEmail,
+      customerName,
       deliveryMethod,
       deliveryAddress,
       deliverySlot,
