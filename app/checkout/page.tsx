@@ -130,7 +130,7 @@ export default function CheckoutPage() {
 
   // Enabled gateways from the central registry — drives all payment UI
   const enabledGateways = getEnabledGateways();
-  const defaultPaymentMethod: PaymentMethod = enabledGateways[0]?.id ?? "stripe";
+  const defaultPaymentMethod: PaymentMethod = (enabledGateways[0]?.id ?? "stripe") as PaymentMethod;
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(defaultPaymentMethod);
 
   // Saved address
