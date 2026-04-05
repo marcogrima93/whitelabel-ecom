@@ -61,8 +61,23 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
   const handleOptionSelect = (opt: string) => {
     if (isOptionOos(opt)) return; // prevent selecting OOS options
     setSelectedOption(opt);
+    // Clamp quantity to new option's stock limit
+    if (hasPerOptionStock) {
+      const newQty = getOptionStock(opt);
+      if (newQty !== null) setQuantity((q) => Math.min(q, Math.max(1, newQty)));
+    }
     onOptionChange?.(opt);
   };
+
+  // Compute max quantity for the currently selected option / product
+  const maxQuantity = (() => {
+    if (product.stock_mode !== "LIMITED") return 99;
+    if (hasPerOptionStock) {
+      const qty = getOptionStock(selectedOption);
+      return qty !== null ? Math.max(0, qty) : 99;
+    }
+    return Math.max(0, product.stock_quantity ?? 99);
+  })();
 
   const handleAdd = () => {
     if (isOutOfStock) return;
@@ -171,12 +186,18 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
           <Button
             variant="outline"
             size="icon"
-            onClick={() => setQuantity(quantity + 1)}
+            onClick={() => setQuantity(Math.min(maxQuantity, quantity + 1))}
+            disabled={quantity >= maxQuantity}
             aria-label="Increase quantity"
           >
             <Plus className="h-4 w-4" />
           </Button>
         </div>
+        {product.stock_mode === "LIMITED" && maxQuantity < 99 && maxQuantity > 0 && (
+          <p className="text-xs text-muted-foreground mt-1">
+            {maxQuantity} available
+          </p>
+        )}
       </div>
 
       {/* Add to Cart */}

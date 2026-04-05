@@ -579,21 +579,45 @@ export async function decrementStockForOrder(
 
   const productMap = new Map(products.map((p) => [p.id, p]));
 
+  const getConfigs = (p: ReturnType<typeof productMap.get>): Array<{ value: string; stock_quantity: number | null }> =>
+    Array.isArray(p?.option_configs) ? p.option_configs : [];
+
+  // ── Phase 1: Validate — check all items BEFORE decrementing anything ──
+  // Prevents partial decrements where item 1 succeeds but item 2 fails.
   for (const item of items) {
     const product = productMap.get(item.productId);
     if (!product || product.stock_mode !== "LIMITED") continue;
 
-    const configs: Array<{ value: string; stock_quantity: number | null }> =
-      Array.isArray(product.option_configs) ? product.option_configs : [];
+    const optionCfg = item.selectedOption
+      ? getConfigs(product).find((c) => c.value === item.selectedOption)
+      : null;
+
+    if (optionCfg && optionCfg.stock_quantity !== null) {
+      if (optionCfg.stock_quantity < item.quantity) {
+        return {
+          success: false,
+          outOfStockProductName: `${product.name} (${item.selectedOption})`,
+        };
+      }
+    } else {
+      if ((product.stock_quantity ?? 0) < item.quantity) {
+        return { success: false, outOfStockProductName: product.name };
+      }
+    }
+  }
+
+  // ── Phase 2: Decrement — all stock confirmed available ──
+  for (const item of items) {
+    const product = productMap.get(item.productId);
+    if (!product || product.stock_mode !== "LIMITED") continue;
 
     const optionCfg = item.selectedOption
-      ? configs.find((c) => c.value === item.selectedOption)
+      ? getConfigs(product).find((c) => c.value === item.selectedOption)
       : null;
 
     const usePerOptionStock = optionCfg && optionCfg.stock_quantity !== null;
 
     if (usePerOptionStock) {
-      // Per-option stock decrement
       const { data: rows, error: rpcError } = await supabase.rpc(
         "decrement_stock_option",
         { p_id: item.productId, p_option_value: item.selectedOption, p_qty: item.quantity }
@@ -606,7 +630,6 @@ export async function decrementStockForOrder(
         return { success: false, outOfStockProductName: `${product.name} (${item.selectedOption})` };
       }
     } else {
-      // Product-level stock decrement
       const { data: rows, error: rpcError } = await supabase.rpc(
         "decrement_stock",
         { p_id: item.productId, p_qty: item.quantity }
