@@ -2,23 +2,11 @@
 
 import { createServiceRoleClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
-import type { Product, ProductInsert } from "@/lib/supabase/types";
-
-export async function archiveProductAction(productId: string): Promise<boolean> {
-  const supabase = await createServiceRoleClient();
-  const { error } = await supabase
-    .from("products")
-    .update({ is_archived: true })
-    .eq("id", productId);
-  if (error) { console.error("Error archiving product:", error); return false; }
-  revalidatePath("/admin/products");
-  revalidatePath("/products");
-  return true;
-}
+import type { Product, ProductInsert, OptionConfig } from "@/lib/supabase/types";
 
 export async function upsertProductAction(
   id: string | null,
-  data: Omit<ProductInsert, "updated_at">
+  data: Omit<ProductInsert, "updated_at"> & { option_configs?: OptionConfig[] }
 ): Promise<{ success: boolean; error?: string; product?: Product }> {
   const supabase = await createServiceRoleClient();
 

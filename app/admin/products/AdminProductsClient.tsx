@@ -23,8 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Archive, Search, Package, Inbox, Loader2, X } from "lucide-react";
-import type { Product } from "@/lib/supabase/types";
+import { Plus, Pencil, Archive, Search, Package, Inbox, Loader2, X, Link2, LinkSlash } from "lucide-react";
+import type { Product, OptionConfig } from "@/lib/supabase/types";
 import { archiveProductAction, upsertProductAction } from "./actions";
 import { ImageUpload } from "@/components/ui/image-upload";
 
@@ -42,11 +42,12 @@ const EMPTY_FORM = {
   slug: "",
   description: "",
   category: "",
-  filter_values: {} as Record<string, string>, // field -> selected option value
+  filter_values: {} as Record<string, string>,
   retail_price: "",
   wholesale_price: "",
   stock_status: "IN_STOCK" as Product["stock_status"],
   options: [] as string[],
+  option_configs: [] as OptionConfig[],
   images: [] as string[],
   is_featured: false,
 };
@@ -59,6 +60,93 @@ const stockBadge = (status: string) => {
     default: return null;
   }
 };
+
+/** Merge a plain string[] of option values with existing OptionConfig[],
+ *  preserving existing price_override / image_url and removing deleted values. */
+function mergeConfigs(values: string[], existing: OptionConfig[]): OptionConfig[] {
+  return values.map((v) => {
+    const found = existing.find((c) => c.value === v);
+    return found ?? { value: v, price_override: null, image_url: null };
+  });
+}
+
+// ── Image picker popover ──────────────────────────────────────────────────────
+interface ImagePickerProps {
+  images: string[];
+  value: string | null;
+  onChange: (url: string | null) => void;
+}
+
+function ImagePicker({ images, value, onChange }: ImagePickerProps) {
+  const [open, setOpen] = useState(false);
+
+  if (images.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground italic">Upload images first</p>
+    );
+  }
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 text-xs border rounded-md px-2 py-1 hover:bg-accent transition-colors"
+        title={value ? "Change linked image" : "Link an image"}
+      >
+        {value ? (
+          <>
+            <img src={value} alt="" className="h-5 w-5 rounded object-cover" />
+            <span className="max-w-[80px] truncate text-muted-foreground">{value.split("/").pop()}</span>
+            <span
+              role="button"
+              aria-label="Remove image link"
+              tabIndex={0}
+              className="ml-0.5 text-muted-foreground hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); onChange(null); setOpen(false); }}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.stopPropagation(); onChange(null); setOpen(false); } }}
+            >
+              <X className="h-3 w-3" />
+            </span>
+          </>
+        ) : (
+          <>
+            <Link2 className="h-3 w-3" />
+            <span className="text-muted-foreground">Link image</span>
+          </>
+        )}
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 bg-popover border rounded-lg shadow-lg p-2 grid grid-cols-4 gap-1.5 w-max max-w-xs">
+          <button
+            type="button"
+            onClick={() => { onChange(null); setOpen(false); }}
+            className={`aspect-square rounded border-2 flex items-center justify-center transition-colors ${
+              !value ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/40"
+            }`}
+            title="No image"
+          >
+            <LinkSlash className="h-4 w-4 text-muted-foreground" />
+          </button>
+          {images.map((img) => (
+            <button
+              key={img}
+              type="button"
+              onClick={() => { onChange(img); setOpen(false); }}
+              className={`aspect-square rounded border-2 overflow-hidden transition-colors ${
+                value === img ? "border-primary" : "border-transparent hover:border-primary/40"
+              }`}
+              title={img.split("/").pop()}
+            >
+              <img src={img} alt="" className="w-full h-full object-cover" />
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminProductsClient({ initialProducts, categories, productFilters }: Props) {
   const [products, setProducts] = useState(initialProducts);
@@ -78,15 +166,17 @@ export default function AdminProductsClient({ initialProducts, categories, produ
     setFormError("");
     if (product) {
       setEditingProduct(product);
-      // Parse stored JSON filter values e.g. '{"cut":"ribeye","grade":"A5"}'
       let filter_values: Record<string, string> = {};
       try {
-        if (product.filter_field) {
-          filter_values = JSON.parse(product.filter_field);
-        }
-      } catch {
-        // legacy plain text value — ignore
-      }
+        if (product.filter_field) filter_values = JSON.parse(product.filter_field);
+      } catch { /* legacy plain text value — ignore */ }
+
+      const options = product.options ?? [];
+      const existingConfigs: OptionConfig[] = Array.isArray(product.option_configs)
+        ? product.option_configs
+        : [];
+      const option_configs = mergeConfigs(options, existingConfigs);
+
       setForm({
         name: product.name,
         slug: product.slug,
@@ -96,7 +186,8 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         retail_price: String(product.retail_price),
         wholesale_price: String(product.wholesale_price ?? ""),
         stock_status: product.stock_status,
-        options: product.options ?? [],
+        options,
+        option_configs,
         images: product.images ?? [],
         is_featured: product.is_featured ?? false,
       });
@@ -117,18 +208,41 @@ export default function AdminProductsClient({ initialProducts, categories, produ
   const addOption = () => {
     const val = optionInput.trim();
     if (!val || form.options.includes(val)) return;
-    update("options", [...form.options, val]);
+    const newOptions = [...form.options, val];
+    const newConfigs = mergeConfigs(newOptions, form.option_configs);
+    setForm((p) => ({ ...p, options: newOptions, option_configs: newConfigs }));
     setOptionInput("");
+  };
+
+  const removeOption = (opt: string) => {
+    const newOptions = form.options.filter((o) => o !== opt);
+    const newConfigs = mergeConfigs(newOptions, form.option_configs);
+    setForm((p) => ({ ...p, options: newOptions, option_configs: newConfigs }));
+  };
+
+  const updateConfig = (value: string, patch: Partial<Omit<OptionConfig, "value">>) => {
+    setForm((p) => ({
+      ...p,
+      option_configs: p.option_configs.map((c) =>
+        c.value === value ? { ...c, ...patch } : c
+      ),
+    }));
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setFormError("");
     startTransition(async () => {
-      // Serialise the per-group filter selections to JSON, omitting empty values
       const cleanedFilterValues = Object.fromEntries(
         Object.entries(form.filter_values).filter(([, v]) => v && v !== "__none__")
       );
+      // Clean configs: strip empty price strings, keep only valid entries
+      const cleanedConfigs: OptionConfig[] = form.option_configs.map((c) => ({
+        value: c.value,
+        price_override: c.price_override !== null && !isNaN(c.price_override) ? c.price_override : null,
+        image_url: c.image_url || null,
+      }));
+
       const payload = {
         name: form.name,
         slug: form.slug || autoSlug(form.name),
@@ -141,6 +255,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         wholesale_price: parseFloat(form.wholesale_price) || 0,
         stock_status: form.stock_status,
         options: form.options,
+        option_configs: cleanedConfigs,
         images: form.images,
         is_archived: false,
         is_featured: form.is_featured,
@@ -377,7 +492,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                 </div>
               </div>
 
-              {/* Dynamic filter group selects — one per group */}
+              {/* Dynamic filter group selects */}
               {productFilters.length > 0 && (
                 <div className="space-y-3">
                   <Label>Filter Attributes</Label>
@@ -458,8 +573,17 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                 </Select>
               </div>
 
-              {/* Options (e.g. weights) */}
-              <div className="space-y-2">
+              {/* Images — must come before Options so the image picker has URLs to show */}
+              <ImageUpload
+                label="Product Images"
+                folder="products"
+                value={form.images}
+                onChange={(urls) => update("images", urls as string[])}
+                multiple
+              />
+
+              {/* Options with per-value price override + image link */}
+              <div className="space-y-3">
                 <Label>Options (e.g. 500g, 1kg)</Label>
                 <div className="flex gap-2">
                   <Input
@@ -471,28 +595,59 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                   />
                   <Button type="button" size="sm" variant="outline" className="h-8" onClick={addOption}>Add</Button>
                 </div>
-                {form.options.length > 0 && (
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {form.options.map((opt) => (
-                      <Badge key={opt} variant="secondary" className="gap-1 pr-1">
-                        {opt}
-                        <button type="button" onClick={() => update("options", form.options.filter((o) => o !== opt))} className="hover:text-destructive ml-0.5">
-                          <X className="h-3 w-3" />
+
+                {form.option_configs.length > 0 && (
+                  <div className="rounded-md border divide-y">
+                    {/* Header row */}
+                    <div className="grid grid-cols-[1fr_140px_140px_28px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+                      <span>Value</span>
+                      <span>Price override ({siteConfig.currency.symbol})</span>
+                      <span>Linked image</span>
+                      <span />
+                    </div>
+
+                    {form.option_configs.map((cfg) => (
+                      <div key={cfg.value} className="grid grid-cols-[1fr_140px_140px_28px] gap-2 px-3 py-2 items-center">
+                        {/* Value label */}
+                        <span className="text-sm font-medium truncate">{cfg.value}</span>
+
+                        {/* Price override */}
+                        <Input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          placeholder={`Base (${form.retail_price || "0.00"})`}
+                          value={cfg.price_override !== null ? String(cfg.price_override) : ""}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            updateConfig(cfg.value, {
+                              price_override: raw === "" ? null : parseFloat(raw),
+                            });
+                          }}
+                          className="h-7 text-xs"
+                        />
+
+                        {/* Image picker */}
+                        <ImagePicker
+                          images={form.images}
+                          value={cfg.image_url}
+                          onChange={(url) => updateConfig(cfg.value, { image_url: url })}
+                        />
+
+                        {/* Remove */}
+                        <button
+                          type="button"
+                          onClick={() => removeOption(cfg.value)}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                          aria-label={`Remove option ${cfg.value}`}
+                        >
+                          <X className="h-3.5 w-3.5" />
                         </button>
-                      </Badge>
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
-
-              {/* Images */}
-              <ImageUpload
-                label="Product Images"
-                folder="products"
-                value={form.images}
-                onChange={(urls) => update("images", urls as string[])}
-                multiple
-              />
 
               {/* Featured toggle */}
               <label className="flex items-center gap-3 cursor-pointer select-none">

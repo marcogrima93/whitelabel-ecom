@@ -1,16 +1,22 @@
 "use client";
 
-import { useState } from "react";
 import { ShoppingBag } from "lucide-react";
 
 interface ProductImageGalleryProps {
   images: string[];
   name: string;
+  /** Controlled: index of image to show as main. When provided, internal selection is overridden. */
+  activeIndex?: number;
+  onSelect?: (index: number) => void;
 }
 
-export function ProductImageGallery({ images, name }: ProductImageGalleryProps) {
-  const [selected, setSelected] = useState(0);
+export function ProductImageGallery({ images, name, activeIndex, onSelect }: ProductImageGalleryProps) {
   const hasImages = images && images.length > 0;
+  const selected = activeIndex ?? 0;
+
+  const handleSelect = (i: number) => {
+    onSelect?.(i);
+  };
 
   return (
     <div className="space-y-4">
@@ -36,7 +42,7 @@ export function ProductImageGallery({ images, name }: ProductImageGalleryProps) 
           {images.map((img, i) => (
             <button
               key={i}
-              onClick={() => setSelected(i)}
+              onClick={() => handleSelect(i)}
               className={`aspect-square rounded-lg overflow-hidden relative border-2 transition-all ${
                 selected === i ? "border-primary" : "border-transparent hover:border-primary/40"
               }`}

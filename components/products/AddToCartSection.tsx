@@ -13,18 +13,27 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import type { Product } from "@/lib/supabase/types";
-import { ShoppingCart, Minus, Plus, ShoppingBag, Check } from "lucide-react";
+import { ShoppingCart, Minus, Plus, Check } from "lucide-react";
 
 interface AddToCartSectionProps {
   product: Product;
+  /** Resolved price to display and snapshot into cart (override or base price). */
+  resolvedPrice: number;
+  /** Called when the selected option changes, so the parent can react. */
+  onOptionChange?: (option: string) => void;
 }
 
-export function AddToCartSection({ product }: AddToCartSectionProps) {
+export function AddToCartSection({ product, resolvedPrice, onOptionChange }: AddToCartSectionProps) {
   const [selectedOption, setSelectedOption] = useState(product.options[0] || "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
   const isOutOfStock = product.stock_status === "OUT_OF_STOCK";
+
+  const handleOptionSelect = (opt: string) => {
+    setSelectedOption(opt);
+    onOptionChange?.(opt);
+  };
 
   const handleAdd = () => {
     if (isOutOfStock) return;
@@ -33,7 +42,7 @@ export function AddToCartSection({ product }: AddToCartSectionProps) {
       name: product.name,
       image: product.images[0] || "",
       selectedOption,
-      pricePerUnit: product.retail_price,
+      pricePerUnit: resolvedPrice,
       quantity,
       slug: product.slug,
     });
@@ -60,7 +69,7 @@ export function AddToCartSection({ product }: AddToCartSectionProps) {
       {/* Price */}
       <div>
         <p className="text-3xl font-bold">
-          {formatPrice(product.retail_price, siteConfig.currency.code, siteConfig.currency.locale)}
+          {formatPrice(resolvedPrice, siteConfig.currency.code, siteConfig.currency.locale)}
           <span className="text-base font-normal text-muted-foreground ml-2">
             / {siteConfig.filters.unit}
           </span>
@@ -80,7 +89,7 @@ export function AddToCartSection({ product }: AddToCartSectionProps) {
             {product.options.map((opt) => (
               <button
                 key={opt}
-                onClick={() => setSelectedOption(opt)}
+                onClick={() => handleOptionSelect(opt)}
                 className={`px-4 py-2 rounded-md border text-sm font-medium transition-all ${
                   selectedOption === opt
                     ? "bg-primary text-primary-foreground border-primary"

@@ -4,10 +4,8 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/site.config";
 import { getProductBySlug, getRelatedProducts } from "@/lib/supabase/products";
 import { getCategories } from "@/lib/supabase/queries";
-import { formatPrice } from "@/lib/utils";
-import { AddToCartSection } from "@/components/products/AddToCartSection";
 import { ProductCard } from "@/components/products/ProductCard";
-import { ProductImageGallery } from "@/components/products/ProductImageGallery";
+import { ProductInteractiveSection } from "@/components/products/ProductInteractiveSection";
 
 interface ProductPageProps {
   params: Promise<{ slug: string }>;
@@ -61,17 +59,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </nav>
 
       {/* Product */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
-        {/* Left: Image Gallery */}
-        <ProductImageGallery images={product.images} name={product.name} />
-
-        {/* Right: Product Info */}
-        <div>
-          <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-          <p className="text-muted-foreground mb-6">{product.description}</p>
-          <AddToCartSection product={product} />
-        </div>
-      </div>
+      <ProductInteractiveSection product={product} />
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

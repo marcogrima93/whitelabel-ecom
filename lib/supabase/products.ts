@@ -4,7 +4,7 @@
 // Abstracts Supabase queries. Falls back to mock data if Supabase is not configured.
 // ============================================================================
 
-import type { Product } from "./types";
+import type { Product, OptionConfig } from "./types";
 import { mockProducts } from "./mock-data";
 
 const isSupabaseConfigured = () =>
@@ -182,16 +182,30 @@ export async function getFeaturedProducts(limit = 4): Promise<Product[]> {
 // This ensures product.images is always a clean string[].
 function normaliseImages(product: Product): Product {
   let imgs = product.images as unknown;
-  if (!imgs) return { ...product, images: [] };
+  if (!imgs) imgs = [];
   if (typeof imgs === "string") {
     try { imgs = JSON.parse(imgs); } catch { imgs = [imgs]; }
   }
   if (!Array.isArray(imgs)) imgs = [String(imgs)];
+
+  // Normalise option_configs — JSONB may come back as string in some drivers
+  let configs = product.option_configs as unknown;
+  if (!configs) configs = [];
+  if (typeof configs === "string") {
+    try { configs = JSON.parse(configs); } catch { configs = []; }
+  }
+  if (!Array.isArray(configs)) configs = [];
+
   return {
     ...product,
     images: (imgs as unknown[])
       .map((u) => String(u).trim())
       .filter((u) => u.startsWith("http") || u.startsWith("/")),
+    option_configs: (configs as OptionConfig[]).map((c) => ({
+      value: c.value ?? "",
+      price_override: c.price_override ?? null,
+      image_url: c.image_url ?? null,
+    })),
   };
 }
 
