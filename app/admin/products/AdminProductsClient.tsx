@@ -67,19 +67,20 @@ const stockBadge = (status: string) => {
 /** Merge a plain string[] of option values with existing OptionConfig[],
  *  preserving existing price_override / image_url / stock_quantity and removing deleted values. */
 function mergeConfigs(values: string[], existing: OptionConfig[]): OptionConfig[] {
-  return values.map((v) => {
+  const result = values.map((v) => {
     const found = existing.find((c) => c.value === v);
     if (!found) return { value: v, price_override: null, image_url: null, stock_quantity: null };
     return {
       value: found.value,
       price_override: found.price_override ?? null,
       image_url: found.image_url ?? null,
-      // Normalise: old JSONB rows may not have stock_quantity at all
       stock_quantity: found.stock_quantity !== undefined && found.stock_quantity !== null
         ? found.stock_quantity
         : null,
     };
   });
+  console.log("[v0] mergeConfigs result:", JSON.stringify(result));
+  return result;
 }
 
 // ── Image picker popover ──────────────────────────────────────────────────────
@@ -205,6 +206,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         images: product.images ?? [],
         is_featured: product.is_featured ?? false,
       });
+      console.log("[v0] product.option_configs from DB:", JSON.stringify(product.option_configs));
     } else {
       setEditingProduct(null);
       setForm(EMPTY_FORM);
@@ -259,6 +261,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
           ? (isNaN(c.stock_quantity) ? null : c.stock_quantity)
           : null,
       }));
+      console.log("[v0] cleanedConfigs before save:", JSON.stringify(cleanedConfigs));
 
       const stockQuantity = parseInt(form.stock_quantity, 10) || 0;
 
