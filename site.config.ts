@@ -154,13 +154,43 @@ export const siteConfig = {
   },
 
   // ── Payments ──────────────────────────────────────────────────────────
+  // Maximum 3 gateways may be enabled at once. Enabling more will throw a
+  // config-level error at startup. To add a new gateway: create a module in
+  // lib/payments/gateways/<name>.ts, add it here, and register it in
+  // lib/payments/registry.ts.
   payments: {
     stripe: {
-      enabled: true, // Set to false to hide Stripe card payment option
+      enabled: true, // Required env vars: STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
     },
     cashOnDelivery: {
-      enabled: true, // Set to true to offer cash on delivery / cash on collection
-      // Label and description are now dynamic in checkout/page.tsx based on delivery type
+      enabled: true, // No env vars required
+    },
+    paypal: {
+      enabled: false, // Required env vars: PAYPAL_CLIENT_ID, NEXT_PUBLIC_PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_MODE (sandbox|live)
+    },
+    revolut: {
+      enabled: false, // Required env vars: REVOLUT_API_KEY, NEXT_PUBLIC_REVOLUT_PUBLIC_ID
+    },
+    trustPayments: {
+      enabled: false, // Required env vars: TRUST_PAYMENTS_SITE_REFERENCE, TRUST_PAYMENTS_USERNAME, TRUST_PAYMENTS_PASSWORD
+    },
+    bov: {
+      enabled: false, // Required env vars: BOV_MERCHANT_ID, BOV_API_KEY, BOV_SECRET
+    },
+    skrill: {
+      enabled: false, // Required env vars: SKRILL_MERCHANT_EMAIL, SKRILL_SECRET_WORD
+    },
+    mollie: {
+      enabled: false, // Required env vars: MOLLIE_API_KEY
+    },
+    fondy: {
+      enabled: false, // Required env vars: FONDY_MERCHANT_ID, FONDY_SECRET_KEY
+    },
+    myPos: {
+      enabled: false, // Required env vars: MYPOS_STORE_ID, MYPOS_CLIENT_ID, MYPOS_API_PASSWORD
+    },
+    sumUp: {
+      enabled: false, // Required env vars: SUMUP_CLIENT_ID, SUMUP_CLIENT_SECRET, SUMUP_MERCHANT_CODE
     },
   },
 

@@ -36,6 +36,8 @@ import {
   User,
 } from "lucide-react";
 import StripeForm from "@/components/checkout/StripeForm";
+import PayPalForm from "@/components/checkout/PayPalForm";
+import { getEnabledGateways, type GatewayId } from "@/lib/payments/registry";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 
 // ── Malta date helpers ────────────────────────────────────────────────────────
@@ -96,7 +98,7 @@ function getStripe() {
 type CheckoutStep = "delivery" | "payment" | "confirmation";
 type DeliveryType = "DELIVERY" | "COLLECTION";
 type AddressMode = "saved" | "new";
-type PaymentMethod = "STRIPE" | "CASH";
+type PaymentMethod = GatewayId;
 
 interface SavedAddress {
   id: string;
@@ -125,10 +127,9 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState("");
   const [checkoutOrderNumber, setCheckoutOrderNumber] = useState("");
 
-  // Determine default payment method from config
-  const stripeEnabled = siteConfig.payments.stripe.enabled;
-  const codEnabled = siteConfig.payments.cashOnDelivery.enabled;
-  const defaultPaymentMethod: PaymentMethod = stripeEnabled ? "STRIPE" : "CASH";
+  // Enabled gateways from the central registry — drives all payment UI
+  const enabledGateways = getEnabledGateways();
+  const defaultPaymentMethod: PaymentMethod = enabledGateways[0]?.id ?? "stripe";
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(defaultPaymentMethod);
 
   // Saved address
@@ -360,35 +361,36 @@ export default function CheckoutPage() {
 
     setStep("payment");
 
-    // COD: create order immediately, no Stripe needed
-    if (selectedPaymentMethod === "CASH") {
+    const buildCheckoutBody = (paymentMethod: string) => ({
+      items: items.map((item) => ({
+        productId: item.productId,
+        name: item.name,
+        image: item.image,
+        selectedOption: item.selectedOption,
+        pricePerUnit: item.pricePerUnit,
+        quantity: item.quantity,
+      })),
+      customerEmail: deliveryForm.email,
+      customerName: getCustomerName(),
+      deliveryMethod: deliveryType,
+      deliveryAddress: deliveryType === "DELIVERY" ? buildDeliveryAddress() : null,
+      deliverySlot: `${formatDateLabel(deliveryForm.preferredDate)} - ${deliveryForm.deliverySlot}`,
+      paymentMethod,
+      discountCode: discountCode || null,
+      discountAmount: discountAmount || 0,
+      notes: additionalNotes || null,
+    });
+
+    // ── Cash on Delivery ──────────────────────────────────────────────────
+    if (selectedPaymentMethod === "cashOnDelivery") {
       if (loading) return;
       setLoading(true);
       try {
         await saveNewAddressIfRequested();
-        const deliveryAddress = deliveryType === "DELIVERY" ? buildDeliveryAddress() : null;
         const res = await fetch("/api/checkout", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            items: items.map((item) => ({
-              productId: item.productId,
-              name: item.name,
-              image: item.image,
-              selectedOption: item.selectedOption,
-              pricePerUnit: item.pricePerUnit,
-              quantity: item.quantity,
-            })),
-            customerEmail: deliveryForm.email,
-            customerName: getCustomerName(),
-            deliveryMethod: deliveryType,
-            deliveryAddress,
-            deliverySlot: `${formatDateLabel(deliveryForm.preferredDate)} - ${deliveryForm.deliverySlot}`,
-            paymentMethod: "CASH",
-            discountCode: discountCode || null,
-            discountAmount: discountAmount || 0,
-            notes: additionalNotes || null,
-          }),
+          body: JSON.stringify(buildCheckoutBody("CASH")),
         });
         const data = await res.json();
         if (data.orderNumber) {
@@ -402,33 +404,37 @@ export default function CheckoutPage() {
       return;
     }
 
-    // Stripe: get client secret as before
-    if (clientSecret) return;
+    // ── PayPal ─────────────────────────────────────────────────────────────
+    // PayPal order is created lazily by PayPalForm's createOrder() callback.
+    // Here we just create the internal order record and store the order number
+    // so PayPalForm can reference it when calling /api/checkout/paypal/create.
+    if (selectedPaymentMethod === "paypal") {
+      if (checkoutOrderNumber) return; // already initialised
+      try {
+        await saveNewAddressIfRequested();
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildCheckoutBody("PAYPAL")),
+        });
+        const data = await res.json();
+        if (data.orderNumber) {
+          setCheckoutOrderNumber(data.orderNumber);
+        }
+      } catch (err) {
+        console.error("PayPal init error:", err);
+      }
+      return;
+    }
+
+    // ── Stripe (default) ──────────────────────────────────────────────────
+    if (clientSecret) return; // already have a client secret
     try {
       await saveNewAddressIfRequested();
-      const deliveryAddress = deliveryType === "DELIVERY" ? buildDeliveryAddress() : null;
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          items: items.map((item) => ({
-            productId: item.productId,
-            name: item.name,
-            image: item.image,
-            selectedOption: item.selectedOption,
-            pricePerUnit: item.pricePerUnit,
-            quantity: item.quantity,
-          })),
-          customerEmail: deliveryForm.email,
-          customerName: getCustomerName(),
-          deliveryMethod: deliveryType,
-          deliveryAddress,
-          deliverySlot: `${formatDateLabel(deliveryForm.preferredDate)} - ${deliveryForm.deliverySlot}`,
-          paymentMethod: "STRIPE",
-          discountCode: discountCode || null,
-          discountAmount: discountAmount || 0,
-          notes: additionalNotes || null,
-        }),
+        body: JSON.stringify(buildCheckoutBody("STRIPE")),
       });
       const data = await res.json();
       if (data.clientSecret) {
@@ -910,49 +916,45 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Payment Method Selection */}
-              {(stripeEnabled || codEnabled) && (
+              {/* Payment Method Selection — driven by enabled gateways from registry */}
+              {enabledGateways.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <h3 className="font-semibold text-sm">Payment Method</h3>
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    {stripeEnabled && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPaymentMethod("STRIPE")}
-                        className={`flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
-                          selectedPaymentMethod === "STRIPE"
-                            ? "border-primary bg-primary/5 ring-2 ring-primary"
-                            : "border-input hover:bg-accent"
-                        }`}
-                      >
-                        <CreditCard className="h-5 w-5 shrink-0" />
-                        <div>
-                          <p className="font-medium text-sm">Card / Online</p>
-                          <p className="text-xs text-muted-foreground">Pay securely via Stripe</p>
-                        </div>
-                      </button>
-                    )}
-                    {codEnabled && (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedPaymentMethod("CASH")}
-                        className={`flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
-                          selectedPaymentMethod === "CASH"
-                            ? "border-primary bg-primary/5 ring-2 ring-primary"
-                            : "border-input hover:bg-accent"
-                        }`}
-                      >
-                        <Banknote className="h-5 w-5 shrink-0" />
-                        <div>
-                          <p className="font-medium text-sm">
-                            {deliveryType === "DELIVERY" ? "Cash on Delivery" : "Cash on Collection"}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            {deliveryType === "DELIVERY" ? "Pay when your order arrives" : "Pay when you collect"}
-                          </p>
-                        </div>
-                      </button>
-                    )}
+                    {enabledGateways.map((gateway) => {
+                      const isSelected = selectedPaymentMethod === gateway.id;
+                      // Override label/description for COD based on delivery type
+                      const label =
+                        gateway.id === "cashOnDelivery"
+                          ? deliveryType === "DELIVERY"
+                            ? "Cash on Delivery"
+                            : "Cash on Collection"
+                          : gateway.label;
+                      const description =
+                        gateway.id === "cashOnDelivery"
+                          ? deliveryType === "DELIVERY"
+                            ? "Pay when your order arrives"
+                            : "Pay when you collect"
+                          : gateway.description;
+                      return (
+                        <button
+                          key={gateway.id}
+                          type="button"
+                          onClick={() => setSelectedPaymentMethod(gateway.id)}
+                          className={`flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
+                            isSelected
+                              ? "border-primary bg-primary/5 ring-2 ring-primary"
+                              : "border-input hover:bg-accent"
+                          }`}
+                        >
+                          <gateway.Icon className="h-5 w-5 shrink-0" />
+                          <div>
+                            <p className="font-medium text-sm">{label}</p>
+                            <p className="text-xs text-muted-foreground">{description}</p>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -966,7 +968,7 @@ export default function CheckoutPage() {
                 <Button onClick={initPayment} disabled={loading}>
                   {loading ? (
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : selectedPaymentMethod === "CASH" ? (
+                  ) : selectedPaymentMethod === "cashOnDelivery" ? (
                     <>Place Order <ArrowRight className="ml-2 h-4 w-4" /></>
                   ) : (
                     <>Continue to Payment <ArrowRight className="ml-2 h-4 w-4" /></>
@@ -981,8 +983,8 @@ export default function CheckoutPage() {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold">Payment</h2>
 
-              {selectedPaymentMethod === "CASH" ? (
-                /* COD — order was already created in initPayment, show spinner then it redirects to confirmation */
+              {/* Cash on Delivery — order already created in initPayment */}
+              {selectedPaymentMethod === "cashOnDelivery" && (
                 <div className="p-6 rounded-lg border bg-card space-y-4 text-center">
                   <Banknote className="h-10 w-10 mx-auto text-muted-foreground" />
                   <p className="text-muted-foreground text-sm">
@@ -990,8 +992,32 @@ export default function CheckoutPage() {
                   </p>
                   {loading && <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />}
                 </div>
-              ) : (
-                /* Stripe */
+              )}
+
+              {/* PayPal */}
+              {selectedPaymentMethod === "paypal" && (
+                <div className="p-6 rounded-lg border bg-card space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    Secure payment via PayPal
+                  </div>
+                  {!checkoutOrderNumber ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <PayPalForm
+                      amount={total}
+                      orderNumber={checkoutOrderNumber}
+                      onSuccess={handlePaymentSuccess}
+                      onBack={() => setStep("delivery")}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Stripe (default card gateway) */}
+              {selectedPaymentMethod === "stripe" && (
                 <div className="p-6 rounded-lg border bg-card space-y-4">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CreditCard className="h-4 w-4" />
