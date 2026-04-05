@@ -41,7 +41,8 @@ export const GATEWAY_REGISTRY: GatewayDefinition[] = [
     envVars: [
       "STRIPE_SECRET_KEY",
       "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
-      "STRIPE_WEBHOOK_SECRET",
+      // STRIPE_WEBHOOK_SECRET is only required in the /api/webhooks/stripe handler,
+      // not at app startup — omit it here to avoid false-positive boot warnings.
     ],
   },
   {
