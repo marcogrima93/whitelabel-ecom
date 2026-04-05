@@ -45,8 +45,8 @@ export interface Product {
   retail_price: number;
   wholesale_price: number;
   stock_status: StockStatus;
-  stock_mode: StockMode;
-  stock_quantity: number;
+  stock_mode: StockMode | undefined;
+  stock_quantity: number | undefined;
   options: string[];
   /** Per-value configuration (price override + linked image). Stored as JSONB. */
   option_configs: OptionConfig[];

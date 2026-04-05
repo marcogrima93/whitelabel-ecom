@@ -40,10 +40,12 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
     (product.option_configs ?? []).map((c) => [c.value, c.stock_quantity ?? null])
   );
 
+  const isLimited = product.stock_mode === "LIMITED";
+
   const hasPerOptionStock =
-    product.stock_mode === "LIMITED" &&
+    isLimited &&
     product.options.length > 0 &&
-    (product.option_configs ?? []).some((c) => c.stock_quantity !== null);
+    (product.option_configs ?? []).some((c) => c.stock_quantity !== null && c.stock_quantity !== undefined);
 
   const getOptionStock = (opt: string): number | null =>
     hasPerOptionStock ? (optionStockMap.get(opt) ?? null) : null;
@@ -59,7 +61,7 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
     (hasPerOptionStock && isOptionOos(selectedOption));
 
   const handleOptionSelect = (opt: string) => {
-    if (isOptionOos(opt)) return; // prevent selecting OOS options
+    if (isOptionOos(opt)) return;
     setSelectedOption(opt);
     // Clamp quantity to new option's stock limit
     if (hasPerOptionStock) {
@@ -71,12 +73,13 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
 
   // Compute max quantity for the currently selected option / product
   const maxQuantity = (() => {
-    if (product.stock_mode !== "LIMITED") return 99;
+    if (!isLimited) return 99;
     if (hasPerOptionStock) {
       const qty = getOptionStock(selectedOption);
       return qty !== null ? Math.max(0, qty) : 99;
     }
-    return Math.max(0, product.stock_quantity ?? 99);
+    const pQty = product.stock_quantity;
+    return pQty !== undefined && pQty !== null ? Math.max(0, pQty) : 99;
   })();
 
   const handleAdd = () => {
@@ -193,7 +196,7 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
             <Plus className="h-4 w-4" />
           </Button>
         </div>
-        {product.stock_mode === "LIMITED" && maxQuantity < 99 && maxQuantity > 0 && (
+        {isLimited && maxQuantity < 99 && maxQuantity > 0 && (
           <p className="text-xs text-muted-foreground mt-1">
             {maxQuantity} available
           </p>
