@@ -31,6 +31,7 @@
     "@radix-ui/react-tooltip": "^1.1.6",
     "@stripe/react-stripe-js": "^2.9.0",
     "@stripe/stripe-js": "^4.5.0",
+    "@paypal/react-paypal-js": "^8.7.0",
     "@supabase/ssr": "^0.5.2",
     "@supabase/supabase-js": "^2.47.12",
     "@vercel/blob": "^2.3.1",
