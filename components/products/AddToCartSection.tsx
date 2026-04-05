@@ -34,9 +34,32 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
   const addItem = useCartStore((s) => s.addItem);
-  const isOutOfStock = product.stock_status === "OUT_OF_STOCK";
+
+  // Build a fast lookup from option value → stock_quantity (null = unlimited for that option)
+  const optionStockMap = new Map<string, number | null>(
+    (product.option_configs ?? []).map((c) => [c.value, c.stock_quantity ?? null])
+  );
+
+  const hasPerOptionStock =
+    product.stock_mode === "LIMITED" &&
+    product.options.length > 0 &&
+    (product.option_configs ?? []).some((c) => c.stock_quantity !== null);
+
+  const getOptionStock = (opt: string): number | null =>
+    hasPerOptionStock ? (optionStockMap.get(opt) ?? null) : null;
+
+  const isOptionOos = (opt: string) => {
+    const qty = getOptionStock(opt);
+    return qty !== null && qty <= 0;
+  };
+
+  // Overall OOS: product-level flag OR selected option is OOS
+  const isOutOfStock =
+    product.stock_status === "OUT_OF_STOCK" ||
+    (hasPerOptionStock && isOptionOos(selectedOption));
 
   const handleOptionSelect = (opt: string) => {
+    if (isOptionOos(opt)) return; // prevent selecting OOS options
     setSelectedOption(opt);
     onOptionChange?.(opt);
   };
@@ -58,6 +81,14 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
   };
 
   const stockBadge = () => {
+    if (hasPerOptionStock) {
+      const optQty = getOptionStock(selectedOption);
+      if (optQty !== null) {
+        if (optQty <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
+        if (optQty <= 2) return <Badge variant="warning">Low Stock — {optQty} left</Badge>;
+        return <Badge variant="success">In Stock</Badge>;
+      }
+    }
     switch (product.stock_status) {
       case "IN_STOCK":
         return <Badge variant="success">In Stock</Badge>;
@@ -93,19 +124,32 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
             {siteConfig.filters.optionSelector}
           </label>
           <div className="flex flex-wrap gap-2">
-            {product.options.map((opt) => (
-              <button
-                key={opt}
-                onClick={() => handleOptionSelect(opt)}
-                className={`px-4 py-2 rounded-md border text-sm font-medium transition-all ${
-                  selectedOption === opt
-                    ? "bg-primary text-primary-foreground border-primary"
-                    : "bg-background hover:bg-accent border-input"
-                }`}
-              >
-                {opt}
-              </button>
-            ))}
+            {product.options.map((opt) => {
+              const oos = isOptionOos(opt);
+              const qty = getOptionStock(opt);
+              return (
+                <button
+                  key={opt}
+                  onClick={() => handleOptionSelect(opt)}
+                  disabled={oos}
+                  className={`relative px-4 py-2 rounded-md border text-sm font-medium transition-all ${
+                    oos
+                      ? "opacity-40 cursor-not-allowed bg-muted border-input text-muted-foreground line-through"
+                      : selectedOption === opt
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background hover:bg-accent border-input"
+                  }`}
+                  title={oos ? "Out of stock" : qty !== null && qty <= 2 ? `${qty} left` : undefined}
+                >
+                  {opt}
+                  {!oos && qty !== null && qty <= 2 && qty > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 text-[10px] leading-none bg-warning text-warning-foreground rounded-full px-1 py-0.5 font-semibold">
+                      {qty}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
       )}

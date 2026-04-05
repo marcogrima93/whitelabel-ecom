@@ -65,11 +65,11 @@ const stockBadge = (status: string) => {
 };
 
 /** Merge a plain string[] of option values with existing OptionConfig[],
- *  preserving existing price_override / image_url and removing deleted values. */
+ *  preserving existing price_override / image_url / stock_quantity and removing deleted values. */
 function mergeConfigs(values: string[], existing: OptionConfig[]): OptionConfig[] {
   return values.map((v) => {
     const found = existing.find((c) => c.value === v);
-    return found ?? { value: v, price_override: null, image_url: null };
+    return found ?? { value: v, price_override: null, image_url: null, stock_quantity: null };
   });
 }
 
@@ -246,17 +246,28 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         value: c.value,
         price_override: c.price_override !== null && !isNaN(c.price_override) ? c.price_override : null,
         image_url: c.image_url || null,
+        stock_quantity: form.stock_mode === "LIMITED" && c.stock_quantity !== null
+          ? (isNaN(c.stock_quantity) ? null : c.stock_quantity)
+          : null,
       }));
 
       const stockQuantity = parseInt(form.stock_quantity, 10) || 0;
-      const derivedStockStatus: Product["stock_status"] =
-        form.stock_mode === "LIMITED"
-          ? stockQuantity <= 0
-            ? "OUT_OF_STOCK"
-            : stockQuantity <= 2
-            ? "LOW_STOCK"
-            : "IN_STOCK"
-          : form.stock_status;
+
+      // When LIMITED + options exist, derive stock_status from aggregate option quantities.
+      // When LIMITED + no options, derive from product-level stock_quantity.
+      // When UNLIMITED, use the manual stock_status dropdown value.
+      let derivedStockStatus: Product["stock_status"];
+      if (form.stock_mode === "LIMITED") {
+        const hasOptionStock = form.option_configs.some((c) => c.stock_quantity !== null);
+        if (hasOptionStock) {
+          const total = form.option_configs.reduce((sum, c) => sum + (c.stock_quantity ?? 0), 0);
+          derivedStockStatus = total <= 0 ? "OUT_OF_STOCK" : total <= 2 ? "LOW_STOCK" : "IN_STOCK";
+        } else {
+          derivedStockStatus = stockQuantity <= 0 ? "OUT_OF_STOCK" : stockQuantity <= 2 ? "LOW_STOCK" : "IN_STOCK";
+        }
+      } else {
+        derivedStockStatus = form.stock_status;
+      }
 
       const payload = {
         name: form.name,
@@ -405,7 +416,26 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                       <td className="p-4 text-muted-foreground capitalize">{getCategoryName(product.category)}</td>
                       <td className="p-4">{stockBadge(product.stock_status)}</td>
                       <td className="p-4 text-muted-foreground text-sm">
-                        {product.stock_mode === "LIMITED" ? product.stock_quantity : <span className="text-xs italic">—</span>}
+                        {product.stock_mode === "LIMITED" ? (
+                          (() => {
+                            const optionStocks = (product.option_configs ?? []).filter(
+                              (c: OptionConfig) => c.stock_quantity !== null
+                            );
+                            if (optionStocks.length > 0) {
+                              const total = optionStocks.reduce(
+                                (sum: number, c: OptionConfig) => sum + (c.stock_quantity ?? 0), 0
+                              );
+                              return (
+                                <span title={optionStocks.map((c: OptionConfig) => `${c.value}: ${c.stock_quantity}`).join(", ")}>
+                                  {total} <span className="text-xs opacity-60">(by option)</span>
+                                </span>
+                              );
+                            }
+                            return product.stock_quantity;
+                          })()
+                        ) : (
+                          <span className="text-xs italic">—</span>
+                        )}
                       </td>
                       <td className="p-4 font-medium">
                         {formatPrice(product.retail_price, siteConfig.currency.code, siteConfig.currency.locale)}
@@ -631,7 +661,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                     <div className="flex items-center gap-3">
                       <div className="flex-1 space-y-2">
                         <Label htmlFor="p-stock-qty" className="text-sm font-normal text-muted-foreground">
-                          Stock Quantity
+                          {form.options.length > 0 ? "Product-level Stock Quantity (fallback)" : "Stock Quantity"}
                         </Label>
                         <Input
                           id="p-stock-qty"
@@ -646,7 +676,10 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                       <div className="space-y-2 pt-6">
                         <Label className="text-sm font-normal text-muted-foreground sr-only">Derived status</Label>
                         {(() => {
-                          const qty = parseInt(form.stock_quantity, 10) || 0;
+                          const hasOptionStock = form.option_configs.some((c) => c.stock_quantity !== null);
+                          const qty = hasOptionStock
+                            ? form.option_configs.reduce((sum, c) => sum + (c.stock_quantity ?? 0), 0)
+                            : (parseInt(form.stock_quantity, 10) || 0);
                           if (qty <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
                           if (qty <= 2) return <Badge variant="warning">Low Stock</Badge>;
                           return <Badge variant="success">In Stock</Badge>;
@@ -654,7 +687,9 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      Status is automatically derived from quantity: 0 = Out of Stock, 1–2 = Low Stock, 3+ = In Stock.
+                      {form.options.length > 0
+                        ? "With options enabled, set stock per option value in the Options table below. Status is derived from the aggregate."
+                        : "Status is automatically derived from quantity: 0 = Out of Stock, 1–2 = Low Stock, 3+ = In Stock."}
                     </p>
                   </div>
                 )}
@@ -686,15 +721,16 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                 {form.option_configs.length > 0 && (
                   <div className="rounded-md border divide-y">
                     {/* Header row */}
-                    <div className="grid grid-cols-[1fr_140px_140px_28px] gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground">
+                    <div className={`grid ${form.stock_mode === "LIMITED" ? "grid-cols-[1fr_120px_120px_80px_28px]" : "grid-cols-[1fr_140px_140px_28px]"} gap-2 px-3 py-2 bg-muted/50 text-xs font-medium text-muted-foreground`}>
                       <span>Value</span>
                       <span>Price override ({siteConfig.currency.symbol})</span>
                       <span>Linked image</span>
+                      {form.stock_mode === "LIMITED" && <span>Stock qty</span>}
                       <span />
                     </div>
 
                     {form.option_configs.map((cfg) => (
-                      <div key={cfg.value} className="grid grid-cols-[1fr_140px_140px_28px] gap-2 px-3 py-2 items-center">
+                      <div key={cfg.value} className={`grid ${form.stock_mode === "LIMITED" ? "grid-cols-[1fr_120px_120px_80px_28px]" : "grid-cols-[1fr_140px_140px_28px]"} gap-2 px-3 py-2 items-center`}>
                         {/* Value label */}
                         <span className="text-sm font-medium truncate">{cfg.value}</span>
 
@@ -720,6 +756,24 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                           value={cfg.image_url}
                           onChange={(url) => updateConfig(cfg.value, { image_url: url })}
                         />
+
+                        {/* Per-option stock qty (LIMITED mode only) */}
+                        {form.stock_mode === "LIMITED" && (
+                          <Input
+                            type="number"
+                            min="0"
+                            step="1"
+                            placeholder="—"
+                            value={cfg.stock_quantity !== null ? String(cfg.stock_quantity) : ""}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              updateConfig(cfg.value, {
+                                stock_quantity: raw === "" ? null : parseInt(raw, 10),
+                              });
+                            }}
+                            className="h-7 text-xs"
+                          />
+                        )}
 
                         {/* Remove */}
                         <button

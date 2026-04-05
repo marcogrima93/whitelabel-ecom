@@ -17,7 +17,7 @@ export type OrderStatus =
   | "CANCELLED";
 export type DeliveryMethod = "DELIVERY" | "COLLECTION";
 
-/** One enriched option value with optional price override and image link. */
+/** One enriched option value with optional price override, image link, and per-option stock. */
 export interface OptionConfig {
   /** The plain-text option value, e.g. "Red", "XL", "2kg" */
   value: string;
@@ -25,6 +25,13 @@ export interface OptionConfig {
   price_override: number | null;
   /** URL of an already-uploaded product image, or null if none linked. */
   image_url: string | null;
+  /**
+   * Per-option stock quantity. Only meaningful when the parent product has
+   * stock_mode = 'LIMITED' AND the product has options defined.
+   * When no options exist, the product-level stock_quantity is used instead.
+   * null means this option inherits unlimited / product-level stock.
+   */
+  stock_quantity: number | null;
 }
 
 export interface Product {

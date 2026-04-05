@@ -86,9 +86,10 @@ export async function POST(req: Request) {
     // Must run before any payment intent is created so we never charge a
     // customer for a product that just sold out.
     const stockResult = await decrementStockForOrder(
-      orderItems.map((i) => ({
+      orderItems.map((i: { productId: string; productName: string; selectedOption: string; quantity: number }) => ({
         productId: i.productId,
         productName: i.productName,
+        selectedOption: i.selectedOption,
         quantity: i.quantity,
       }))
     );

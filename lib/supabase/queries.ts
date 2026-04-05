@@ -551,22 +551,25 @@ export async function deleteDiscountCode(id: string): Promise<boolean> {
 
 /**
  * Atomically decrement stock for all LIMITED-mode products in the given items.
- * Calls the `decrement_stock` Postgres function which guards with
- * `WHERE stock_quantity >= p_qty` — preventing overselling.
+ *
+ * Routing logic:
+ *  - If the item has a selectedOption AND that option has a non-null stock_quantity
+ *    in option_configs → call `decrement_stock_option` (per-option stock).
+ *  - Otherwise → call `decrement_stock` (product-level stock).
  *
  * Returns { success: true } if all decrements succeeded, or
  * { success: false, outOfStockProductName } for the first product that failed.
  */
 export async function decrementStockForOrder(
-  items: { productId: string; productName: string; quantity: number }[]
+  items: { productId: string; productName: string; selectedOption: string; quantity: number }[]
 ): Promise<{ success: boolean; outOfStockProductName?: string }> {
   const supabase = await createServiceRoleClient();
 
-  // Fetch stock mode for each distinct product in one query
+  // Fetch stock data for each distinct product in one query
   const productIds = [...new Set(items.map((i) => i.productId))];
   const { data: products, error: fetchError } = await supabase
     .from("products")
-    .select("id, name, stock_mode, stock_quantity")
+    .select("id, name, stock_mode, stock_quantity, option_configs")
     .in("id", productIds);
 
   if (fetchError || !products) {
@@ -580,18 +583,41 @@ export async function decrementStockForOrder(
     const product = productMap.get(item.productId);
     if (!product || product.stock_mode !== "LIMITED") continue;
 
-    // Call the atomic decrement function
-    const { data: rows, error: decrementError } = await supabase
-      .rpc("decrement_stock", { p_id: item.productId, p_qty: item.quantity });
+    const configs: Array<{ value: string; stock_quantity: number | null }> =
+      Array.isArray(product.option_configs) ? product.option_configs : [];
 
-    if (decrementError) {
-      console.error("decrementStockForOrder: RPC error", decrementError);
-      return { success: false, outOfStockProductName: product.name };
-    }
+    const optionCfg = item.selectedOption
+      ? configs.find((c) => c.value === item.selectedOption)
+      : null;
 
-    // If no row returned the WHERE guard blocked it (sold out / insufficient qty)
-    if (!rows || (Array.isArray(rows) && rows.length === 0)) {
-      return { success: false, outOfStockProductName: product.name };
+    const usePerOptionStock = optionCfg && optionCfg.stock_quantity !== null;
+
+    if (usePerOptionStock) {
+      // Per-option stock decrement
+      const { data: rows, error: rpcError } = await supabase.rpc(
+        "decrement_stock_option",
+        { p_id: item.productId, p_option_value: item.selectedOption, p_qty: item.quantity }
+      );
+      if (rpcError) {
+        console.error("decrementStockForOrder: decrement_stock_option RPC error", rpcError);
+        return { success: false, outOfStockProductName: product.name };
+      }
+      if (!rows || (Array.isArray(rows) && rows.length === 0)) {
+        return { success: false, outOfStockProductName: `${product.name} (${item.selectedOption})` };
+      }
+    } else {
+      // Product-level stock decrement
+      const { data: rows, error: rpcError } = await supabase.rpc(
+        "decrement_stock",
+        { p_id: item.productId, p_qty: item.quantity }
+      );
+      if (rpcError) {
+        console.error("decrementStockForOrder: decrement_stock RPC error", rpcError);
+        return { success: false, outOfStockProductName: product.name };
+      }
+      if (!rows || (Array.isArray(rows) && rows.length === 0)) {
+        return { success: false, outOfStockProductName: product.name };
+      }
     }
   }
 
