@@ -69,7 +69,16 @@ const stockBadge = (status: string) => {
 function mergeConfigs(values: string[], existing: OptionConfig[]): OptionConfig[] {
   return values.map((v) => {
     const found = existing.find((c) => c.value === v);
-    return found ?? { value: v, price_override: null, image_url: null, stock_quantity: null };
+    if (!found) return { value: v, price_override: null, image_url: null, stock_quantity: null };
+    return {
+      value: found.value,
+      price_override: found.price_override ?? null,
+      image_url: found.image_url ?? null,
+      // Normalise: old JSONB rows may not have stock_quantity at all
+      stock_quantity: found.stock_quantity !== undefined && found.stock_quantity !== null
+        ? found.stock_quantity
+        : null,
+    };
   });
 }
 
@@ -244,9 +253,9 @@ export default function AdminProductsClient({ initialProducts, categories, produ
       // Clean configs: strip empty price strings, keep only valid entries
       const cleanedConfigs: OptionConfig[] = form.option_configs.map((c) => ({
         value: c.value,
-        price_override: c.price_override !== null && !isNaN(c.price_override) ? c.price_override : null,
+        price_override: c.price_override !== null && c.price_override !== undefined && !isNaN(c.price_override) ? c.price_override : null,
         image_url: c.image_url || null,
-        stock_quantity: form.stock_mode === "LIMITED" && c.stock_quantity !== null
+        stock_quantity: form.stock_mode === "LIMITED" && c.stock_quantity !== null && c.stock_quantity !== undefined
           ? (isNaN(c.stock_quantity) ? null : c.stock_quantity)
           : null,
       }));
