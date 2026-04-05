@@ -25,7 +25,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetTrigger,
+  SheetDescription,
 } from "@/components/ui/sheet";
 import type { ProductFilter } from "@/lib/supabase/types";
 
@@ -292,6 +292,7 @@ export function MobileFilterSheet(props: FilterSidebarProps) {
       >
         <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <SheetTitle>Filters</SheetTitle>
+          <SheetDescription className="sr-only">Filter products by category and attributes</SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto px-6 py-4">
           <FilterContent {...props} onNavigate={() => setOpen(false)} />

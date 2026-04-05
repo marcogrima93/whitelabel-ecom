@@ -13,6 +13,7 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
+  SheetDescription,
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
@@ -154,6 +155,7 @@ export function Header({ categories = [], isAdmin = false }: HeaderProps) {
               <SheetContent side="left" className="w-[300px] sm:w-[350px]">
                 <SheetHeader>
                   <SheetTitle className="text-left">{siteConfig.shopName}</SheetTitle>
+                  <SheetDescription className="sr-only">Site navigation</SheetDescription>
                 </SheetHeader>
                 <nav className="mt-6 overflow-y-auto flex-1 max-h-[calc(100dvh-5rem)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Mobile navigation">
                   <ul className="space-y-1">
