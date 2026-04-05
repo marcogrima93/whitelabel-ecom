@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Pencil, Archive, Search, Package, Inbox, Loader2, X, Link2, Unlink } from "lucide-react";
-import type { Product, OptionConfig } from "@/lib/supabase/types";
+import type { Product, OptionConfig, StockMode } from "@/lib/supabase/types";
 import { archiveProductAction, upsertProductAction } from "./actions";
 import { ImageUpload } from "@/components/ui/image-upload";
 
@@ -47,6 +47,8 @@ const EMPTY_FORM = {
   retail_price: "",
   wholesale_price: "",
   stock_status: "IN_STOCK" as Product["stock_status"],
+  stock_mode: "UNLIMITED" as StockMode,
+  stock_quantity: "0",
   options: [] as string[],
   option_configs: [] as OptionConfig[],
   images: [] as string[],
@@ -187,6 +189,8 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         retail_price: String(product.retail_price),
         wholesale_price: String(product.wholesale_price ?? ""),
         stock_status: product.stock_status,
+        stock_mode: (product.stock_mode as StockMode) ?? "UNLIMITED",
+        stock_quantity: String(product.stock_quantity ?? 0),
         options,
         option_configs,
         images: product.images ?? [],
@@ -244,6 +248,16 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         image_url: c.image_url || null,
       }));
 
+      const stockQuantity = parseInt(form.stock_quantity, 10) || 0;
+      const derivedStockStatus: Product["stock_status"] =
+        form.stock_mode === "LIMITED"
+          ? stockQuantity <= 0
+            ? "OUT_OF_STOCK"
+            : stockQuantity <= 2
+            ? "LOW_STOCK"
+            : "IN_STOCK"
+          : form.stock_status;
+
       const payload = {
         name: form.name,
         slug: form.slug || autoSlug(form.name),
@@ -254,7 +268,9 @@ export default function AdminProductsClient({ initialProducts, categories, produ
           : "",
         retail_price: parseFloat(form.retail_price) || 0,
         wholesale_price: parseFloat(form.wholesale_price) || 0,
-        stock_status: form.stock_status,
+        stock_status: derivedStockStatus,
+        stock_mode: form.stock_mode,
+        stock_quantity: form.stock_mode === "LIMITED" ? stockQuantity : 0,
         options: form.options,
         option_configs: cleanedConfigs,
         images: form.images,
@@ -352,6 +368,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                     <th className="text-left p-4 font-semibold">Product</th>
                     <th className="text-left p-4 font-semibold">Category</th>
                     <th className="text-left p-4 font-semibold">Stock</th>
+                    <th className="text-left p-4 font-semibold">Qty</th>
                     <th className="text-left p-4 font-semibold">Retail</th>
                     {siteConfig.wholesale.enabled && (
                       <th className="text-left p-4 font-semibold">Wholesale</th>
@@ -387,6 +404,9 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                       </td>
                       <td className="p-4 text-muted-foreground capitalize">{getCategoryName(product.category)}</td>
                       <td className="p-4">{stockBadge(product.stock_status)}</td>
+                      <td className="p-4 text-muted-foreground text-sm">
+                        {product.stock_mode === "LIMITED" ? product.stock_quantity : <span className="text-xs italic">—</span>}
+                      </td>
                       <td className="p-4 font-medium">
                         {formatPrice(product.retail_price, siteConfig.currency.code, siteConfig.currency.locale)}
                       </td>
@@ -562,19 +582,82 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                 )}
               </div>
 
-              {/* Stock Status */}
-              <div className="space-y-2">
-                <Label htmlFor="p-stock">Stock Status *</Label>
-                <Select value={form.stock_status} onValueChange={(v) => update("stock_status", v as Product["stock_status"])}>
-                  <SelectTrigger id="p-stock">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="IN_STOCK">In Stock</SelectItem>
-                    <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
-                    <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
-                  </SelectContent>
-                </Select>
+              {/* Stock Mode */}
+              <div className="space-y-3">
+                <Label>Stock Tracking</Label>
+                <div className="flex rounded-md border overflow-hidden w-fit">
+                  <button
+                    type="button"
+                    onClick={() => update("stock_mode", "UNLIMITED")}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      form.stock_mode === "UNLIMITED"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    Unlimited
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => update("stock_mode", "LIMITED")}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${
+                      form.stock_mode === "LIMITED"
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-background text-muted-foreground hover:bg-accent"
+                    }`}
+                  >
+                    Limited
+                  </button>
+                </div>
+
+                {form.stock_mode === "UNLIMITED" ? (
+                  <div className="space-y-2">
+                    <Label htmlFor="p-stock" className="text-sm font-normal text-muted-foreground">
+                      Stock Status
+                    </Label>
+                    <Select value={form.stock_status} onValueChange={(v) => update("stock_status", v as Product["stock_status"])}>
+                      <SelectTrigger id="p-stock">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="IN_STOCK">In Stock</SelectItem>
+                        <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
+                        <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 space-y-2">
+                        <Label htmlFor="p-stock-qty" className="text-sm font-normal text-muted-foreground">
+                          Stock Quantity
+                        </Label>
+                        <Input
+                          id="p-stock-qty"
+                          type="number"
+                          min="0"
+                          step="1"
+                          value={form.stock_quantity}
+                          onChange={(e) => update("stock_quantity", e.target.value)}
+                          placeholder="0"
+                        />
+                      </div>
+                      <div className="space-y-2 pt-6">
+                        <Label className="text-sm font-normal text-muted-foreground sr-only">Derived status</Label>
+                        {(() => {
+                          const qty = parseInt(form.stock_quantity, 10) || 0;
+                          if (qty <= 0) return <Badge variant="destructive">Out of Stock</Badge>;
+                          if (qty <= 2) return <Badge variant="warning">Low Stock</Badge>;
+                          return <Badge variant="success">In Stock</Badge>;
+                        })()}
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Status is automatically derived from quantity: 0 = Out of Stock, 1–2 = Low Stock, 3+ = In Stock.
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Images — must come before Options so the image picker has URLs to show */}

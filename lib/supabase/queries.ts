@@ -547,6 +547,57 @@ export async function deleteDiscountCode(id: string): Promise<boolean> {
   return true;
 }
 
+// ── Stock Management ────────────────────────────────────────────────────
+
+/**
+ * Atomically decrement stock for all LIMITED-mode products in the given items.
+ * Calls the `decrement_stock` Postgres function which guards with
+ * `WHERE stock_quantity >= p_qty` — preventing overselling.
+ *
+ * Returns { success: true } if all decrements succeeded, or
+ * { success: false, outOfStockProductName } for the first product that failed.
+ */
+export async function decrementStockForOrder(
+  items: { productId: string; productName: string; quantity: number }[]
+): Promise<{ success: boolean; outOfStockProductName?: string }> {
+  const supabase = await createServiceRoleClient();
+
+  // Fetch stock mode for each distinct product in one query
+  const productIds = [...new Set(items.map((i) => i.productId))];
+  const { data: products, error: fetchError } = await supabase
+    .from("products")
+    .select("id, name, stock_mode, stock_quantity")
+    .in("id", productIds);
+
+  if (fetchError || !products) {
+    console.error("decrementStockForOrder: failed to fetch products", fetchError);
+    return { success: false, outOfStockProductName: "Unknown product" };
+  }
+
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  for (const item of items) {
+    const product = productMap.get(item.productId);
+    if (!product || product.stock_mode !== "LIMITED") continue;
+
+    // Call the atomic decrement function
+    const { data: rows, error: decrementError } = await supabase
+      .rpc("decrement_stock", { p_id: item.productId, p_qty: item.quantity });
+
+    if (decrementError) {
+      console.error("decrementStockForOrder: RPC error", decrementError);
+      return { success: false, outOfStockProductName: product.name };
+    }
+
+    // If no row returned the WHERE guard blocked it (sold out / insufficient qty)
+    if (!rows || (Array.isArray(rows) && rows.length === 0)) {
+      return { success: false, outOfStockProductName: product.name };
+    }
+  }
+
+  return { success: true };
+}
+
 // ── Dashboard Stats ──────────────────────────��──────────────────────────
 
 export async function getDashboardStats(): Promise<{

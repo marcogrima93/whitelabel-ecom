@@ -154,6 +154,11 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
           </>
         )}
       </Button>
+      {isOutOfStock && (
+        <p className="text-sm text-muted-foreground text-center">
+          This product is currently out of stock.
+        </p>
+      )}
 
       {/* Request Quote Link */}
       {siteConfig.wholesale.enabled && (

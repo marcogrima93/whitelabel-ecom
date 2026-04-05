@@ -6,6 +6,7 @@
 // ============================================================================
 
 export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+export type StockMode = "UNLIMITED" | "LIMITED";
 export type UserRole = "RETAIL" | "WHOLESALE" | "ADMIN";
 export type OrderStatus =
   | "PENDING"
@@ -37,6 +38,8 @@ export interface Product {
   retail_price: number;
   wholesale_price: number;
   stock_status: StockStatus;
+  stock_mode: StockMode;
+  stock_quantity: number;
   options: string[];
   /** Per-value configuration (price override + linked image). Stored as JSONB. */
   option_configs: OptionConfig[];
@@ -216,6 +219,7 @@ export interface Database {
     Functions: Record<string, never>;
     Enums: {
       stock_status: StockStatus;
+      stock_mode: StockMode;
       user_role: UserRole;
       order_status: OrderStatus;
       delivery_method: DeliveryMethod;
