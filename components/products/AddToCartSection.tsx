@@ -19,11 +19,17 @@ interface AddToCartSectionProps {
   product: Product;
   /** Resolved price to display and snapshot into cart (override or base price). */
   resolvedPrice: number;
+  /**
+   * Resolved image URL to snapshot into the cart item at add-to-cart time.
+   * If an option has a linked image it will be this value; otherwise falls back
+   * to the first product image.
+   */
+  resolvedImage?: string;
   /** Called when the selected option changes, so the parent can react. */
   onOptionChange?: (option: string) => void;
 }
 
-export function AddToCartSection({ product, resolvedPrice, onOptionChange }: AddToCartSectionProps) {
+export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOptionChange }: AddToCartSectionProps) {
   const [selectedOption, setSelectedOption] = useState(product.options[0] || "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
@@ -40,7 +46,8 @@ export function AddToCartSection({ product, resolvedPrice, onOptionChange }: Add
     addItem({
       productId: product.id,
       name: product.name,
-      image: product.images[0] || "",
+      // Snapshot the resolved image (linked option image or first product image)
+      image: resolvedImage ?? product.images[0] ?? "",
       selectedOption,
       pricePerUnit: resolvedPrice,
       quantity,

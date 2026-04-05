@@ -45,16 +45,21 @@ export function ProductInteractiveSection({ product }: Props) {
   const [resolvedPrice, setResolvedPrice] = useState<number>(
     initialConfig?.price_override ?? product.retail_price
   );
+  // Track the resolved image URL so it can be snapshotted into the cart item
+  const [resolvedImage, setResolvedImage] = useState<string>(
+    initialConfig?.image_url ?? product.images[0] ?? ""
+  );
 
   const handleOptionChange = useCallback(
     (option: string) => {
       const cfg = getConfig(option);
-      // Update price: use override if set, otherwise fall back to base price
       setResolvedPrice(cfg?.price_override ?? product.retail_price);
-      // Update image: use linked image if set, otherwise show first image
-      setActiveImageIndex(imageIndexFor(cfg));
+      const idx = imageIndexFor(cfg);
+      setActiveImageIndex(idx);
+      // Keep resolved image in sync so the cart snapshot is always correct
+      setResolvedImage(cfg?.image_url ?? product.images[0] ?? "");
     },
-    [getConfig, imageIndexFor, product.retail_price]
+    [getConfig, imageIndexFor, product.retail_price, product.images]
   );
 
   const handleThumbnailSelect = useCallback((index: number) => {
@@ -78,6 +83,7 @@ export function ProductInteractiveSection({ product }: Props) {
         <AddToCartSection
           product={product}
           resolvedPrice={resolvedPrice}
+          resolvedImage={resolvedImage}
           onOptionChange={handleOptionChange}
         />
       </div>

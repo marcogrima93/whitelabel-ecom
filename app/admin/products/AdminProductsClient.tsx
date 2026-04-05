@@ -15,6 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -429,6 +430,9 @@ export default function AdminProductsClient({ initialProducts, categories, produ
           <form onSubmit={handleSubmit}>
             <DialogHeader>
               <DialogTitle>{editingProduct ? "Edit Product" : "Add Product"}</DialogTitle>
+              <DialogDescription>
+                {editingProduct ? "Update product details, images, and option values." : "Fill in the details below to create a new product."}
+              </DialogDescription>
             </DialogHeader>
 
             <div className="grid gap-4 py-4">
