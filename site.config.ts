@@ -146,10 +146,6 @@ export const siteConfig = {
       { name: "Comino", fee: 15 },
     ],
     freeThreshold: 80, // Free delivery over this amount
-    slots: [
-      { label: "Morning 8–12", value: "morning" },
-      { label: "Afternoon 12–5", value: "afternoon" },
-    ],
     pickupAddress: "Triq Andrea Bogdan, Ħaż-Żebbuġ, ZBG306",
   },
 

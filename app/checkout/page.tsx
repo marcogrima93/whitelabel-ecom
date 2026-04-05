@@ -145,12 +145,42 @@ export default function CheckoutPage() {
   const [saveAddress, setSaveAddress] = useState(false);
   const [saveAddressLabel, setSaveAddressLabel] = useState("Home");
 
-  // Delivery settings (blocked days/dates from admin)
-  const [blockedDays, setBlockedDays] = useState<number[]>([]);
-  const [blockedDates, setBlockedDates] = useState<string[]>([]);
+  // Fulfillment settings (slots + per-method blocked days/dates from admin)
+  type FulfillmentMethod = "delivery" | "collection";
+  type SlotName = "morning" | "afternoon" | "evening";
+  type SlotMatrix = Record<FulfillmentMethod, Record<number, Record<SlotName, boolean>>>;
+  interface FulfillmentSettingsShape {
+    slots: SlotMatrix;
+    blocked_days: Record<FulfillmentMethod, number[]>;
+    blocked_dates: Record<FulfillmentMethod, string[]>;
+  }
+  const SLOT_LABELS: Record<SlotName, string> = {
+    morning: "Morning 8–12",
+    afternoon: "Afternoon 12–5",
+    evening: "Evening 5–8",
+  };
+  const [fulfillmentSettings, setFulfillmentSettings] = useState<FulfillmentSettingsShape>({
+    slots: { delivery: {}, collection: {} },
+    blocked_days: { delivery: [], collection: [] },
+    blocked_dates: { delivery: [], collection: [] },
+  });
 
   // Compute min date once on mount (avoids hydration mismatch)
   const minDate = useMemo(() => toDateInputValue(getMinSelectableDate()), []);
+
+  // Derive available slots for the active method + selected date
+  const activeMethod: FulfillmentMethod = deliveryType === "DELIVERY" ? "delivery" : "collection";
+  const availableSlots = useMemo(() => {
+    const iso = deliveryForm.preferredDate;
+    if (!iso) return [];
+    const [y, m, d] = iso.split("-").map(Number);
+    // day_of_week: 0=Mon … 6=Sun  (our DB convention, NOT JS's 0=Sun)
+    const jsDay = new Date(y, m - 1, d).getDay(); // 0=Sun … 6=Sat
+    const dbDay = jsDay === 0 ? 6 : jsDay - 1;    // convert to 0=Mon … 6=Sun
+    const dayMatrix = fulfillmentSettings.slots[activeMethod]?.[dbDay];
+    if (!dayMatrix) return [];
+    return (["morning", "afternoon", "evening"] as SlotName[]).filter((s) => dayMatrix[s]);
+  }, [fulfillmentSettings.slots, activeMethod, deliveryForm.preferredDate]);
 
   // Form state
   const [deliveryForm, setDeliveryForm] = useState({
@@ -161,7 +191,7 @@ export default function CheckoutPage() {
     line2: "",
     town: defaultTown,
     postcode: "",
-    deliverySlot: siteConfig.delivery.slots[0]?.value || "",
+    deliverySlot: "", // will be set to first available slot after settings load
     preferredDate: "", // filled on mount below
   });
   const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
@@ -175,13 +205,35 @@ export default function CheckoutPage() {
     setDeliveryForm((prev) => ({ ...prev, preferredDate: toDateInputValue(getMinSelectableDate()) }));
   }, []);
 
-  // Fetch delivery settings (blocked days/dates)
+  // Auto-select first available slot when slots or date or method changes
+  useEffect(() => {
+    if (availableSlots.length > 0 && !availableSlots.includes(deliveryForm.deliverySlot as SlotName)) {
+      updateForm("deliverySlot", availableSlots[0]);
+    }
+  }, [availableSlots]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch fulfillment settings (slots + blocked days/dates)
   useEffect(() => {
     fetch("/api/delivery-settings")
       .then((r) => r.json())
-      .then((s) => {
-        if (s?.blocked_days) setBlockedDays(s.blocked_days);
-        if (s?.blocked_dates) setBlockedDates(s.blocked_dates);
+      .then((s: Partial<{
+        slots: Record<string, Record<number, Record<string, boolean>>>;
+        blocked_days: Record<string, number[]>;
+        blocked_dates: Record<string, string[]>;
+      }>) => {
+        if (s) {
+          setFulfillmentSettings({
+            slots: (s.slots ?? { delivery: {}, collection: {} }) as SlotMatrix,
+            blocked_days: {
+              delivery: s.blocked_days?.delivery ?? [],
+              collection: s.blocked_days?.collection ?? [],
+            },
+            blocked_dates: {
+              delivery: s.blocked_dates?.delivery ?? [],
+              collection: s.blocked_dates?.collection ?? [],
+            },
+          });
+        }
       })
       .catch(() => {});
   }, []);
@@ -353,7 +405,12 @@ export default function CheckoutPage() {
     if (iso) {
       const [y, m, d] = iso.split("-").map(Number);
       const date = new Date(y, m - 1, d);
-      if (blockedDays.includes(date.getDay()) || blockedDates.includes(iso)) {
+      const jsDay = date.getDay();
+      const dbDay = jsDay === 0 ? 6 : jsDay - 1;
+      const methodKey = deliveryType === "DELIVERY" ? "delivery" : "collection";
+      const mBlockedDays = fulfillmentSettings.blocked_days[methodKey] ?? [];
+      const mBlockedDates = fulfillmentSettings.blocked_dates[methodKey] ?? [];
+      if (mBlockedDays.includes(dbDay) || mBlockedDates.includes(iso)) {
         alert("The selected date is unavailable. Please choose another date.");
         return;
       }
@@ -736,9 +793,10 @@ export default function CheckoutPage() {
                     const isDeliveryDateBlocked = (iso: string) => {
                       if (!iso) return false;
                       const [y, m, d] = iso.split("-").map(Number);
-                      const date = new Date(y, m - 1, d);
-                      if (blockedDays.includes(date.getDay())) return true;
-                      if (blockedDates.includes(iso)) return true;
+                      const jsDay = new Date(y, m - 1, d).getDay();
+                      const dbDay = jsDay === 0 ? 6 : jsDay - 1;
+                      if (fulfillmentSettings.blocked_days.delivery.includes(dbDay)) return true;
+                      if (fulfillmentSettings.blocked_dates.delivery.includes(iso)) return true;
                       return false;
                     };
                     const dateBlocked = isDeliveryDateBlocked(deliveryForm.preferredDate);
@@ -774,18 +832,22 @@ export default function CheckoutPage() {
                       <Select
                         value={deliveryForm.deliverySlot}
                         onValueChange={(v) => updateForm("deliverySlot", v)}
+                        disabled={availableSlots.length === 0}
                       >
                         <SelectTrigger>
-                          <SelectValue />
+                          <SelectValue placeholder={availableSlots.length === 0 ? "No slots available" : "Select slot"} />
                         </SelectTrigger>
                         <SelectContent>
-                          {siteConfig.delivery.slots.map((s) => (
-                            <SelectItem key={s.value} value={s.value}>
-                              {s.label}
+                          {availableSlots.map((s) => (
+                            <SelectItem key={s} value={s}>
+                              {SLOT_LABELS[s]}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {availableSlots.length === 0 && deliveryForm.preferredDate && (
+                        <p className="text-xs text-destructive">No slots available on this date.</p>
+                      )}
                     </div>
                   </div>
                     );
@@ -874,18 +936,23 @@ export default function CheckoutPage() {
                             const iso = deliveryForm.preferredDate;
                             if (!iso) return "";
                             const [y, m, d] = iso.split("-").map(Number);
-                            const date = new Date(y, m - 1, d);
-                            return (blockedDays.includes(date.getDay()) || blockedDates.includes(iso))
-                              ? "border-destructive"
-                              : "";
+                            const jsDay = new Date(y, m - 1, d).getDay();
+                            const dbDay = jsDay === 0 ? 6 : jsDay - 1;
+                            return (
+                              fulfillmentSettings.blocked_days.collection.includes(dbDay) ||
+                              fulfillmentSettings.blocked_dates.collection.includes(iso)
+                            ) ? "border-destructive" : "";
                           })()}`}
                         />
                         {(() => {
                           const iso = deliveryForm.preferredDate;
                           if (!iso) return null;
                           const [y, m, d] = iso.split("-").map(Number);
-                          const date = new Date(y, m - 1, d);
-                          const isBlocked = blockedDays.includes(date.getDay()) || blockedDates.includes(iso);
+                          const jsDay = new Date(y, m - 1, d).getDay();
+                          const dbDay = jsDay === 0 ? 6 : jsDay - 1;
+                          const isBlocked =
+                            fulfillmentSettings.blocked_days.collection.includes(dbDay) ||
+                            fulfillmentSettings.blocked_dates.collection.includes(iso);
                           return isBlocked ? (
                             <p className="text-xs text-destructive">This date is unavailable. Please select another.</p>
                           ) : (
@@ -898,18 +965,22 @@ export default function CheckoutPage() {
                         <Select
                           value={deliveryForm.deliverySlot}
                           onValueChange={(v) => updateForm("deliverySlot", v)}
+                          disabled={availableSlots.length === 0}
                         >
                           <SelectTrigger>
-                            <SelectValue />
+                            <SelectValue placeholder={availableSlots.length === 0 ? "No slots available" : "Select slot"} />
                           </SelectTrigger>
                           <SelectContent>
-                            {siteConfig.delivery.slots.map((s) => (
-                              <SelectItem key={s.value} value={s.value}>
-                                {s.label}
+                            {availableSlots.map((s) => (
+                              <SelectItem key={s} value={s}>
+                                {SLOT_LABELS[s]}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
+                        {availableSlots.length === 0 && deliveryForm.preferredDate && (
+                          <p className="text-xs text-destructive">No slots available on this date.</p>
+                        )}
                       </div>
                     </div>
                   </div>
