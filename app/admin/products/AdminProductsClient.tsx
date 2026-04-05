@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Pencil, Archive, Search, Package, Inbox, Loader2, X, Link2, LinkSlash } from "lucide-react";
+import { Plus, Pencil, Archive, Search, Package, Inbox, Loader2, X, Link2, Unlink } from "lucide-react";
 import type { Product, OptionConfig } from "@/lib/supabase/types";
 import { archiveProductAction, upsertProductAction } from "./actions";
 import { ImageUpload } from "@/components/ui/image-upload";
@@ -127,7 +127,7 @@ function ImagePicker({ images, value, onChange }: ImagePickerProps) {
             }`}
             title="No image"
           >
-            <LinkSlash className="h-4 w-4 text-muted-foreground" />
+            <Unlink className="h-4 w-4 text-muted-foreground" />
           </button>
           {images.map((img) => (
             <button

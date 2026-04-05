@@ -42,3 +42,15 @@ export async function upsertProductAction(
   revalidatePath("/products");
   return { success: true };
 }
+
+export async function archiveProductAction(id: string): Promise<boolean> {
+  const supabase = await createServiceRoleClient();
+  const { error } = await supabase
+    .from("products")
+    .update({ is_archived: true, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (error) { console.error("Error archiving product:", error); return false; }
+  revalidatePath("/admin/products");
+  revalidatePath("/products");
+  return true;
+}
