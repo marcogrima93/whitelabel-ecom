@@ -7,6 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -254,11 +255,12 @@ export default function AdminCustomersClient({
 
       {/* Customer detail modal */}
       <Dialog open={detailOpen} onOpenChange={setDetailOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" aria-describedby={undefined}>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           {customerDetail && (
             <>
               <DialogHeader>
                 <DialogTitle>{customerDetail.profile.name || "Customer"}</DialogTitle>
+                <DialogDescription>Customer account details and order history.</DialogDescription>
               </DialogHeader>
 
               {/* Profile info */}

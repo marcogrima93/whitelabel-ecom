@@ -16,6 +16,16 @@ export type OrderStatus =
   | "CANCELLED";
 export type DeliveryMethod = "DELIVERY" | "COLLECTION";
 
+/** One enriched option value with optional price override and image link. */
+export interface OptionConfig {
+  /** The plain-text option value, e.g. "Red", "XL", "2kg" */
+  value: string;
+  /** If set, replaces the product base price when this option is selected. */
+  price_override: number | null;
+  /** URL of an already-uploaded product image, or null if none linked. */
+  image_url: string | null;
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -28,6 +38,8 @@ export interface Product {
   wholesale_price: number;
   stock_status: StockStatus;
   options: string[];
+  /** Per-value configuration (price override + linked image). Stored as JSONB. */
+  option_configs: OptionConfig[];
   is_archived: boolean;
   is_featured: boolean;
   created_at: string;
@@ -109,7 +121,9 @@ export interface QuoteRequest {
 }
 
 // ── Supabase Table Update/Insert helpers ───────────────────────────────
-export type ProductInsert = Omit<Product, "id" | "created_at" | "updated_at">;
+export type ProductInsert = Omit<Product, "id" | "created_at" | "updated_at"> & {
+  option_configs?: OptionConfig[];
+};
 export type ProductUpdate = Partial<Omit<Product, "id" | "created_at" | "updated_at">>;
 
 export type ProfileInsert = Omit<Profile, "created_at" | "updated_at">;

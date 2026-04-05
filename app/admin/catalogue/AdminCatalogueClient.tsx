@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -184,10 +185,13 @@ export default function AdminCatalogueClient({
                 <Plus className="mr-2 h-4 w-4" /> Add Category
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
+            <DialogContent className="sm:max-w-md">
               <form onSubmit={handleCatSubmit}>
                 <DialogHeader>
                   <DialogTitle>{editingCat ? "Edit Category" : "Add Category"}</DialogTitle>
+                  <DialogDescription>
+                    {editingCat ? "Update the category name, slug, and image." : "Enter a name and slug to create a new category."}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="grid gap-4 py-4">
                   <div className="space-y-2">
@@ -308,10 +312,11 @@ export default function AdminCatalogueClient({
                 <Plus className="mr-2 h-4 w-4" /> Add Filter Group
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-sm" aria-describedby={undefined}>
+            <DialogContent className="sm:max-w-sm">
               <form onSubmit={handleGroupSubmit}>
                 <DialogHeader>
                   <DialogTitle>Add Filter Group</DialogTitle>
+                  <DialogDescription>Create a new filter group label for the product catalogue.</DialogDescription>
                 </DialogHeader>
                 <div className="py-4 space-y-2">
                   <Label htmlFor="group-label">Label</Label>
