@@ -127,11 +127,9 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState("");
   const [checkoutOrderNumber, setCheckoutOrderNumber] = useState("");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
-
-  // Enabled gateways from the central registry — drives all payment UI
-  const enabledGateways = getEnabledGateways();
-  const defaultPaymentMethod: PaymentMethod = (enabledGateways[0]?.id ?? "stripe") as PaymentMethod;
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(defaultPaymentMethod);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(
+    () => (getEnabledGateways()[0]?.id ?? "stripe") as PaymentMethod
+  );
 
   // Saved address
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -538,6 +536,9 @@ export default function CheckoutPage() {
     { key: "payment", label: "Payment", icon: CreditCard },
     { key: "confirmation", label: "Confirmation", icon: CheckCircle },
   ];
+
+  // Derived from registry — must be after all hooks
+  const enabledGateways = getEnabledGateways();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
