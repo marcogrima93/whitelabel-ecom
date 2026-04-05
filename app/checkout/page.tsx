@@ -1069,12 +1069,18 @@ export default function CheckoutPage() {
                 {items.map((item) => (
                   <div
                     key={`${item.productId}-${item.selectedOption}`}
-                    className="flex justify-between text-sm"
+                    className="flex justify-between text-sm gap-2"
                   >
-                    <span className="text-muted-foreground">
-                      {item.name} × {item.quantity}
+                    <span className="text-muted-foreground min-w-0">
+                      <span className="font-medium text-foreground">{item.name}</span>
+                      {item.selectedOption && (
+                        <span className="block text-xs text-muted-foreground">
+                          {item.selectedOption}
+                        </span>
+                      )}
+                      <span className="block text-xs">× {item.quantity}</span>
                     </span>
-                    <span>
+                    <span className="shrink-0 font-medium">
                       {formatPrice(
                         item.pricePerUnit * item.quantity,
                         currency.code,
