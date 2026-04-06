@@ -79,7 +79,6 @@ function mergeConfigs(values: string[], existing: OptionConfig[]): OptionConfig[
         : null,
     };
   });
-  console.log("[v0] mergeConfigs result:", JSON.stringify(result));
   return result;
 }
 
@@ -206,7 +205,6 @@ export default function AdminProductsClient({ initialProducts, categories, produ
         images: product.images ?? [],
         is_featured: product.is_featured ?? false,
       });
-      console.log("[v0] product.option_configs from DB:", JSON.stringify(product.option_configs));
     } else {
       setEditingProduct(null);
       setForm(EMPTY_FORM);
@@ -252,16 +250,18 @@ export default function AdminProductsClient({ initialProducts, categories, produ
       const cleanedFilterValues = Object.fromEntries(
         Object.entries(form.filter_values).filter(([, v]) => v && v !== "__none__")
       );
-      // Clean configs: strip empty price strings, keep only valid entries
+      // Clean configs: strip empty price strings, keep only valid entries.
+      // IMPORTANT: always persist stock_quantity regardless of stock_mode so toggling
+      // modes never destroys stored data. stock_mode controls whether quantities are
+      // USED by the system, not whether they are stored.
       const cleanedConfigs: OptionConfig[] = form.option_configs.map((c) => ({
         value: c.value,
         price_override: c.price_override !== null && c.price_override !== undefined && !isNaN(c.price_override) ? c.price_override : null,
         image_url: c.image_url || null,
-        stock_quantity: form.stock_mode === "LIMITED" && c.stock_quantity !== null && c.stock_quantity !== undefined
-          ? (isNaN(c.stock_quantity) ? null : c.stock_quantity)
+        stock_quantity: c.stock_quantity !== null && c.stock_quantity !== undefined && !isNaN(c.stock_quantity)
+          ? c.stock_quantity
           : null,
       }));
-      console.log("[v0] cleanedConfigs before save:", JSON.stringify(cleanedConfigs));
 
       const stockQuantity = parseInt(form.stock_quantity, 10) || 0;
 
