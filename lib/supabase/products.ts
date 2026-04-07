@@ -205,6 +205,7 @@ function normaliseImages(product: Product): Product {
       value: c.value ?? "",
       price_override: c.price_override ?? null,
       image_url: c.image_url ?? null,
+      stock_quantity: c.stock_quantity !== undefined && c.stock_quantity !== null ? c.stock_quantity : null,
     })),
   };
 }
