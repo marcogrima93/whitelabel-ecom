@@ -26,6 +26,7 @@ import {
   SheetHeader,
   SheetTitle,
   SheetDescription,
+  SheetTrigger,
 } from "@/components/ui/sheet";
 import type { ProductFilter } from "@/lib/supabase/types";
 
