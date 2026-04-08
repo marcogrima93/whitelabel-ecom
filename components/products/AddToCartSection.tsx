@@ -33,7 +33,13 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
   const [selectedOption, setSelectedOption] = useState(product.options[0] || "");
   const [quantity, setQuantity] = useState(1);
   const [added, setAdded] = useState(false);
+  const items = useCartStore((s) => s.items);
   const addItem = useCartStore((s) => s.addItem);
+
+  // How many of this product+option combo are already sitting in the cart
+  const cartQuantity = items
+    .filter((i) => i.productId === product.id && i.selectedOption === selectedOption)
+    .reduce((sum, i) => sum + i.quantity, 0);
 
   // Build a fast lookup from option value → stock_quantity (null = unlimited for that option)
   const optionStockMap = new Map<string, number | null>(
@@ -55,31 +61,27 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
     return qty !== null && qty <= 0;
   };
 
-  // Overall OOS: product-level flag OR selected option is OOS
+  // Overall OOS: product-level flag, selected option is OOS, or no remaining stock after cart
   const isOutOfStock =
     product.stock_status === "OUT_OF_STOCK" ||
-    (hasPerOptionStock && isOptionOos(selectedOption));
+    (hasPerOptionStock && isOptionOos(selectedOption)) ||
+    (isLimited && maxQuantity <= 0);
 
   const handleOptionSelect = (opt: string) => {
     if (isOptionOos(opt)) return;
     setSelectedOption(opt);
-    // Clamp quantity to new option's stock limit
-    if (hasPerOptionStock) {
-      const newQty = getOptionStock(opt);
-      if (newQty !== null) setQuantity((q) => Math.min(q, Math.max(1, newQty)));
-    }
+    setQuantity(1); // reset so cart-aware maxQuantity is recalculated cleanly
     onOptionChange?.(opt);
   };
 
-  // Compute max quantity for the currently selected option / product
+  // Compute max quantity for the currently selected option / product,
+  // deducting whatever is already in the cart for this product+option.
   const maxQuantity = (() => {
     if (!isLimited) return 99;
-    if (hasPerOptionStock) {
-      const qty = getOptionStock(selectedOption);
-      return qty !== null ? Math.max(0, qty) : 99;
-    }
-    const pQty = product.stock_quantity;
-    return pQty !== undefined && pQty !== null ? Math.max(0, pQty) : 99;
+    const rawStock = hasPerOptionStock
+      ? (getOptionStock(selectedOption) ?? 99)
+      : (product.stock_quantity !== undefined && product.stock_quantity !== null ? product.stock_quantity : 99);
+    return Math.max(0, rawStock - cartQuantity);
   })();
 
   const handleAdd = () => {
