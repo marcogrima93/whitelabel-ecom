@@ -134,9 +134,8 @@ function ImagePicker({ images, value, onChange }: ImagePickerProps) {
           <button
             type="button"
             onClick={() => { onChange(null); setOpen(false); }}
-            className={`aspect-square rounded border-2 flex items-center justify-center transition-colors ${
-              !value ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/40"
-            }`}
+            className={`aspect-square rounded border-2 flex items-center justify-center transition-colors ${!value ? "border-primary bg-primary/5" : "border-transparent hover:border-primary/40"
+              }`}
             title="No image"
           >
             <Unlink className="h-4 w-4 text-muted-foreground" />
@@ -146,9 +145,8 @@ function ImagePicker({ images, value, onChange }: ImagePickerProps) {
               key={img}
               type="button"
               onClick={() => { onChange(img); setOpen(false); }}
-              className={`aspect-square rounded border-2 overflow-hidden transition-colors ${
-                value === img ? "border-primary" : "border-transparent hover:border-primary/40"
-              }`}
+              className={`aspect-square rounded border-2 overflow-hidden transition-colors ${value === img ? "border-primary" : "border-transparent hover:border-primary/40"
+                }`}
               title={img.split("/").pop()}
             >
               <img src={img} alt="" className="w-full h-full object-cover" />
@@ -513,7 +511,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                       const name = e.target.value;
                       setForm((p) => ({ ...p, name, slug: editingProduct ? p.slug : autoSlug(name) }));
                     }}
-                    placeholder="e.g. Ribeye Steak"
+                    placeholder="e.g. Shirt"
                     required
                   />
                 </div>
@@ -523,7 +521,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                     id="p-slug"
                     value={form.slug}
                     onChange={(e) => update("slug", e.target.value)}
-                    placeholder="e.g. ribeye-steak"
+                    placeholder="e.g. shirt"
                     required
                   />
                 </div>
@@ -631,22 +629,20 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                   <button
                     type="button"
                     onClick={() => update("stock_mode", "UNLIMITED")}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${
-                      form.stock_mode === "UNLIMITED"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground hover:bg-accent"
-                    }`}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${form.stock_mode === "UNLIMITED"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
                   >
                     Unlimited
                   </button>
                   <button
                     type="button"
                     onClick={() => update("stock_mode", "LIMITED")}
-                    className={`px-4 py-2 text-sm font-medium transition-colors ${
-                      form.stock_mode === "LIMITED"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground hover:bg-accent"
-                    }`}
+                    className={`px-4 py-2 text-sm font-medium transition-colors ${form.stock_mode === "LIMITED"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
+                      }`}
                   >
                     Limited
                   </button>
