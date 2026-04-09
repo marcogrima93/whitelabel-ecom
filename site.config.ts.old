@@ -9,9 +9,9 @@ export type SiteConfig = typeof siteConfig;
 
 export const siteConfig = {
   // ── Branding ──────────────────────────────────────────────────────────
-  shopName: "CHILL Clothing Malta",
-  shopDescription: "New and Preloved Clothing.",
-  shopUrl: "https://chill.mt",
+  shopName: "Meat Drop Malta",
+  shopDescription: "Premium meats & poultry, expertly butchered and delivered fresh.",
+  shopUrl: "https://meatdrop.mt",
   logo: "/logo.svg", // Place in /public
   // "logo-only"       = just the logo image in the header
   // "logo-and-name"   = logo image (left) + shop name text (right)
@@ -45,16 +45,16 @@ export const siteConfig = {
   // Filter groups and options are managed in Admin Portal → Catalogue section.
   // unit and optionSelector are store-level display labels used across the UI.
   filters: {
-    unit: "piece", // e.g. "kg", "piece", "pack" — shown as "€12.50 / kg"
-    optionSelector: "Size", // e.g. "Weight", "Size", "Colour" — labels the variant picker
+    unit: "kg", // e.g. "kg", "piece", "pack" — shown as "€12.50 / kg"
+    optionSelector: "Weight", // e.g. "Weight", "Size", "Colour" — labels the variant picker
   },
 
   // ── Homepage ──────────────────────────────────────────────────────────
   hero: {
-    headline: "Chill Streetwear & Style",
-    subheadline: "Carefully curated, new and preloved clothing for everyday comfort and expression.",
-    primaryCta: { label: "Shop Clothing", href: "/products" },
-    secondaryCta: { label: "Secondhand Selection", href: "/secondhand" },
+    headline: "Premium Quality Meats",
+    subheadline: "Responsibly sourced, expertly butchered, and delivered fresh to your door.",
+    primaryCta: { label: "Shop Prime Cuts", href: "/products" },
+    secondaryCta: { label: "Restaurant Wholesale", href: "/wholesale" },
     backgroundImage: "/images/hero-bg.jpg",
     // "dark" = dark/moody image → light text & buttons
     // "light" = light/bright image → dark text & buttons
@@ -63,13 +63,13 @@ export const siteConfig = {
 
   announcement: {
     enabled: true,
-    text: "Free delivery on orders over €80!",
+    text: "Free refrigerated delivery on orders over €80!",
   },
 
   usps: [
-    { icon: "Zap", title: "Curated Style", description: "Picked for quality, comfort, and individuality" },
-    { icon: "Shield", title: "Sustainable Fashion", description: "Mix of new and preloved pieces to reduce waste" },
-    { icon: "Truck", title: "Fast Delivery", description: "Reliable shipping across Malta and Gozo" },
+    { icon: "Zap", title: "Farm Fresh", description: "Sourced directly from trusted local farms" },
+    { icon: "Shield", title: "Expertly Butchered", description: "Prepared fresh daily by master butchers" },
+    { icon: "Truck", title: "Cold Chain Delivery", description: "Delivered in refrigerated vans for maximum freshness" },
   ],
 
   // ── Delivery ──────────────────────────────────────────────────────────
@@ -146,7 +146,7 @@ export const siteConfig = {
       { name: "Comino", fee: 15 },
     ],
     freeThreshold: 80, // Free delivery over this amount
-    pickupAddress: "Trejqet ir-Rummien, Ħal-Għaxaq, GXQ 1210",
+    pickupAddress: "Triq Andrea Bogdan, Ħaż-Żebbuġ, ZBG306",
   },
 
   // ── Payments ──────────────────────────────────────────────────────────
@@ -202,7 +202,7 @@ export const siteConfig = {
     pendingMessage: "Your wholesale account will be reviewed within 24 hours.",
   },
 
-  // ── Contact & Social ──────────────────────────────────  ───────────────
+  // ── Contact & Social ──────────────────────────────────��───────────────
   // ── Notifications & Transactional Email ──────────────────────────────
   notifications: {
     // Address used as the "From" on all transactional emails.
@@ -215,13 +215,13 @@ export const siteConfig = {
 
   whatsapp: {
     enabled: true,
-    number: "+35679052165",
+    number: "+35699999999",
   },
 
   contact: {
-    email: "hello@chill.mt",
-    phone: "+356 7905 2165",
-    address: "Trejqet ir-Rummien, Ħal-Għaxaq, GXQ 1210",
+    email: "hello@meatdrop.mt",
+    phone: "+356 9999 9999",
+    address: "Triq Andrea Bogdan, Ħaż-Żebbuġ, ZBG306",
   },
 
   social: {
@@ -232,7 +232,7 @@ export const siteConfig = {
 
   // ── Legal / GDPR ─────────────────────────────────────────────────────
   legal: {
-    companyName: "CHILL Clothing Malta",
+    companyName: "Meat Drop Malta",
     vatNumber: "",
     registrationNumber: "",
   },
