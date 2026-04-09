@@ -511,7 +511,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                       const name = e.target.value;
                       setForm((p) => ({ ...p, name, slug: editingProduct ? p.slug : autoSlug(name) }));
                     }}
-                    placeholder="e.g. T-Shirt"
+                    placeholder="e.g. Shirt"
                     required
                   />
                 </div>
@@ -521,7 +521,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                     id="p-slug"
                     value={form.slug}
                     onChange={(e) => update("slug", e.target.value)}
-                    placeholder="e.g. T-Shirt"
+                    placeholder="e.g. shirt"
                     required
                   />
                 </div>
@@ -630,8 +630,8 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                     type="button"
                     onClick={() => update("stock_mode", "UNLIMITED")}
                     className={`px-4 py-2 text-sm font-medium transition-colors ${form.stock_mode === "UNLIMITED"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground hover:bg-accent"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
                       }`}
                   >
                     Unlimited
@@ -640,8 +640,8 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                     type="button"
                     onClick={() => update("stock_mode", "LIMITED")}
                     className={`px-4 py-2 text-sm font-medium transition-colors ${form.stock_mode === "LIMITED"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-background text-muted-foreground hover:bg-accent"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-background text-muted-foreground hover:bg-accent"
                       }`}
                   >
                     Limited
