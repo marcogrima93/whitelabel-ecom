@@ -61,6 +61,16 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
     return qty !== null && qty <= 0;
   };
 
+  // Compute max quantity for the currently selected option / product,
+  // deducting whatever is already in the cart for this product+option.
+  const maxQuantity = (() => {
+    if (!isLimited) return 99;
+    const rawStock = hasPerOptionStock
+      ? (getOptionStock(selectedOption) ?? 99)
+      : (product.stock_quantity !== undefined && product.stock_quantity !== null ? product.stock_quantity : 99);
+    return Math.max(0, rawStock - cartQuantity);
+  })();
+
   // Overall OOS: product-level flag, selected option is OOS, or no remaining stock after cart
   const isOutOfStock =
     product.stock_status === "OUT_OF_STOCK" ||
@@ -73,16 +83,6 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
     setQuantity(1); // reset so cart-aware maxQuantity is recalculated cleanly
     onOptionChange?.(opt);
   };
-
-  // Compute max quantity for the currently selected option / product,
-  // deducting whatever is already in the cart for this product+option.
-  const maxQuantity = (() => {
-    if (!isLimited) return 99;
-    const rawStock = hasPerOptionStock
-      ? (getOptionStock(selectedOption) ?? 99)
-      : (product.stock_quantity !== undefined && product.stock_quantity !== null ? product.stock_quantity : 99);
-    return Math.max(0, rawStock - cartQuantity);
-  })();
 
   const handleAdd = () => {
     if (isOutOfStock) return;
