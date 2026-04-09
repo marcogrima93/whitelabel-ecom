@@ -126,11 +126,10 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [checkoutOrderNumber, setCheckoutOrderNumber] = useState("");
-
-  // Enabled gateways from the central registry — drives all payment UI
-  const enabledGateways = getEnabledGateways();
-  const defaultPaymentMethod: PaymentMethod = enabledGateways[0]?.id ?? "stripe";
-  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(defaultPaymentMethod);
+  const [checkoutError, setCheckoutError] = useState<string | null>(null);
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(
+    () => (getEnabledGateways()[0]?.id ?? "stripe") as PaymentMethod
+  );
 
   // Saved address
   const [savedAddresses, setSavedAddresses] = useState<SavedAddress[]>([]);
@@ -264,8 +263,10 @@ export default function CheckoutPage() {
       .catch(() => {});
   }, []);
 
-  const updateForm = (field: string, value: string) =>
+  const updateForm = (field: string, value: string) => {
+    setCheckoutError(null);
     setDeliveryForm((prev) => ({ ...prev, [field]: value }));
+  };
 
   // Fetch saved addresses on mount
   useEffect(() => {
@@ -416,8 +417,6 @@ export default function CheckoutPage() {
       }
     }
 
-    setStep("payment");
-
     const buildCheckoutBody = (paymentMethod: string) => ({
       items: items.map((item) => ({
         productId: item.productId,
@@ -439,9 +438,12 @@ export default function CheckoutPage() {
     });
 
     // ── Cash on Delivery ──────────────────────────────────────────────────
+    // Do NOT set step to "payment" before we have a successful response —
+    // the payment step immediately renders "Order placed. Redirecting..." for CASH.
     if (selectedPaymentMethod === "cashOnDelivery") {
       if (loading) return;
       setLoading(true);
+      setCheckoutError(null);
       try {
         await saveNewAddressIfRequested();
         const res = await fetch("/api/checkout", {
@@ -450,16 +452,24 @@ export default function CheckoutPage() {
           body: JSON.stringify(buildCheckoutBody("CASH")),
         });
         const data = await res.json();
+        if (!res.ok) {
+          setCheckoutError(data.error || "Failed to place order. Please try again.");
+          return;
+        }
         if (data.orderNumber) {
           handlePaymentSuccess(data.orderNumber);
         }
       } catch (err) {
         console.error("COD checkout error:", err);
+        setCheckoutError("An unexpected error occurred. Please try again.");
       } finally {
         setLoading(false);
       }
       return;
     }
+
+    // For non-CASH methods, transition to payment step now
+    setStep("payment");
 
     // ── PayPal ─────────────────────────────────────────────────────────────
     // PayPal order is created lazily by PayPalForm's createOrder() callback.
@@ -475,11 +485,18 @@ export default function CheckoutPage() {
           body: JSON.stringify(buildCheckoutBody("PAYPAL")),
         });
         const data = await res.json();
+        if (!res.ok) {
+          setStep("delivery");
+          setCheckoutError(data.error || "Failed to initialise PayPal. Please try again.");
+          return;
+        }
         if (data.orderNumber) {
           setCheckoutOrderNumber(data.orderNumber);
         }
       } catch (err) {
         console.error("PayPal init error:", err);
+        setStep("delivery");
+        setCheckoutError("An unexpected error occurred. Please try again.");
       }
       return;
     }
@@ -494,14 +511,23 @@ export default function CheckoutPage() {
         body: JSON.stringify(buildCheckoutBody("STRIPE")),
       });
       const data = await res.json();
+      if (!res.ok) {
+        setStep("delivery");
+        setCheckoutError(data.error || "Failed to initialise payment. Please try again.");
+        return;
+      }
       if (data.clientSecret) {
         setClientSecret(data.clientSecret);
         setCheckoutOrderNumber(data.orderNumber);
       } else {
         console.error("No client secret inside response", data);
+        setStep("delivery");
+        setCheckoutError("Failed to initialise Stripe. Please try again.");
       }
     } catch (err) {
       console.error("Failed to initialize payment:", err);
+      setStep("delivery");
+      setCheckoutError("An unexpected error occurred. Please try again.");
     }
   };
 
@@ -510,6 +536,9 @@ export default function CheckoutPage() {
     { key: "payment", label: "Payment", icon: CreditCard },
     { key: "confirmation", label: "Confirmation", icon: CheckCircle },
   ];
+
+  // Derived from registry — must be after all hooks
+  const enabledGateways = getEnabledGateways();
 
   return (
     <div className="container mx-auto px-4 py-8 max-w-4xl">
@@ -1027,6 +1056,13 @@ export default function CheckoutPage() {
                       );
                     })}
                   </div>
+                </div>
+              )}
+
+              {/* Error banner (stock OOS, validation failures, etc.) */}
+              {checkoutError && (
+                <div className="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+                  {checkoutError}
                 </div>
               )}
 

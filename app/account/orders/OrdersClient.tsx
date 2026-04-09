@@ -132,7 +132,7 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
 
       {/* Order detail modal */}
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" aria-describedby={undefined}>
           {selectedOrder && (
             <>
               <DialogHeader>

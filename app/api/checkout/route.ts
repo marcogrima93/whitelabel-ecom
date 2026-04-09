@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { siteConfig } from "@/site.config";
 import { calcVatAmount, calcTotal } from "@/lib/pricing";
-import { createOrder } from "@/lib/supabase/queries";
+import { createOrder, decrementStockForOrder } from "@/lib/supabase/queries";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import { sendOrderConfirmationEmail } from "@/lib/email";
 import { validateEnabledGatewayEnvVars } from "@/lib/payments/registry";
@@ -81,6 +81,24 @@ export async function POST(req: Request) {
       pricePerUnit: item.pricePerUnit,
       quantity: item.quantity,
     }));
+
+    // ── Stock guard ──────────────────────────────────────────────────────
+    // Must run before any payment intent is created so we never charge a
+    // customer for a product that just sold out.
+    const stockResult = await decrementStockForOrder(
+      orderItems.map((i: { productId: string; productName: string; selectedOption: string; quantity: number }) => ({
+        productId: i.productId,
+        productName: i.productName,
+        selectedOption: i.selectedOption,
+        quantity: i.quantity,
+      }))
+    );
+    if (!stockResult.success) {
+      return NextResponse.json(
+        { error: `"${stockResult.outOfStockProductName}" is no longer available in the requested quantity.` },
+        { status: 409 }
+      );
+    }
 
     const orderBase = {
       orderNumber,

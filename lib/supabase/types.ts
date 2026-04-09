@@ -6,6 +6,7 @@
 // ============================================================================
 
 export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+export type StockMode = "UNLIMITED" | "LIMITED";
 export type UserRole = "RETAIL" | "WHOLESALE" | "ADMIN";
 export type OrderStatus =
   | "PENDING"
@@ -16,7 +17,7 @@ export type OrderStatus =
   | "CANCELLED";
 export type DeliveryMethod = "DELIVERY" | "COLLECTION";
 
-/** One enriched option value with optional price override and image link. */
+/** One enriched option value with optional price override, image link, and per-option stock. */
 export interface OptionConfig {
   /** The plain-text option value, e.g. "Red", "XL", "2kg" */
   value: string;
@@ -24,6 +25,13 @@ export interface OptionConfig {
   price_override: number | null;
   /** URL of an already-uploaded product image, or null if none linked. */
   image_url: string | null;
+  /**
+   * Per-option stock quantity. Only meaningful when the parent product has
+   * stock_mode = 'LIMITED' AND the product has options defined.
+   * When no options exist, the product-level stock_quantity is used instead.
+   * null means this option inherits unlimited / product-level stock.
+   */
+  stock_quantity: number | null;
 }
 
 export interface Product {
@@ -37,6 +45,8 @@ export interface Product {
   retail_price: number;
   wholesale_price: number;
   stock_status: StockStatus;
+  stock_mode: StockMode | undefined;
+  stock_quantity: number | undefined;
   options: string[];
   /** Per-value configuration (price override + linked image). Stored as JSONB. */
   option_configs: OptionConfig[];
@@ -216,6 +226,7 @@ export interface Database {
     Functions: Record<string, never>;
     Enums: {
       stock_status: StockStatus;
+      stock_mode: StockMode;
       user_role: UserRole;
       order_status: OrderStatus;
       delivery_method: DeliveryMethod;

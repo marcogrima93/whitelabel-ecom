@@ -547,6 +547,106 @@ export async function deleteDiscountCode(id: string): Promise<boolean> {
   return true;
 }
 
+// ── Stock Management ────────────────────────────────────────────────────
+
+/**
+ * Atomically decrement stock for all LIMITED-mode products in the given items.
+ *
+ * Routing logic:
+ *  - If the item has a selectedOption AND that option has a non-null stock_quantity
+ *    in option_configs → call `decrement_stock_option` (per-option stock).
+ *  - Otherwise → call `decrement_stock` (product-level stock).
+ *
+ * Returns { success: true } if all decrements succeeded, or
+ * { success: false, outOfStockProductName } for the first product that failed.
+ */
+export async function decrementStockForOrder(
+  items: { productId: string; productName: string; selectedOption: string; quantity: number }[]
+): Promise<{ success: boolean; outOfStockProductName?: string }> {
+  const supabase = await createServiceRoleClient();
+
+  // Fetch stock data for each distinct product in one query
+  const productIds = [...new Set(items.map((i) => i.productId))];
+  const { data: products, error: fetchError } = await supabase
+    .from("products")
+    .select("id, name, stock_mode, stock_quantity, option_configs")
+    .in("id", productIds);
+
+  if (fetchError || !products) {
+    console.error("decrementStockForOrder: failed to fetch products", fetchError);
+    return { success: false, outOfStockProductName: "Unknown product" };
+  }
+
+  const productMap = new Map(products.map((p) => [p.id, p]));
+
+  const getConfigs = (p: ReturnType<typeof productMap.get>): Array<{ value: string; stock_quantity: number | null }> =>
+    Array.isArray(p?.option_configs) ? p.option_configs : [];
+
+  // ── Phase 1: Validate — check all items BEFORE decrementing anything ──
+  // Prevents partial decrements where item 1 succeeds but item 2 fails.
+  for (const item of items) {
+    const product = productMap.get(item.productId);
+    if (!product || product.stock_mode !== "LIMITED") continue;
+
+    const optionCfg = item.selectedOption
+      ? getConfigs(product).find((c) => c.value === item.selectedOption)
+      : null;
+
+    if (optionCfg && optionCfg.stock_quantity !== null) {
+      if (optionCfg.stock_quantity < item.quantity) {
+        return {
+          success: false,
+          outOfStockProductName: `${product.name} (${item.selectedOption})`,
+        };
+      }
+    } else {
+      if ((product.stock_quantity ?? 0) < item.quantity) {
+        return { success: false, outOfStockProductName: product.name };
+      }
+    }
+  }
+
+  // ── Phase 2: Decrement — all stock confirmed available ──
+  for (const item of items) {
+    const product = productMap.get(item.productId);
+    if (!product || product.stock_mode !== "LIMITED") continue;
+
+    const optionCfg = item.selectedOption
+      ? getConfigs(product).find((c) => c.value === item.selectedOption)
+      : null;
+
+    const usePerOptionStock = optionCfg && optionCfg.stock_quantity !== null;
+
+    if (usePerOptionStock) {
+      const { data: rows, error: rpcError } = await supabase.rpc(
+        "decrement_stock_option",
+        { p_id: item.productId, p_option_value: item.selectedOption, p_qty: item.quantity }
+      );
+      if (rpcError) {
+        console.error("decrementStockForOrder: decrement_stock_option RPC error", rpcError);
+        return { success: false, outOfStockProductName: product.name };
+      }
+      if (!rows || (Array.isArray(rows) && rows.length === 0)) {
+        return { success: false, outOfStockProductName: `${product.name} (${item.selectedOption})` };
+      }
+    } else {
+      const { data: rows, error: rpcError } = await supabase.rpc(
+        "decrement_stock",
+        { p_id: item.productId, p_qty: item.quantity }
+      );
+      if (rpcError) {
+        console.error("decrementStockForOrder: decrement_stock RPC error", rpcError);
+        return { success: false, outOfStockProductName: product.name };
+      }
+      if (!rows || (Array.isArray(rows) && rows.length === 0)) {
+        return { success: false, outOfStockProductName: product.name };
+      }
+    }
+  }
+
+  return { success: true };
+}
+
 // ── Dashboard Stats ──────────────────────────��──────────────────────────
 
 export async function getDashboardStats(): Promise<{

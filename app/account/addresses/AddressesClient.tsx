@@ -186,7 +186,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
               <Plus className="mr-2 h-4 w-4" /> Add Address
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-md">
+          <DialogContent className="sm:max-w-md" aria-describedby={undefined}>
             <form onSubmit={handleSubmit}>
               <DialogHeader>
                 <DialogTitle>
