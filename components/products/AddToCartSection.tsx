@@ -96,6 +96,7 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
       quantity,
       slug: product.slug,
     });
+    setQuantity(1); // reset stepper to 1 after adding to cart
     setAdded(true);
     setTimeout(() => setAdded(false), 2000);
   };
