@@ -200,7 +200,7 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
         </div>
         {isLimited && maxQuantity < 99 && maxQuantity > 0 && (
           <p className="text-xs text-muted-foreground mt-1">
-            {maxQuantity} available
+            {maxQuantity} {cartQuantity > 0 ? 'more' : ''} available{cartQuantity > 0 ? ` (${cartQuantity} in cart)` : ''}
           </p>
         )}
       </div>
