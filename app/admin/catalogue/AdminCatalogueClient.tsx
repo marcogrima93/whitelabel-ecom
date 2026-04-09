@@ -412,7 +412,7 @@ export default function AdminCatalogueClient({
                       </div>
                       <div className="flex gap-2">
                         <Input
-                          placeholder="Add option, e.g. Steak"
+                          placeholder="Add option, e.g. New, Used"
                           value={optionInput[group.id] || ""}
                           onChange={(e) => setOptionInput((p) => ({ ...p, [group.id]: e.target.value }))}
                           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleOptionAdd(group); } }}
