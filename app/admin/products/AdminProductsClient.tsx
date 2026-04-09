@@ -714,7 +714,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
 
               {/* Options with per-value price override + image link */}
               <div className="space-y-3">
-                <Label>Options (e.g. 500g, 1kg)</Label>
+                <Label>Options (e.g. S, M)</Label>
                 <div className="flex gap-2">
                   <Input
                     value={optionInput}
