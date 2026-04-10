@@ -117,6 +117,8 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
         return <Badge variant="warning">Low Stock</Badge>;
       case "OUT_OF_STOCK":
         return <Badge variant="destructive">Out of Stock</Badge>;
+      case "PRE_ORDER":
+        return <Badge variant="secondary">Pre-Order</Badge>;
     }
   };
 

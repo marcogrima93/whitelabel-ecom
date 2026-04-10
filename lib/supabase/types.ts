@@ -5,7 +5,7 @@
 // These types match the SQL migration schema.
 // ============================================================================
 
-export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "PRE_ORDER";
 export type StockMode = "UNLIMITED" | "LIMITED";
 export type UserRole = "RETAIL" | "WHOLESALE" | "ADMIN";
 export type OrderStatus =

@@ -9,13 +9,14 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Save, X, CalendarOff, LayoutGrid, Truck, MapPin } from "lucide-react";
+import { Loader2, Save, X, CalendarOff, LayoutGrid, Truck, MapPin, Clock } from "lucide-react";
 import {
   saveFulfillmentSlotsAction,
   saveBlockedDaysAction,
   saveBlockedDatesAction,
+  saveAdvanceDaysAction,
 } from "./actions";
-import type { SlotMatrix, FulfillmentMethod, FulfillmentSettings } from "@/lib/supabase/settings";
+import type { SlotMatrix, FulfillmentMethod, FulfillmentSettings, AdvanceDayRule } from "@/lib/supabase/settings";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,91 @@ function buildEmptyMatrix(): SlotMatrix {
     }
   }
   return matrix;
+}
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+
+const STOCK_STATUSES = [
+  { value: "IN_STOCK",  label: "In Stock" },
+  { value: "LOW_STOCK", label: "Low Stock" },
+  { value: "PRE_ORDER", label: "Pre-Order" },
+];
+
+const FULFILLMENT_METHODS: { value: FulfillmentMethod; label: string }[] = [
+  { value: "delivery",   label: "Delivery" },
+  { value: "collection", label: "Collection" },
+];
+
+// ── Advance Days Card ─────────────────────────────────────────────────────────
+
+function AdvanceDaysCard({
+  rules,
+  onChange,
+}: {
+  rules: AdvanceDayRule[];
+  onChange: (rules: AdvanceDayRule[]) => void;
+}) {
+  const getValue = (status: string, method: FulfillmentMethod): number => {
+    const r = rules.find((r) => r.stock_status === status && r.fulfillment_method === method);
+    return r?.advance_days ?? 1;
+  };
+
+  const setValue = (status: string, method: FulfillmentMethod, days: number) => {
+    const next = rules.map((r) =>
+      r.stock_status === status && r.fulfillment_method === method
+        ? { ...r, advance_days: days }
+        : r
+    );
+    // If the rule doesn't exist yet, add it
+    const exists = rules.some((r) => r.stock_status === status && r.fulfillment_method === method);
+    if (!exists) {
+      onChange([...next, { id: 0, stock_status: status, fulfillment_method: method, advance_days: days }]);
+    } else {
+      onChange(next);
+    }
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm border-separate border-spacing-0">
+        <thead>
+          <tr>
+            <th className="text-left py-2 pr-4 font-medium text-muted-foreground w-32">Stock Status</th>
+            {FULFILLMENT_METHODS.map((m) => (
+              <th key={m.value} className="text-center py-2 px-4 font-medium text-muted-foreground min-w-[120px]">
+                {m.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {STOCK_STATUSES.map((status) => (
+            <tr key={status.value} className="border-t border-border">
+              <td className="py-3 pr-4 font-medium text-sm">{status.label}</td>
+              {FULFILLMENT_METHODS.map((method) => (
+                <td key={method.value} className="text-center py-3 px-4">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <Input
+                      type="number"
+                      min="0"
+                      step="1"
+                      value={getValue(status.value, method.value)}
+                      onChange={(e) =>
+                        setValue(status.value, method.value, Math.max(0, parseInt(e.target.value, 10) || 0))
+                      }
+                      className="h-8 w-16 text-center text-sm"
+                      aria-label={`${status.label} ${method.label} advance days`}
+                    />
+                    <span className="text-xs text-muted-foreground">days</span>
+                  </div>
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -350,12 +436,16 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
   const [blockedDates, setBlockedDates] = useState<Record<FulfillmentMethod, string[]>>(
     initialSettings.blocked_dates ?? { delivery: [], collection: [] }
   );
+  const [advanceDays, setAdvanceDays] = useState<AdvanceDayRule[]>(
+    initialSettings.advance_days ?? []
+  );
 
   const [isPending, startTransition] = useTransition();
   const [savedMsg, setSavedMsg] = useState<Record<FulfillmentMethod, string>>({
     delivery: "",
     collection: "",
   });
+  const [advanceSavedMsg, setAdvanceSavedMsg] = useState("");
 
   const setMsg = (method: FulfillmentMethod, msg: string) => {
     setSavedMsg((prev) => ({ ...prev, [method]: msg }));
@@ -383,14 +473,52 @@ export default function SettingsClient({ initialSettings }: SettingsClientProps)
     });
   };
 
+  const handleSaveAdvanceDays = () => {
+    startTransition(async () => {
+      const rules = advanceDays.map(({ stock_status, fulfillment_method, advance_days }) => ({
+        stock_status,
+        fulfillment_method,
+        advance_days,
+      }));
+      const res = await saveAdvanceDaysAction(rules);
+      if (!res.success) {
+        setAdvanceSavedMsg(res.error ?? "Error saving advance days.");
+      } else {
+        setAdvanceSavedMsg("Advance days saved.");
+        setTimeout(() => setAdvanceSavedMsg(""), 3000);
+      }
+    });
+  };
+
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-8 max-w-2xl">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
         <p className="text-muted-foreground mt-1">
-          Configure slot availability and blocked days per fulfillment method
+          Configure slot availability, blocked days, and advance booking rules per fulfillment method
         </p>
       </div>
+
+      {/* ── Advance Booking Days ─────────────────────────────────────────────── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <Clock className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <CardTitle>Advance Booking Days</CardTitle>
+              <CardDescription>
+                Minimum days ahead a customer must select for each stock status and fulfillment method combination. The noon cutoff (+1 day if ordered at or after 12:00) is applied on top of this value.
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <AdvanceDaysCard rules={advanceDays} onChange={setAdvanceDays} />
+          <SaveRow isPending={isPending} msg={advanceSavedMsg} onSave={handleSaveAdvanceDays} />
+        </CardContent>
+      </Card>
 
       <Tabs defaultValue="delivery">
         <TabsList className="mb-4">

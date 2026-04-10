@@ -60,6 +60,7 @@ const stockBadge = (status: string) => {
     case "IN_STOCK": return <Badge variant="success">In Stock</Badge>;
     case "LOW_STOCK": return <Badge variant="warning">Low Stock</Badge>;
     case "OUT_OF_STOCK": return <Badge variant="destructive">Out of Stock</Badge>;
+    case "PRE_ORDER": return <Badge variant="secondary">Pre-Order</Badge>;
     default: return null;
   }
 };
@@ -661,6 +662,7 @@ export default function AdminProductsClient({ initialProducts, categories, produ
                         <SelectItem value="IN_STOCK">In Stock</SelectItem>
                         <SelectItem value="LOW_STOCK">Low Stock</SelectItem>
                         <SelectItem value="OUT_OF_STOCK">Out of Stock</SelectItem>
+                        <SelectItem value="PRE_ORDER">Pre-Order</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
