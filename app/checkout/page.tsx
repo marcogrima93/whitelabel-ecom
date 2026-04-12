@@ -164,14 +164,28 @@ export default function CheckoutPage() {
     advance_days: [],
   });
 
-  // Derive advance days for the current method + IN_STOCK (the common default)
+  // Derive advance days: take the highest value across all cart item stock statuses
+  // for the current fulfillment method — pre-order items require more lead time.
   const advanceDaysForCurrentMethod = useMemo(() => {
     const method: FulfillmentMethod = deliveryType === "DELIVERY" ? "delivery" : "collection";
-    const rule = fulfillmentSettings.advance_days.find(
-      (r) => r.stock_status === "IN_STOCK" && r.fulfillment_method === method
-    );
-    return rule?.advance_days ?? 1;
-  }, [fulfillmentSettings.advance_days, deliveryType]);
+    if (fulfillmentSettings.advance_days.length === 0) return 1;
+
+    // Collect all unique stock statuses in the cart (fallback to IN_STOCK)
+    const cartStatuses = items.length > 0
+      ? [...new Set(items.map((i) => (i as { stockStatus?: string }).stockStatus ?? "IN_STOCK"))]
+      : ["IN_STOCK"];
+
+    // Find the max advance_days across those statuses
+    let maxDays = 1;
+    for (const status of cartStatuses) {
+      const rule = fulfillmentSettings.advance_days.find(
+        (r) => r.stock_status === status && r.fulfillment_method === method
+      );
+      const days = rule?.advance_days ?? 1;
+      if (days > maxDays) maxDays = days;
+    }
+    return maxDays;
+  }, [fulfillmentSettings.advance_days, deliveryType, items]);
 
   // Compute min date — depends on advance_days setting (falls back to 1 until settings load)
   const minDate = useMemo(
@@ -250,13 +264,21 @@ export default function CheckoutPage() {
             advance_days: s.advance_days ?? [],
           };
           setFulfillmentSettings(settings);
-          // Re-compute min date with the loaded settings using IN_STOCK as base
+          // Re-compute min date using the worst stock status across all cart items
           const method: FulfillmentMethod = deliveryType === "DELIVERY" ? "delivery" : "collection";
-          const rule = (s.advance_days ?? []).find(
-            (r) => r.stock_status === "IN_STOCK" && r.fulfillment_method === method
-          );
-          const advDays = rule?.advance_days ?? 1;
-          setDeliveryForm((prev) => ({ ...prev, preferredDate: toDateInputValue(getMinSelectableDate(advDays)) }));
+          const advanceDaysRules = s.advance_days ?? [];
+          const cartStatuses = items.length > 0
+            ? [...new Set(items.map((i) => (i as { stockStatus?: string }).stockStatus ?? "IN_STOCK"))]
+            : ["IN_STOCK"];
+          let maxDays = 1;
+          for (const status of cartStatuses) {
+            const rule = advanceDaysRules.find(
+              (r) => r.stock_status === status && r.fulfillment_method === method
+            );
+            const days = rule?.advance_days ?? 1;
+            if (days > maxDays) maxDays = days;
+          }
+          setDeliveryForm((prev) => ({ ...prev, preferredDate: toDateInputValue(getMinSelectableDate(maxDays)) }));
         }
       })
       .catch(() => {});
@@ -450,6 +472,7 @@ export default function CheckoutPage() {
         selectedOption: item.selectedOption,
         pricePerUnit: item.pricePerUnit,
         quantity: item.quantity,
+        stockStatus: item.stockStatus,
       })),
       customerEmail: deliveryForm.email,
       customerName: getCustomerName(),

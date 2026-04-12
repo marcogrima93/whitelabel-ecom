@@ -15,6 +15,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { DiscountInput } from "@/components/cart/DiscountInput";
 
@@ -170,6 +171,19 @@ export function CartDrawer({ onClose }: CartDrawerProps) {
   );
 }
 
+function StockBadge({ status }: { status: string }) {
+  switch (status) {
+    case "LOW_STOCK":
+      return <Badge variant="warning" className="text-[10px] px-1.5 py-0.5 h-auto">Low Stock</Badge>;
+    case "OUT_OF_STOCK":
+      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 h-auto">Out of Stock</Badge>;
+    case "PRE_ORDER":
+      return <Badge variant="secondary" className="text-[10px] px-1.5 py-0.5 h-auto">Pre-Order</Badge>;
+    default:
+      return null;
+  }
+}
+
 function CartItemRow({
   item,
   currency,
@@ -209,9 +223,14 @@ function CartItemRow({
             {item.selectedOption}
           </p>
         )}
-        <p className="text-sm font-semibold mt-1">
-          {formatPrice(item.pricePerUnit, currency.code, currency.locale)}
-        </p>
+        <div className="mt-1 flex items-center gap-2 flex-wrap">
+          <p className="text-sm font-semibold">
+            {formatPrice(item.pricePerUnit, currency.code, currency.locale)}
+          </p>
+          {item.stockStatus && item.stockStatus !== "IN_STOCK" && (
+            <StockBadge status={item.stockStatus} />
+          )}
+        </div>
 
         {/* Quantity controls */}
         <div className="flex items-center gap-2 mt-2">

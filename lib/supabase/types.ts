@@ -115,6 +115,8 @@ export interface OrderItem {
   price_per_unit: number;
   quantity: number;
   line_total: number;
+  /** Stock status snapshotted at the time the order was placed. */
+  stock_status_at_order: string | null;
 }
 
 export interface QuoteRequest {

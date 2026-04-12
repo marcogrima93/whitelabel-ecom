@@ -163,6 +163,7 @@ export async function createOrder(orderData: {
     selectedOption: string;
     pricePerUnit: number;
     quantity: number;
+    stockStatus?: string | null;
   }[];
 }): Promise<Order | null> {
   const supabase = await createServiceRoleClient();
@@ -205,6 +206,7 @@ export async function createOrder(orderData: {
     price_per_unit: item.pricePerUnit,
     quantity: item.quantity,
     line_total: item.pricePerUnit * item.quantity,
+    stock_status_at_order: item.stockStatus ?? null,
   }));
   
   const { error: itemsError } = await supabase

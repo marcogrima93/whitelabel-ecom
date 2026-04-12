@@ -59,6 +59,20 @@ interface OrderRow {
   status: OrderStatus;
 }
 
+// Small badge for stock status snapshotted at order time
+function OrderItemStockBadge({ status }: { status: string }) {
+  switch (status) {
+    case "LOW_STOCK":
+      return <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4">Low Stock</Badge>;
+    case "OUT_OF_STOCK":
+      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Out of Stock</Badge>;
+    case "PRE_ORDER":
+      return <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Pre-Order</Badge>;
+    default:
+      return null;
+  }
+}
+
 // Human-readable label for any status + delivery method combination
 function getStatusLabel(status: OrderStatus, deliveryMethod: string): string {
   switch (status) {
@@ -627,9 +641,14 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{item.product_name}</p>
-                      {item.selected_option && (
-                        <p className="text-xs text-muted-foreground">{item.selected_option}</p>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        {item.selected_option && (
+                          <p className="text-xs text-muted-foreground">{item.selected_option}</p>
+                        )}
+                        {item.stock_status_at_order && item.stock_status_at_order !== "IN_STOCK" && (
+                          <OrderItemStockBadge status={item.stock_status_at_order} />
+                        )}
+                      </div>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-medium">

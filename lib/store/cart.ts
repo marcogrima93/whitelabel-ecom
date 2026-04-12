@@ -14,6 +14,8 @@ export interface CartItem {
   pricePerUnit: number;
   quantity: number;
   slug: string;
+  /** Stock status snapshotted at the moment the item was added to cart. */
+  stockStatus: string;
 }
 
 interface CartStore {

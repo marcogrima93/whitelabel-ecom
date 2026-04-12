@@ -84,6 +84,19 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
     onOptionChange?.(opt);
   };
 
+  // Resolve the effective stock status at add-to-cart time (per-option takes priority)
+  const effectiveStockStatus = (() => {
+    if (hasPerOptionStock) {
+      const qty = getOptionStock(selectedOption);
+      if (qty !== null) {
+        if (qty <= 0) return "OUT_OF_STOCK";
+        if (qty <= 2) return "LOW_STOCK";
+        return "IN_STOCK";
+      }
+    }
+    return product.stock_status;
+  })();
+
   const handleAdd = () => {
     if (isOutOfStock) return;
     addItem({
@@ -95,6 +108,7 @@ export function AddToCartSection({ product, resolvedPrice, resolvedImage, onOpti
       pricePerUnit: resolvedPrice,
       quantity,
       slug: product.slug,
+      stockStatus: effectiveStockStatus,
     });
     setQuantity(1); // reset stepper to 1 after adding to cart
     setAdded(true);
