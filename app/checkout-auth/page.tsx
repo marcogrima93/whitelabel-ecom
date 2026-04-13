@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Loader2, ShoppingBag, UserCheck, UserPlus, ArrowRight, CheckCircle } from "lucide-react";
 import { PhoneInput, joinPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
+import { GoogleAuthButton, AuthDivider } from "@/components/auth/GoogleAuthButton";
 
 // ── Login Form ────────────────────────────────────────────────────────────────
 function LoginForm({ onSuccess }: { onSuccess: () => void }) {
@@ -38,6 +39,8 @@ function LoginForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <GoogleAuthButton intent="checkout" />
+      <AuthDivider />
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
       )}
@@ -175,6 +178,8 @@ function RegisterForm({ onSuccess }: { onSuccess: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <GoogleAuthButton intent="checkout" />
+      <AuthDivider />
       {error && (
         <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">{error}</div>
       )}

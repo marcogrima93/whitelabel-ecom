@@ -248,6 +248,22 @@ export const siteConfig = {
   auth: {
     retailLabel: "Retail Customer",
     wholesaleLabel: "Wholesale / Business Customer",
+    // ── Google OAuth ───────────────────────────────────────────────────
+    // Toggle Google sign-in per deployment without touching component code.
+    // Required steps to activate:
+    //   1. Enable the Google provider in Supabase Dashboard → Authentication → Providers.
+    //   2. Add your Google OAuth Client ID and Secret in the Supabase Google provider settings.
+    //   3. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your env vars.
+    //   4. Add the Supabase callback URL (https://<project>.supabase.co/auth/v1/callback)
+    //      to your Google Cloud Console → Authorised redirect URIs.
+    //   5. Add your site's /auth/callback URL to Supabase → Authentication → URL Configuration
+    //      → Redirect URLs (e.g. https://your-domain.com/auth/callback).
+    // Note: If a user already registered with email/password using the same Google email,
+    // Supabase will link the accounts automatically (no duplicate records created),
+    // provided "Email provider" has "Confirm email" disabled OR the email is already confirmed.
+    googleAuth: {
+      enabled: true,
+    },
   },
 
   // ── Guest Checkout ────────────────────────────────────────────────────

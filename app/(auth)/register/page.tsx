@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { PhoneInput, joinPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
+import { GoogleAuthButton, AuthDivider } from "@/components/auth/GoogleAuthButton";
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
@@ -132,6 +133,8 @@ export default function RegisterPage() {
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          <GoogleAuthButton intent="account" />
+          <AuthDivider />
           {error && (
             <div className="bg-destructive/10 text-destructive text-sm p-3 rounded-md">
               {error}
