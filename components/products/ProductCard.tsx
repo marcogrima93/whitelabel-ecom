@@ -42,6 +42,7 @@ export function ProductCard({ product, categoryName }: ProductCardProps) {
       pricePerUnit: product.retail_price,
       quantity: 1,
       slug: product.slug,
+      stockStatus: product.stock_status,
     });
   };
 
