@@ -58,6 +58,7 @@ export interface FulfillmentSettings {
   slots: SlotMatrix;
   blocked_days: Record<FulfillmentMethod, number[]>;
   blocked_dates: Record<FulfillmentMethod, string[]>;
+  advance_days: AdvanceDayRule[];
 }
 
 // ── Slot Matrix ───────────────────────────────────────────────────────────────
@@ -235,13 +236,76 @@ export async function saveBlockedDatesForMethod(
   return { ok: true };
 }
 
+// ── Advance Days (per stock status + fulfillment method) ──────────────────────
+
+export interface AdvanceDayRule {
+  id: number;
+  stock_status: string;
+  fulfillment_method: FulfillmentMethod;
+  advance_days: number;
+}
+
+/** Fetch all advance-day rules. */
+export async function getAdvanceDayRules(): Promise<AdvanceDayRule[]> {
+  const supabase = await createServerSupabaseClient();
+  const { data, error } = await supabase
+    .from("fulfillment_advance_days")
+    .select("*")
+    .order("stock_status")
+    .order("fulfillment_method");
+
+  if (error) {
+    console.error("[settings] getAdvanceDayRules error:", error.message);
+    return [];
+  }
+  return (data ?? []) as AdvanceDayRule[];
+}
+
+/** Upsert a single advance-day rule. */
+export async function saveAdvanceDayRule(
+  stock_status: string,
+  fulfillment_method: FulfillmentMethod,
+  advance_days: number
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createServiceRoleClient();
+  const { error } = await supabase
+    .from("fulfillment_advance_days")
+    .upsert(
+      { stock_status, fulfillment_method, advance_days },
+      { onConflict: "stock_status,fulfillment_method" }
+    );
+
+  if (error) {
+    console.error("[settings] saveAdvanceDayRule error:", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
+/** Bulk-save all advance-day rules. */
+export async function saveAdvanceDayRules(
+  rules: Array<{ stock_status: string; fulfillment_method: FulfillmentMethod; advance_days: number }>
+): Promise<{ ok: boolean; error?: string }> {
+  const supabase = await createServiceRoleClient();
+  const { error } = await supabase
+    .from("fulfillment_advance_days")
+    .upsert(rules, { onConflict: "stock_status,fulfillment_method" });
+
+  if (error) {
+    console.error("[settings] saveAdvanceDayRules error:", error.message);
+    return { ok: false, error: error.message };
+  }
+  return { ok: true };
+}
+
 // ── Aggregate loader (used by API route) ─────────────────────────────────────
 
 export async function getFulfillmentSettings(): Promise<FulfillmentSettings> {
-  const [slotsRows, blockedDays, blockedDates] = await Promise.all([
+  const [slotsRows, blockedDays, blockedDates, advanceDays] = await Promise.all([
     getFulfillmentSlots(),
     getBlockedDaysPerMethod(),
     getBlockedDatesPerMethod(),
+    getAdvanceDayRules(),
   ]);
 
   // Build the slot matrix
@@ -260,5 +324,5 @@ export async function getFulfillmentSettings(): Promise<FulfillmentSettings> {
     matrix[row.method][row.day_of_week][row.slot] = row.enabled;
   }
 
-  return { slots: matrix, blocked_days: blockedDays, blocked_dates: blockedDates };
+  return { slots: matrix, blocked_days: blockedDays, blocked_dates: blockedDates, advance_days: advanceDays };
 }

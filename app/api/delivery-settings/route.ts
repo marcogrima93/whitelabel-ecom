@@ -25,6 +25,7 @@ export async function GET() {
       slots: { delivery: {}, collection: {} },
       blocked_days: { delivery: [], collection: [] },
       blocked_dates: { delivery: [], collection: [] },
+      advance_days: [],
     });
   }
 }

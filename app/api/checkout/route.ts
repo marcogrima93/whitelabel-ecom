@@ -80,6 +80,7 @@ export async function POST(req: Request) {
       selectedOption: item.selectedOption || "",
       pricePerUnit: item.pricePerUnit,
       quantity: item.quantity,
+      stockStatus: item.stockStatus ?? null,
     }));
 
     // ── Stock guard ──────────────────────────────────────────────────────

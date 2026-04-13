@@ -5,7 +5,7 @@
 // These types match the SQL migration schema.
 // ============================================================================
 
-export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "PRE_ORDER";
 export type StockMode = "UNLIMITED" | "LIMITED";
 export type UserRole = "RETAIL" | "WHOLESALE" | "ADMIN";
 export type OrderStatus =
@@ -115,6 +115,8 @@ export interface OrderItem {
   price_per_unit: number;
   quantity: number;
   line_total: number;
+  /** Stock status snapshotted at the time the order was placed. */
+  stock_status_at_order: string | null;
 }
 
 export interface QuoteRequest {

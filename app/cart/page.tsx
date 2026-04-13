@@ -7,12 +7,26 @@ import { siteConfig } from "@/site.config";
 import { calcTotal } from "@/lib/pricing";
 import { formatPrice } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { Label } from "@/components/ui/label";
 import { Minus, Plus, Trash2, ShoppingBag, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { DiscountInput } from "@/components/cart/DiscountInput";
+
+function CartStockBadge({ status }: { status: string }) {
+  switch (status) {
+    case "LOW_STOCK":
+      return <Badge variant="warning" className="text-xs">Low Stock</Badge>;
+    case "OUT_OF_STOCK":
+      return <Badge variant="destructive" className="text-xs">Out of Stock</Badge>;
+    case "PRE_ORDER":
+      return <Badge variant="secondary" className="text-xs">Pre-Order</Badge>;
+    default:
+      return null;
+  }
+}
 
 export default function CartPage() {
   const router = useRouter();
@@ -104,6 +118,9 @@ export default function CartPage() {
                       <p className="text-sm text-muted-foreground">
                         {siteConfig.filters.optionSelector}: {item.selectedOption}
                       </p>
+                    )}
+                    {item.stockStatus && item.stockStatus !== "IN_STOCK" && (
+                      <CartStockBadge status={item.stockStatus} />
                     )}
                   </div>
                   <Button

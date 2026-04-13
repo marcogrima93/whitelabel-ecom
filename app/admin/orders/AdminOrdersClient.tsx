@@ -36,8 +36,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { siteConfig } from "@/site.config";
 import { formatPrice } from "@/lib/utils";
-import { updateOrderStatusAction, getOrderDetailAction, resendOrderEmailAction } from "./actions";
+import { updateOrderStatusAction, getOrderDetailAction, resendOrderEmailAction, updateOrderSlotAction } from "./actions";
 import type { Order, OrderItem, DeliveryMethod } from "@/lib/supabase/types";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type OrderStatus =
   | "PENDING"
@@ -55,6 +57,20 @@ interface OrderRow {
   date: string;
   total: number;
   status: OrderStatus;
+}
+
+// Small badge for stock status snapshotted at order time
+function OrderItemStockBadge({ status }: { status: string }) {
+  switch (status) {
+    case "LOW_STOCK":
+      return <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4">Low Stock</Badge>;
+    case "OUT_OF_STOCK":
+      return <Badge variant="destructive" className="text-[10px] px-1.5 py-0 h-4">Out of Stock</Badge>;
+    case "PRE_ORDER":
+      return <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">Pre-Order</Badge>;
+    default:
+      return null;
+  }
 }
 
 // Human-readable label for any status + delivery method combination
@@ -125,6 +141,13 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
   const [resendingId, setResendingId] = useState<string | null>(null);
   const [resendResult, setResendResult] = useState<{ id: string; ok: boolean } | null>(null);
 
+  // Slot edit state
+  const [editingSlot, setEditingSlot] = useState(false);
+  const [slotDraft, setSlotDraft] = useState("");
+  const [notifyOnSlotChange, setNotifyOnSlotChange] = useState(true);
+  const [savingSlot, setSavingSlot] = useState(false);
+  const [slotSaveResult, setSlotSaveResult] = useState<{ ok: boolean; msg: string } | null>(null);
+
   const { code, locale } = siteConfig.currency;
 
   const filtered = orders.filter((o) => {
@@ -192,6 +215,28 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
       setSelectedOrder(detail);
       setDialogOpen(true);
       setResendResult(null);
+      setEditingSlot(false);
+      setSlotDraft(detail.delivery_slot ?? "");
+      setSlotSaveResult(null);
+      setNotifyOnSlotChange(true);
+    }
+  };
+
+  // ── Save slot ──────────────────────────────────────────────────────────────
+
+  const handleSaveSlot = async () => {
+    if (!selectedOrder || !slotDraft.trim()) return;
+    setSavingSlot(true);
+    setSlotSaveResult(null);
+    const result = await updateOrderSlotAction(selectedOrder.id, slotDraft.trim(), notifyOnSlotChange);
+    setSavingSlot(false);
+    if (result.success) {
+      setSelectedOrder((prev) => prev ? { ...prev, delivery_slot: slotDraft.trim() } : prev);
+      setEditingSlot(false);
+      setSlotSaveResult({ ok: true, msg: notifyOnSlotChange ? "Slot updated and customer notified." : "Slot updated." });
+      setTimeout(() => setSlotSaveResult(null), 4000);
+    } else {
+      setSlotSaveResult({ ok: false, msg: result.error ?? "Failed to update slot." });
     }
   };
 
@@ -472,14 +517,72 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                   </p>
                   <p className="text-sm font-medium">{selectedOrder.email}</p>
                 </div>
-                {selectedOrder.delivery_slot && (
-                  <div className="space-y-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
-                      <Clock className="h-3 w-3" /> Delivery Slot
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {selectedOrder.delivery_method === "COLLECTION" ? "Collection" : "Delivery"} Slot
+                  </p>
+                  {editingSlot ? (
+                    <div className="space-y-2">
+                      <Input
+                        value={slotDraft}
+                        onChange={(e) => setSlotDraft(e.target.value)}
+                        placeholder="e.g. Monday 14 July 2025 - morning"
+                        className="h-8 text-sm"
+                        autoFocus
+                      />
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="notify-slot"
+                          checked={notifyOnSlotChange}
+                          onCheckedChange={(v) => setNotifyOnSlotChange(v === true)}
+                        />
+                        <Label htmlFor="notify-slot" className="text-xs cursor-pointer">
+                          Notify customer by email
+                        </Label>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          className="h-7 text-xs px-3"
+                          onClick={handleSaveSlot}
+                          disabled={savingSlot || !slotDraft.trim()}
+                        >
+                          {savingSlot ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : null}
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-xs px-3"
+                          onClick={() => { setEditingSlot(false); setSlotDraft(selectedOrder.delivery_slot ?? ""); }}
+                          disabled={savingSlot}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex items-start gap-2">
+                      <p className="text-sm flex-1">
+                        {selectedOrder.delivery_slot ?? <span className="text-muted-foreground italic">Not set</span>}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs px-2 shrink-0"
+                        onClick={() => { setEditingSlot(true); setSlotDraft(selectedOrder.delivery_slot ?? ""); setSlotSaveResult(null); }}
+                      >
+                        Edit
+                      </Button>
+                    </div>
+                  )}
+                  {slotSaveResult && (
+                    <p className={`text-xs ${slotSaveResult.ok ? "text-green-600" : "text-destructive"}`}>
+                      {slotSaveResult.msg}
                     </p>
-                    <p className="text-sm">{selectedOrder.delivery_slot}</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* Delivery address */}
@@ -538,9 +641,14 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-medium text-sm truncate">{item.product_name}</p>
-                      {item.selected_option && (
-                        <p className="text-xs text-muted-foreground">{item.selected_option}</p>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                        {item.selected_option && (
+                          <p className="text-xs text-muted-foreground">{item.selected_option}</p>
+                        )}
+                        {item.stock_status_at_order && item.stock_status_at_order !== "IN_STOCK" && (
+                          <OrderItemStockBadge status={item.stock_status_at_order} />
+                        )}
+                      </div>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-sm font-medium">

@@ -1,12 +1,13 @@
 "use server";
 
-import { updateOrderStatus, updateOrderNotes, getOrderById } from "@/lib/supabase/queries";
+import { updateOrderStatus, updateOrderNotes, updateOrderDeliverySlot, getOrderById } from "@/lib/supabase/queries";
 import {
   sendOrderConfirmationEmail,
   sendOutForDeliveryEmail,
   sendReadyForCollectionEmail,
   sendReceiptEmail,
   sendCancellationEmail,
+  sendSlotChangedEmail,
 } from "@/lib/email";
 import type { OrderStatus, Order, OrderItem } from "@/lib/supabase/types";
 import { revalidatePath } from "next/cache";
@@ -104,6 +105,32 @@ export async function resendOrderEmailAction(orderId: string): Promise<boolean> 
     console.error("Failed to resend email:", err);
     return false;
   }
+}
+
+// ── Update delivery / collection slot ───────────────────────────────────────
+
+export async function updateOrderSlotAction(
+  orderId: string,
+  newSlot: string,
+  notifyCustomer: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const success = await updateOrderDeliverySlot(orderId, newSlot);
+  if (!success) return { success: false, error: "Failed to update slot." };
+
+  if (notifyCustomer) {
+    const order = await getOrderById(orderId);
+    if (order) {
+      try {
+        await sendSlotChangedEmail(order, newSlot);
+      } catch (err) {
+        console.error("Failed to send slot-changed email:", err);
+        // Don't fail the slot update if email errors
+      }
+    }
+  }
+
+  revalidatePath("/admin/orders");
+  return { success: true };
 }
 
 // ── Read-only detail fetch ───────────────────────────────────────────────────

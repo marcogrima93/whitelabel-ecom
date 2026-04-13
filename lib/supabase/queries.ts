@@ -125,6 +125,22 @@ export async function updateOrderNotes(orderId: string, notes: string): Promise<
   return true;
 }
 
+export async function updateOrderDeliverySlot(orderId: string, deliverySlot: string): Promise<boolean> {
+  const supabase = await createServiceRoleClient();
+
+  const { error } = await supabase
+    .from("orders")
+    .update({ delivery_slot: deliverySlot })
+    .eq("id", orderId);
+
+  if (error) {
+    console.error("Error updating order delivery slot:", error);
+    return false;
+  }
+
+  return true;
+}
+
 export async function createOrder(orderData: {
   orderNumber: string;
   userId?: string;
@@ -147,6 +163,7 @@ export async function createOrder(orderData: {
     selectedOption: string;
     pricePerUnit: number;
     quantity: number;
+    stockStatus?: string | null;
   }[];
 }): Promise<Order | null> {
   const supabase = await createServiceRoleClient();
@@ -189,6 +206,7 @@ export async function createOrder(orderData: {
     price_per_unit: item.pricePerUnit,
     quantity: item.quantity,
     line_total: item.pricePerUnit * item.quantity,
+    stock_status_at_order: item.stockStatus ?? null,
   }));
   
   const { error: itemsError } = await supabase

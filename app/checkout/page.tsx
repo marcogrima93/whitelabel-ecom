@@ -54,18 +54,15 @@ function getMaltaNow(): Date {
   return d;
 }
 
-/** Earliest selectable date (Malta time):
- *  - before noon → tomorrow
- *  - noon or after → day after tomorrow
+/** Earliest selectable date given an advance-days setting:
+ *  The noon rule adds an extra day when ordered at/after 12:00 Malta time.
+ *  e.g. advanceDays=1 → tomorrow (before noon) or day-after-tomorrow (noon or after)
  */
-function getMinSelectableDate(): Date {
+function getMinSelectableDate(advanceDays = 1): Date {
   const now = getMaltaNow();
+  const extra = now.getHours() < 12 ? 0 : 1; // noon cutoff
   const minDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  if (now.getHours() < 12) {
-    minDate.setDate(minDate.getDate() + 1); // tomorrow
-  } else {
-    minDate.setDate(minDate.getDate() + 2); // day after tomorrow
-  }
+  minDate.setDate(minDate.getDate() + advanceDays + extra);
   return minDate;
 }
 
@@ -148,10 +145,12 @@ export default function CheckoutPage() {
   type FulfillmentMethod = "delivery" | "collection";
   type SlotName = "morning" | "afternoon" | "evening";
   type SlotMatrix = Record<FulfillmentMethod, Record<number, Record<SlotName, boolean>>>;
+  interface AdvanceDayRule { stock_status: string; fulfillment_method: FulfillmentMethod; advance_days: number; }
   interface FulfillmentSettingsShape {
     slots: SlotMatrix;
     blocked_days: Record<FulfillmentMethod, number[]>;
     blocked_dates: Record<FulfillmentMethod, string[]>;
+    advance_days: AdvanceDayRule[];
   }
   const SLOT_LABELS: Record<SlotName, string> = {
     morning: "Morning 8–12",
@@ -162,10 +161,37 @@ export default function CheckoutPage() {
     slots: { delivery: {}, collection: {} },
     blocked_days: { delivery: [], collection: [] },
     blocked_dates: { delivery: [], collection: [] },
+    advance_days: [],
   });
 
-  // Compute min date once on mount (avoids hydration mismatch)
-  const minDate = useMemo(() => toDateInputValue(getMinSelectableDate()), []);
+  // Derive advance days: take the highest value across all cart item stock statuses
+  // for the current fulfillment method — pre-order items require more lead time.
+  const advanceDaysForCurrentMethod = useMemo(() => {
+    const method: FulfillmentMethod = deliveryType === "DELIVERY" ? "delivery" : "collection";
+    if (fulfillmentSettings.advance_days.length === 0) return 1;
+
+    // Collect all unique stock statuses in the cart (fallback to IN_STOCK)
+    const cartStatuses = items.length > 0
+      ? [...new Set(items.map((i) => (i as { stockStatus?: string }).stockStatus ?? "IN_STOCK"))]
+      : ["IN_STOCK"];
+
+    // Find the max advance_days across those statuses
+    let maxDays = 1;
+    for (const status of cartStatuses) {
+      const rule = fulfillmentSettings.advance_days.find(
+        (r) => r.stock_status === status && r.fulfillment_method === method
+      );
+      const days = rule?.advance_days ?? 1;
+      if (days > maxDays) maxDays = days;
+    }
+    return maxDays;
+  }, [fulfillmentSettings.advance_days, deliveryType, items]);
+
+  // Compute min date — depends on advance_days setting (falls back to 1 until settings load)
+  const minDate = useMemo(
+    () => toDateInputValue(getMinSelectableDate(advanceDaysForCurrentMethod)),
+    [advanceDaysForCurrentMethod]
+  );
 
   // Form state
   const [deliveryForm, setDeliveryForm] = useState({
@@ -201,8 +227,11 @@ export default function CheckoutPage() {
 
   // Set default date after mount so SSR doesn't mismatch
   useEffect(() => {
-    setDeliveryForm((prev) => ({ ...prev, preferredDate: toDateInputValue(getMinSelectableDate()) }));
-  }, []);
+    setDeliveryForm((prev) => ({
+      ...prev,
+      preferredDate: toDateInputValue(getMinSelectableDate(advanceDaysForCurrentMethod)),
+    }));
+  }, [advanceDaysForCurrentMethod]);
 
   // Auto-select first available slot when slots or date or method changes
   useEffect(() => {
@@ -211,7 +240,7 @@ export default function CheckoutPage() {
     }
   }, [availableSlots]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Fetch fulfillment settings (slots + blocked days/dates)
+  // Fetch fulfillment settings (slots + blocked days/dates + advance days)
   useEffect(() => {
     fetch("/api/delivery-settings")
       .then((r) => r.json())
@@ -219,9 +248,10 @@ export default function CheckoutPage() {
         slots: Record<string, Record<number, Record<string, boolean>>>;
         blocked_days: Record<string, number[]>;
         blocked_dates: Record<string, string[]>;
+        advance_days: AdvanceDayRule[];
       }>) => {
         if (s) {
-          setFulfillmentSettings({
+          const settings: FulfillmentSettingsShape = {
             slots: (s.slots ?? { delivery: {}, collection: {} }) as SlotMatrix,
             blocked_days: {
               delivery: s.blocked_days?.delivery ?? [],
@@ -231,11 +261,28 @@ export default function CheckoutPage() {
               delivery: s.blocked_dates?.delivery ?? [],
               collection: s.blocked_dates?.collection ?? [],
             },
-          });
+            advance_days: s.advance_days ?? [],
+          };
+          setFulfillmentSettings(settings);
+          // Re-compute min date using the worst stock status across all cart items
+          const method: FulfillmentMethod = deliveryType === "DELIVERY" ? "delivery" : "collection";
+          const advanceDaysRules = s.advance_days ?? [];
+          const cartStatuses = items.length > 0
+            ? [...new Set(items.map((i) => (i as { stockStatus?: string }).stockStatus ?? "IN_STOCK"))]
+            : ["IN_STOCK"];
+          let maxDays = 1;
+          for (const status of cartStatuses) {
+            const rule = advanceDaysRules.find(
+              (r) => r.stock_status === status && r.fulfillment_method === method
+            );
+            const days = rule?.advance_days ?? 1;
+            if (days > maxDays) maxDays = days;
+          }
+          setDeliveryForm((prev) => ({ ...prev, preferredDate: toDateInputValue(getMinSelectableDate(maxDays)) }));
         }
       })
       .catch(() => {});
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Fetch logged-in user profile and pre-fill contact fields
   useEffect(() => {
@@ -425,6 +472,7 @@ export default function CheckoutPage() {
         selectedOption: item.selectedOption,
         pricePerUnit: item.pricePerUnit,
         quantity: item.quantity,
+        stockStatus: item.stockStatus,
       })),
       customerEmail: deliveryForm.email,
       customerName: getCustomerName(),

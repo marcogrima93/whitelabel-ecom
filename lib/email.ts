@@ -369,7 +369,46 @@ export async function sendReceiptEmail(
   });
 }
 
-// ── 5. Cancellation — CANCELLED ─────────────────────────────────────���────────
+// ── 5. Delivery/Collection slot updated by admin ─────────────────────────────
+
+export async function sendSlotChangedEmail(
+  order: Order,
+  newSlot: string
+): Promise<void> {
+  const isCollection = order.delivery_method === "COLLECTION";
+  const label = isCollection ? "Collection" : "Delivery";
+
+  const html = baseTemplate(`
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">Your ${label} Slot Has Changed</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">
+      We&apos;ve updated the ${label.toLowerCase()} slot for your order. Please see the new details below.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+      <tr>
+        <td style="color:#555;">Order Number</td>
+        <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
+      </tr>
+      <tr>
+        <td style="color:#555;padding-top:8px;font-weight:600;">New ${label} Slot</td>
+        <td style="text-align:right;padding-top:8px;font-weight:600;">${newSlot}</td>
+      </tr>
+    </table>
+
+    <p style="margin:24px 0 0;font-size:14px;color:#555;">
+      If you have any questions, please contact us at
+      <a href="mailto:${siteConfig.contact.email}" style="color:#111;">${siteConfig.contact.email}</a>.
+    </p>
+  `);
+
+  await send({
+    to: order.email.replace(/ \(guest\)$/, ""),
+    subject: `Your ${label.toLowerCase()} slot has been updated – ${order.order_number} | ${siteConfig.shopName}`,
+    html,
+  });
+}
+
+// ── 6. Cancellation — CANCELLED ─────────────────────────────────────���────────
 
 export async function sendCancellationEmail(
   order: Order,
