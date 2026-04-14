@@ -1,15 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { ProfileUpdate } from "@/lib/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import { PhoneInput, joinPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 
-export default function CompleteProfilePage() {
+function CompleteProfileForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const intent = searchParams.get("intent") ?? "account";
@@ -40,9 +41,10 @@ export default function CompleteProfilePage() {
       return;
     }
 
+    const payload: ProfileUpdate = { phone: fullPhone };
     const { error: updateError } = await supabase
       .from("profiles")
-      .update({ phone: fullPhone })
+      .update(payload)
       .eq("id", user.id);
 
     if (updateError) {
@@ -94,5 +96,13 @@ export default function CompleteProfilePage() {
         </CardContent>
       </form>
     </Card>
+  );
+}
+
+export default function CompleteProfilePage() {
+  return (
+    <Suspense>
+      <CompleteProfileForm />
+    </Suspense>
   );
 }
