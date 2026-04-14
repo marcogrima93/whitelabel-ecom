@@ -15,7 +15,7 @@ export const siteConfig = {
   logo: "/logo.svg", // Place in /public
   // "logo-only"       = just the logo image in the header
   // "logo-and-name"   = logo image (left) + shop name text (right)
-  logoDisplay: "logo-only" as "logo-only" | "logo-and-name",
+  logoDisplay: "logo-and-name" as "logo-only" | "logo-and-name",
 
   // ── Locale & Currency ─────────────────────────────────────────────────
   currency: {
