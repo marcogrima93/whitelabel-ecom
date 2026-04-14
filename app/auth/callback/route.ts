@@ -9,37 +9,29 @@ import { cookies } from "next/headers";
  *   NEXT_PUBLIC_SUPABASE_URL
  *   NEXT_PUBLIC_SUPABASE_ANON_KEY
  *
- * Supabase redirects here after the Google sign-in completes. This route:
- *   1. Exchanges the auth `code` for a session.
- *   2. Populates the user's full_name in their metadata if not already set
- *      (from Google's identity_data on first sign-in).
- *   3. Reads the `oauth_intent` cookie set before the OAuth redirect to decide
- *      where to send the user:
- *        - "checkout" → /checkout (cart is preserved in localStorage)
- *        - "account"  → /account  (default for login/register pages)
- *   4. Clears the intent cookie and redirects.
+ * Flow:
+ *   1. Exchange the auth `code` for a session.
+ *   2. Upsert a row in `profiles` with the user's name and email from Google.
+ *   3. If `phone` is still null in profiles, redirect to /auth/complete-profile
+ *      so the user can supply their phone number before continuing.
+ *   4. Otherwise redirect to the original intent destination:
+ *        - "checkout" → /checkout
+ *        - "account"  → /account (default)
  */
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get("code");
 
-  // Default fallback if no intent cookie is present
-  let redirectPath = "/account";
-
   if (!code) {
-    // Missing code — redirect to login with an error hint
-    return NextResponse.redirect(
-      `${origin}/login?error=oauth_missing_code`
-    );
+    return NextResponse.redirect(`${origin}/login?error=oauth_missing_code`);
   }
 
   const cookieStore = await cookies();
 
   // Read the intent cookie set by GoogleAuthButton before the OAuth redirect
   const intentCookie = cookieStore.get("oauth_intent");
-  if (intentCookie?.value === "checkout") {
-    redirectPath = "/checkout";
-  }
+  const intent = intentCookie?.value === "checkout" ? "checkout" : "account";
+  const defaultRedirect = intent === "checkout" ? "/checkout" : "/account";
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   type CookieToSet = { name: string; value: string; options?: any };
@@ -64,32 +56,53 @@ export async function GET(request: NextRequest) {
   const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error || !data.session) {
-    return NextResponse.redirect(
-      `${origin}/login?error=oauth_callback_failed`
-    );
+    return NextResponse.redirect(`${origin}/login?error=oauth_callback_failed`);
   }
 
-  // Populate full_name from Google identity data on first sign-in
-  // if the user's metadata doesn't have a name yet.
   const user = data.session.user;
-  const existingName = user.user_metadata?.name as string | undefined;
-  if (!existingName) {
-    // Google provides full_name in the identity's identity_data
-    const googleIdentity = user.identities?.find(
-      (id) => id.provider === "google"
-    );
-    const googleName = googleIdentity?.identity_data?.full_name as
-      | string
-      | undefined;
-    if (googleName) {
-      await supabase.auth.updateUser({
-        data: { name: googleName },
-      });
-    }
-  }
 
-  // Clear the intent cookie
+  // Resolve the user's name from Google identity data
+  const googleIdentity = user.identities?.find((id) => id.provider === "google");
+  const googleName =
+    (googleIdentity?.identity_data?.full_name as string | undefined) ||
+    (user.user_metadata?.name as string | undefined) ||
+    "";
+
+  // Upsert profile row — only fills name/email on first sign-in;
+  // subsequent logins leave existing data (including phone) untouched.
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .upsert(
+      {
+        id: user.id,
+        email: user.email ?? "",
+        name: googleName,
+      },
+      {
+        // Only write name/email; never overwrite phone, role, etc. that may
+        // already exist from a previous email/password registration.
+        onConflict: "id",
+        ignoreDuplicates: false,
+      }
+    )
+    .select("phone")
+    .single();
+
+  // Clear the intent cookie regardless of what happens next
   cookieStore.set("oauth_intent", "", { path: "/", maxAge: 0 });
 
-  return NextResponse.redirect(`${origin}${redirectPath}`);
+  if (profileError) {
+    // Non-fatal — proceed to default destination even if upsert failed
+    return NextResponse.redirect(`${origin}${defaultRedirect}`);
+  }
+
+  // If phone is missing, send the user to the complete-profile step.
+  // Carry the original intent so we can redirect correctly after they submit.
+  if (!profile?.phone) {
+    const completeUrl = new URL(`${origin}/auth/complete-profile`);
+    completeUrl.searchParams.set("intent", intent);
+    return NextResponse.redirect(completeUrl.toString());
+  }
+
+  return NextResponse.redirect(`${origin}${defaultRedirect}`);
 }
