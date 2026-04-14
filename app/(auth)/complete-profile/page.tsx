@@ -3,7 +3,7 @@
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { ProfileUpdate } from "@/lib/supabase/types";
+import type { Database } from "@/lib/supabase/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -41,7 +41,7 @@ function CompleteProfileForm() {
       return;
     }
 
-    const payload: ProfileUpdate = { phone: fullPhone };
+    const payload: Database["public"]["Tables"]["profiles"]["Update"] = { phone: fullPhone };
     const { error: updateError } = await supabase
       .from("profiles")
       .update(payload)
