@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 
 /**
  * OAuth callback handler for Supabase Auth (Google OAuth redirect flow).
@@ -68,37 +69,35 @@ export async function GET(request: NextRequest) {
     (user.user_metadata?.name as string | undefined) ||
     "";
 
-  // Upsert profile row — only fills name/email on first sign-in;
-  // subsequent logins leave existing data (including phone) untouched.
-  const { data: profile, error: profileError } = await supabase
+  // Use the service role client for profile operations so RLS does not block
+  // the upsert or the subsequent phone check.
+  const adminSupabase = await createServiceRoleClient();
+
+  // Check if a profile already exists for this user
+  const { data: existingProfile } = await adminSupabase
     .from("profiles")
-    .upsert(
-      {
-        id: user.id,
-        email: user.email ?? "",
-        name: googleName,
-      },
-      {
-        // Only write name/email; never overwrite phone, role, etc. that may
-        // already exist from a previous email/password registration.
-        onConflict: "id",
-        ignoreDuplicates: false,
-      }
-    )
-    .select("phone")
-    .single();
+    .select("phone, name")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (!existingProfile) {
+    // First Google sign-in — insert the profile row
+    await adminSupabase.from("profiles").insert({
+      id: user.id,
+      email: user.email ?? "",
+      name: googleName,
+    });
+  }
 
   // Clear the intent cookie regardless of what happens next
   cookieStore.set("oauth_intent", "", { path: "/", maxAge: 0 });
 
-  if (profileError) {
-    // Non-fatal — proceed to default destination even if upsert failed
-    return NextResponse.redirect(`${origin}${defaultRedirect}`);
-  }
+  // Re-fetch phone in case the insert just ran (existingProfile was null)
+  const phone = existingProfile?.phone ?? null;
 
   // If phone is missing, send the user to the complete-profile step.
   // Carry the original intent so we can redirect correctly after they submit.
-  if (!profile?.phone) {
+  if (!phone) {
     const completeUrl = new URL(`${origin}/auth/complete-profile`);
     completeUrl.searchParams.set("intent", intent);
     return NextResponse.redirect(completeUrl.toString());
