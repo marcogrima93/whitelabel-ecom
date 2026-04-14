@@ -2,8 +2,7 @@
 
 import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
-import type { Database } from "@/lib/supabase/types";
+import { savePhone } from "./actions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -32,23 +31,10 @@ function CompleteProfileForm() {
 
     setLoading(true);
 
-    const supabase = createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-
-    if (!user) {
-      setError("Session expired. Please sign in again.");
-      setLoading(false);
-      return;
-    }
-
-    const payload: Database["public"]["Tables"]["profiles"]["Update"] = { phone: fullPhone };
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update(payload)
-      .eq("id", user.id);
+    const { error: updateError } = await savePhone(fullPhone);
 
     if (updateError) {
-      setError("Failed to save your phone number. Please try again.");
+      setError(updateError);
       setLoading(false);
       return;
     }
