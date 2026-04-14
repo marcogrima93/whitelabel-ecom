@@ -98,7 +98,7 @@ export async function GET(request: NextRequest) {
   // If phone is missing, send the user to the complete-profile step.
   // Carry the original intent so we can redirect correctly after they submit.
   if (!phone) {
-    const completeUrl = new URL(`${origin}/auth/complete-profile`);
+    const completeUrl = new URL(`${origin}/complete-profile`);
     completeUrl.searchParams.set("intent", intent);
     return NextResponse.redirect(completeUrl.toString());
   }
