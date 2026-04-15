@@ -101,7 +101,7 @@ interface SavedAddress {
   id: string;
   label: string;
   full_name: string;
-  phone: string;
+  // phone is stored on profiles.phone, not on the address record.
   line_1: string;
   line_2: string | null;
   city: string;
@@ -391,12 +391,14 @@ export default function CheckoutPage() {
     setStep("confirmation");
   };
 
-  // Build the address object for the API from either saved or new
+  // Build the address object for the API from either saved or new.
+  // Phone is intentionally sourced from userProfile (profiles.phone), not from the
+  // address record — profiles is the single source of truth for the user's phone number.
   const buildDeliveryAddress = () => {
     if (addressMode === "saved" && selectedAddress) {
       return {
         fullName: selectedAddress.full_name,
-        phone: selectedAddress.phone,
+        phone: userProfile?.phone || "",
         line1: selectedAddress.line_1,
         line2: selectedAddress.line_2 || "",
         city: selectedAddress.city,
@@ -428,7 +430,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           label: saveAddressLabel || "Home",
           full_name: deliveryForm.fullName,
-          phone: deliveryForm.phone,
+          // phone is intentionally omitted — it is stored on profiles.phone, not on addresses.
           line_1: deliveryForm.line1,
           line_2: deliveryForm.line2 || null,
           city: deliveryForm.town,

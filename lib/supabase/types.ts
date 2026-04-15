@@ -74,7 +74,7 @@ export interface Address {
   user_id: string;
   label: string;
   full_name: string;
-  phone: string;
+  // phone is stored on the user profile (profiles.phone), not on the address record.
   line_1: string;
   line_2: string | null;
   city: string;

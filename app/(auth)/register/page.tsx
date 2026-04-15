@@ -217,22 +217,25 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Customer type */}
-          <div className="space-y-2">
-            <Label>Account Type</Label>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => update("customerType", "RETAIL")}
-                className={`p-3 rounded-lg border text-sm text-center transition-all ${
-                  formData.customerType === "RETAIL"
-                    ? "border-primary bg-primary/5 ring-2 ring-primary font-medium"
-                    : "border-input hover:bg-accent"
-                }`}
-              >
-                {siteConfig.auth.retailLabel}
-              </button>
-              {siteConfig.wholesale.enabled && (
+          {/* Customer type — only shown when wholesale is enabled in site config.
+              When wholesale is disabled the account type is omitted from the UI
+              entirely; customerType defaults to "RETAIL" (set in useState above)
+              so the correct value is still written to Supabase on submission. */}
+          {siteConfig.wholesale.enabled && (
+            <div className="space-y-2">
+              <Label>Account Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => update("customerType", "RETAIL")}
+                  className={`p-3 rounded-lg border text-sm text-center transition-all ${
+                    formData.customerType === "RETAIL"
+                      ? "border-primary bg-primary/5 ring-2 ring-primary font-medium"
+                      : "border-input hover:bg-accent"
+                  }`}
+                >
+                  {siteConfig.auth.retailLabel}
+                </button>
                 <button
                   type="button"
                   onClick={() => update("customerType", "WHOLESALE")}
@@ -244,9 +247,9 @@ export default function RegisterPage() {
                 >
                   {siteConfig.auth.wholesaleLabel}
                 </button>
-              )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Wholesale fields */}
           {formData.customerType === "WHOLESALE" && (

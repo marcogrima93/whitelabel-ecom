@@ -26,7 +26,7 @@ import {
 import { MapPin, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import type { Address } from "@/lib/supabase/types";
 import { siteConfig } from "@/site.config";
-import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
+
 import { addAddressAction, updateAddressAction, deleteAddressAction } from "./actions";
 
 interface AddressesClientProps {
@@ -42,9 +42,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
   const [editingAddress, setEditingAddress] = useState<Address | null>(null);
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  const [phoneCountryCode, setPhoneCountryCode] = useState(DEFAULT_COUNTRY_CODE);
-  const [phoneNumber, setPhoneNumber] = useState("");
 
   const [formData, setFormData] = useState({
     label: "Home",
@@ -66,16 +63,11 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
       postcode: "",
       isDefault: false,
     });
-    setPhoneCountryCode(DEFAULT_COUNTRY_CODE);
-    setPhoneNumber("");
     setEditingAddress(null);
   };
 
   const openEditDialog = (address: Address) => {
     setEditingAddress(address);
-    const split = splitPhone(address.phone || "");
-    setPhoneCountryCode(split.countryCode);
-    setPhoneNumber(split.number);
     setFormData({
       label: address.label,
       fullName: address.full_name,
@@ -90,14 +82,12 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const phone = joinPhone(phoneCountryCode, phoneNumber);
 
     startTransition(async () => {
       if (editingAddress) {
         const success = await updateAddressAction(editingAddress.id, userId, {
           label: formData.label,
           full_name: formData.fullName,
-          phone,
           line_1: formData.line1,
           line_2: formData.line2 || null,
           city: formData.town,
@@ -114,7 +104,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                     ...a,
                     label: formData.label,
                     full_name: formData.fullName,
-                    phone,
                     line_1: formData.line1,
                     line_2: formData.line2 || null,
                     city: formData.town,
@@ -133,7 +122,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           user_id: userId,
           label: formData.label,
           full_name: formData.fullName,
-          phone,
           line_1: formData.line1,
           line_2: formData.line2 || null,
           city: formData.town,
@@ -219,17 +207,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                       required
                     />
                   </div>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="addr-phone">Phone</Label>
-                  <PhoneInput
-                    id="addr-phone"
-                    countryCode={phoneCountryCode}
-                    number={phoneNumber}
-                    onCountryCodeChange={setPhoneCountryCode}
-                    onNumberChange={setPhoneNumber}
-                    required
-                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="addr-line1">Address Line 1</Label>
@@ -358,7 +335,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                 {addr.line_2 && <p>{addr.line_2}</p>}
                 <p>{addr.city}</p>
                 <p>{addr.postcode}</p>
-                {addr.phone && <p className="mt-1">{addr.phone}</p>}
               </CardContent>
             </Card>
           ))}
