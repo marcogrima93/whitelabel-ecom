@@ -592,12 +592,24 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                     <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-1">
                       <MapPin className="h-3 w-3" /> Delivery Address
                     </p>
-                    <div className="text-sm bg-muted/50 rounded-lg p-3 space-y-0.5">
-                      {Object.entries(selectedOrder.delivery_address)
-                        .filter(([, v]) => v)
-                        .map(([k, v]) => (
-                          <p key={k}>{String(v)}</p>
-                        ))}
+                    <div className="text-sm bg-muted/50 rounded-lg p-3">
+                      {(() => {
+                        const a = selectedOrder.delivery_address!;
+                        return (
+                          <div className="space-y-0.5">
+                            {(a.fullName || a.phone) && (
+                              <div className="space-y-0.5 pb-1.5 mb-1.5 border-b border-border/50">
+                                {a.fullName && <p className="font-medium">{a.fullName}</p>}
+                                {a.phone && <p className="text-muted-foreground">{a.phone}</p>}
+                              </div>
+                            )}
+                            {a.line1 && <p>{a.line1}</p>}
+                            {a.line2 && <p>{a.line2}</p>}
+                            {a.city && <p>{a.city}</p>}
+                            {a.postcode && <p>{a.postcode}</p>}
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 )}
