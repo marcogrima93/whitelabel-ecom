@@ -21,9 +21,9 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { label, full_name, phone, line_1, line_2, city, region, postcode, is_default } = body;
+    const { label, line_1, line_2, city, region, postcode, is_default } = body;
 
-    if (!label || !full_name || !line_1 || !city || !postcode) {
+    if (!label || !line_1 || !city || !postcode) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
@@ -36,8 +36,8 @@ export async function POST(req: Request) {
     const address = await createAddress({
       user_id: user.id,
       label,
-      full_name,
-      phone: phone || "",
+      // full_name is intentionally omitted — it is stored on profiles.name, not on addresses.
+      // phone is intentionally omitted — it is stored on profiles.phone, not on addresses.
       line_1,
       line_2: line_2 || null,
       city,

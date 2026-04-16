@@ -233,11 +233,23 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
                     <MapPin className="h-3.5 w-3.5" /> Fulfilment
                   </div>
                   <p className="font-medium">{selectedOrder.delivery_method === "DELIVERY" ? "Delivery" : "Collection"}</p>
-                  {selectedOrder.delivery_address && (
-                    <p className="text-muted-foreground leading-relaxed">
-                      {Object.values(selectedOrder.delivery_address).filter(Boolean).join(", ")}
-                    </p>
-                  )}
+                  {selectedOrder.delivery_address && (() => {
+                    const a = selectedOrder.delivery_address;
+                    return (
+                      <div className="text-muted-foreground leading-relaxed space-y-0.5">
+                        {(a.fullName || a.phone) && (
+                          <div className="space-y-0.5 mb-1">
+                            {a.fullName && <p className="font-medium text-foreground">{a.fullName}</p>}
+                            {a.phone && <p>{a.phone}</p>}
+                          </div>
+                        )}
+                        {a.line1 && <p>{a.line1}</p>}
+                        {a.line2 && <p>{a.line2}</p>}
+                        {a.city && <p>{a.city}</p>}
+                        {a.postcode && <p>{a.postcode}</p>}
+                      </div>
+                    );
+                  })()}
                 </div>
                 {selectedOrder.delivery_slot && (
                   <div className="space-y-1">
