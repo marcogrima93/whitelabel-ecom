@@ -708,9 +708,15 @@ export default function CheckoutPage() {
                             </SelectContent>
                           </Select>
                           {selectedAddress && (
-                            <div className="text-sm text-muted-foreground bg-background rounded-md px-3 py-2 border">
-                              <p>{selectedAddress.line_1}{selectedAddress.line_2 ? `, ${selectedAddress.line_2}` : ""}</p>
-                              <p>{selectedAddress.city}, {selectedAddress.postcode}</p>
+                            <div className="text-sm bg-background rounded-md px-3 py-2 border space-y-0.5">
+                              {userProfile && (
+                                <div className="pb-1.5 mb-1.5 border-b border-border/60 space-y-0.5">
+                                  <p className="font-medium text-foreground">{userProfile.name}</p>
+                                  {userProfile.phone && <p className="text-muted-foreground">{userProfile.phone}</p>}
+                                </div>
+                              )}
+                              <p className="text-muted-foreground">{selectedAddress.line_1}{selectedAddress.line_2 ? `, ${selectedAddress.line_2}` : ""}</p>
+                              <p className="text-muted-foreground">{selectedAddress.city}, {selectedAddress.postcode}</p>
                             </div>
                           )}
                         </div>
@@ -728,12 +734,12 @@ export default function CheckoutPage() {
                   {(addressMode === "new" || savedAddresses.length === 0) && (
                     <>
                       {userProfile ? (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2 border">
-                          <User className="h-4 w-4 shrink-0" />
-                          <span>
-                            Ordering as <span className="font-medium text-foreground">{userProfile.name}</span>
-                            {" "}({userProfile.email})
-                          </span>
+                        <div className="flex items-start gap-2 text-sm bg-muted/50 rounded-md px-3 py-2 border">
+                          <User className="h-4 w-4 shrink-0 mt-0.5 text-muted-foreground" />
+                          <div className="space-y-0.5">
+                            <p className="font-medium text-foreground">{userProfile.name}</p>
+                            {userProfile.phone && <p className="text-muted-foreground">{userProfile.phone}</p>}
+                          </div>
                         </div>
                       ) : (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
