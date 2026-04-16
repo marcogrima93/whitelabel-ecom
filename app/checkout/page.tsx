@@ -100,7 +100,7 @@ type PaymentMethod = GatewayId;
 interface SavedAddress {
   id: string;
   label: string;
-  full_name: string;
+  // full_name is stored on profiles.name, not on the address record.
   // phone is stored on profiles.phone, not on the address record.
   line_1: string;
   line_2: string | null;
@@ -392,12 +392,14 @@ export default function CheckoutPage() {
   };
 
   // Build the address object for the API from either saved or new.
-  // Phone is intentionally sourced from userProfile (profiles.phone), not from the
+  // fullName is intentionally sourced from userProfile (profiles.name), not from the
+  // address record — profiles is the single source of truth for the user's name.
+  // phone is intentionally sourced from userProfile (profiles.phone), not from the
   // address record — profiles is the single source of truth for the user's phone number.
   const buildDeliveryAddress = () => {
     if (addressMode === "saved" && selectedAddress) {
       return {
-        fullName: selectedAddress.full_name,
+        fullName: userProfile?.name || "",
         phone: userProfile?.phone || "",
         line1: selectedAddress.line_1,
         line2: selectedAddress.line_2 || "",
@@ -415,10 +417,10 @@ export default function CheckoutPage() {
     };
   };
 
+  // Name sourced from userProfile (profiles.name) for logged-in users, or from
+  // the guest delivery form for unauthenticated checkout.
   const getCustomerName = () =>
-    addressMode === "saved" && selectedAddress
-      ? selectedAddress.full_name
-      : deliveryForm.fullName;
+    userProfile?.name || deliveryForm.fullName;
 
   const saveNewAddressIfRequested = async () => {
     if (!saveAddress || addressMode !== "new" || deliveryType !== "DELIVERY" || !userProfile) return;
@@ -429,7 +431,7 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           label: saveAddressLabel || "Home",
-          full_name: deliveryForm.fullName,
+          // full_name is intentionally omitted — it is stored on profiles.name, not on addresses.
           // phone is intentionally omitted — it is stored on profiles.phone, not on addresses.
           line_1: deliveryForm.line1,
           line_2: deliveryForm.line2 || null,
@@ -707,7 +709,6 @@ export default function CheckoutPage() {
                           </Select>
                           {selectedAddress && (
                             <div className="text-sm text-muted-foreground bg-background rounded-md px-3 py-2 border">
-                              <p className="font-medium text-foreground">{selectedAddress.full_name}</p>
                               <p>{selectedAddress.line_1}{selectedAddress.line_2 ? `, ${selectedAddress.line_2}` : ""}</p>
                               <p>{selectedAddress.city}, {selectedAddress.postcode}</p>
                             </div>

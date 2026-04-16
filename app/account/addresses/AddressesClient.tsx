@@ -45,7 +45,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
 
   const [formData, setFormData] = useState({
     label: "Home",
-    fullName: "",
     line1: "",
     line2: "",
     town: (towns[0]?.name || "") as string,
@@ -56,7 +55,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
   const resetForm = () => {
     setFormData({
       label: "Home",
-      fullName: "",
       line1: "",
       line2: "",
       town: towns[0]?.name || "",
@@ -70,7 +68,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
     setEditingAddress(address);
     setFormData({
       label: address.label,
-      fullName: address.full_name,
       line1: address.line_1,
       line2: address.line_2 || "",
       town: address.city,
@@ -87,7 +84,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
       if (editingAddress) {
         const success = await updateAddressAction(editingAddress.id, userId, {
           label: formData.label,
-          full_name: formData.fullName,
+          // full_name is intentionally omitted — it is stored on profiles.name, not on addresses.
           line_1: formData.line1,
           line_2: formData.line2 || null,
           city: formData.town,
@@ -100,10 +97,9 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           setAddresses((prev) =>
             prev.map((a) =>
               a.id === editingAddress.id
-                ? {
+                  ? {
                     ...a,
                     label: formData.label,
-                    full_name: formData.fullName,
                     line_1: formData.line1,
                     line_2: formData.line2 || null,
                     city: formData.town,
@@ -121,7 +117,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
         const newAddress = await addAddressAction({
           user_id: userId,
           label: formData.label,
-          full_name: formData.fullName,
+          // full_name is intentionally omitted — it is stored on profiles.name, not on addresses.
           line_1: formData.line1,
           line_2: formData.line2 || null,
           city: formData.town,
@@ -187,26 +183,15 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="addr-label">Label</Label>
-                    <Input
-                      id="addr-label"
-                      value={formData.label}
-                      onChange={(e) => setFormData((p) => ({ ...p, label: e.target.value }))}
-                      placeholder="Home, Office, etc."
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="addr-name">Full Name</Label>
-                    <Input
-                      id="addr-name"
-                      value={formData.fullName}
-                      onChange={(e) => setFormData((p) => ({ ...p, fullName: e.target.value }))}
-                      required
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="addr-label">Label</Label>
+                  <Input
+                    id="addr-label"
+                    value={formData.label}
+                    onChange={(e) => setFormData((p) => ({ ...p, label: e.target.value }))}
+                    placeholder="Home, Office, etc."
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="addr-line1">Address Line 1</Label>
@@ -330,7 +315,6 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                 </div>
               </CardHeader>
               <CardContent className="text-sm text-muted-foreground">
-                <p>{addr.full_name}</p>
                 <p>{addr.line_1}</p>
                 {addr.line_2 && <p>{addr.line_2}</p>}
                 <p>{addr.city}</p>
