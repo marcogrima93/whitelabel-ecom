@@ -4,6 +4,8 @@ import type { Metadata } from "next";
 import { siteConfig } from "@/site.config";
 import { getProductBySlug, getRelatedProducts } from "@/lib/supabase/products";
 import { getCategories } from "@/lib/supabase/queries";
+import { createServiceRoleClient } from "@/lib/supabase/server";
+import type { ProductFilter } from "@/lib/supabase/types";
 import { ProductCard } from "@/components/products/ProductCard";
 import { ProductInteractiveSection } from "@/components/products/ProductInteractiveSection";
 
@@ -31,11 +33,31 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 export default async function ProductPage({ params }: ProductPageProps) {
   const { slug } = await params;
 
-  const [product, categories] = await Promise.all([
+  const supabase = await createServiceRoleClient();
+
+  const [product, categories, { data: rawProductFilters }] = await Promise.all([
     getProductBySlug(slug),
     getCategories(),
+    supabase.from("product_filters").select("*").order("sort_order", { ascending: true }),
   ]);
   if (!product) notFound();
+
+  const productFilters: ProductFilter[] = rawProductFilters ?? [];
+
+  // Parse the product's filter_field JSON and resolve human-readable label/value pairs
+  let parsedFilterField: Record<string, string> = {};
+  try {
+    parsedFilterField = JSON.parse(product.filter_field || "{}");
+  } catch {
+    parsedFilterField = {};
+  }
+
+  const filterBadges: { label: string; value: string }[] = Object.entries(parsedFilterField)
+    .filter(([, value]) => Boolean(value))
+    .map(([field, value]) => {
+      const filter = productFilters.find((f) => f.field === field);
+      return { label: filter?.label ?? field, value };
+    });
 
   const relatedProducts = await getRelatedProducts(product.category, product.slug, 4);
   const categoryName =
@@ -59,7 +81,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </nav>
 
       {/* Product */}
-      <ProductInteractiveSection product={product} />
+      <ProductInteractiveSection product={product} filterBadges={filterBadges} />
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (
