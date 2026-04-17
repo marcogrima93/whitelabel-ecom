@@ -81,7 +81,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
       </nav>
 
       {/* Product */}
-      <ProductInteractiveSection product={product} />
+      <ProductInteractiveSection product={product} filterBadges={filterBadges} />
 
       {/* Related Products */}
       {relatedProducts.length > 0 && (

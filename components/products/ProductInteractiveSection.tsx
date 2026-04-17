@@ -2,11 +2,18 @@
 
 import { useState, useCallback } from "react";
 import type { Product, OptionConfig } from "@/lib/supabase/types";
+import { Badge } from "@/components/ui/badge";
 import { ProductImageGallery } from "./ProductImageGallery";
 import { AddToCartSection } from "./AddToCartSection";
 
+interface FilterBadge {
+  label: string;
+  value: string;
+}
+
 interface Props {
   product: Product;
+  filterBadges?: FilterBadge[];
 }
 
 /**
@@ -15,7 +22,7 @@ interface Props {
  * to option selection without any page reload or layout shift — all images are
  * already present in the gallery thumbnail set.
  */
-export function ProductInteractiveSection({ product }: Props) {
+export function ProductInteractiveSection({ product, filterBadges = [] }: Props) {
   const configs: OptionConfig[] = Array.isArray(product.option_configs)
     ? product.option_configs
     : [];
@@ -79,7 +86,19 @@ export function ProductInteractiveSection({ product }: Props) {
       {/* Right: Product Info + Add to Cart */}
       <div>
         <h1 className="text-3xl font-bold mb-2">{product.name}</h1>
-        <p className="text-muted-foreground mb-6">{product.description}</p>
+        <p className="text-muted-foreground mb-4">{product.description}</p>
+
+        {filterBadges.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-6" aria-label="Product attributes">
+            {filterBadges.map(({ label, value }) => (
+              <Badge key={label} variant="secondary" className="font-normal">
+                <span className="text-muted-foreground mr-1">{label} ·</span>
+                {value}
+              </Badge>
+            ))}
+          </div>
+        )}
+
         <AddToCartSection
           product={product}
           resolvedPrice={resolvedPrice}
