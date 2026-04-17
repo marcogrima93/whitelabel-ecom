@@ -159,10 +159,10 @@ export const siteConfig = {
       enabled: true, // Required env vars: STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
     },
     cashOnDelivery: {
-      enabled: true, // No env vars required
+      enabled: false, // No env vars required
     },
     paypal: {
-      enabled: false, // Required env vars: PAYPAL_CLIENT_ID, NEXT_PUBLIC_PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_MODE (sandbox|live)
+      enabled: true, // Required env vars: PAYPAL_CLIENT_ID, NEXT_PUBLIC_PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_MODE (sandbox|live)
     },
     revolut: {
       enabled: false, // Required env vars: REVOLUT_API_KEY, NEXT_PUBLIC_REVOLUT_PUBLIC_ID
