@@ -1093,6 +1093,115 @@ export default function CheckoutPage() {
                             ? "Pay when your order arrives"
                             : "Pay when you collect"
                           : gateway.description;
+
+                      // Branded styles per gateway
+                      const brandedStyle: Record<string, { bg: string; text: string; border: string; selectedBorder: string; selectedBg: string; selectedRing: string }> = {
+                        stripe: {
+                          bg: "bg-[#635bff]",
+                          text: "text-white",
+                          border: "border-[#635bff]",
+                          selectedBorder: "border-[#635bff]",
+                          selectedBg: "bg-[#635bff]",
+                          selectedRing: "ring-[#635bff]",
+                        },
+                        paypal: {
+                          bg: "bg-[#003087]",
+                          text: "text-[#009cde]",
+                          border: "border-[#003087]",
+                          selectedBorder: "border-[#003087]",
+                          selectedBg: "bg-[#003087]",
+                          selectedRing: "ring-[#003087]",
+                        },
+                        revolut: {
+                          bg: "bg-black",
+                          text: "text-white",
+                          border: "border-black",
+                          selectedBorder: "border-black",
+                          selectedBg: "bg-black",
+                          selectedRing: "ring-black",
+                        },
+                        mollie: {
+                          bg: "bg-[#000000]",
+                          text: "text-white",
+                          border: "border-gray-800",
+                          selectedBorder: "border-gray-900",
+                          selectedBg: "bg-gray-900",
+                          selectedRing: "ring-gray-900",
+                        },
+                        skrill: {
+                          bg: "bg-[#862165]",
+                          text: "text-white",
+                          border: "border-[#862165]",
+                          selectedBorder: "border-[#862165]",
+                          selectedBg: "bg-[#862165]",
+                          selectedRing: "ring-[#862165]",
+                        },
+                        trustPayments: {
+                          bg: "bg-[#0078a0]",
+                          text: "text-white",
+                          border: "border-[#0078a0]",
+                          selectedBorder: "border-[#0078a0]",
+                          selectedBg: "bg-[#0078a0]",
+                          selectedRing: "ring-[#0078a0]",
+                        },
+                        bov: {
+                          bg: "bg-[#cc0000]",
+                          text: "text-white",
+                          border: "border-[#cc0000]",
+                          selectedBorder: "border-[#cc0000]",
+                          selectedBg: "bg-[#cc0000]",
+                          selectedRing: "ring-[#cc0000]",
+                        },
+                        fondy: {
+                          bg: "bg-[#0066cc]",
+                          text: "text-white",
+                          border: "border-[#0066cc]",
+                          selectedBorder: "border-[#0066cc]",
+                          selectedBg: "bg-[#0066cc]",
+                          selectedRing: "ring-[#0066cc]",
+                        },
+                        myPos: {
+                          bg: "bg-[#ff6600]",
+                          text: "text-white",
+                          border: "border-[#ff6600]",
+                          selectedBorder: "border-[#ff6600]",
+                          selectedBg: "bg-[#ff6600]",
+                          selectedRing: "ring-[#ff6600]",
+                        },
+                        sumUp: {
+                          bg: "bg-[#00d06c]",
+                          text: "text-white",
+                          border: "border-[#00d06c]",
+                          selectedBorder: "border-[#00d06c]",
+                          selectedBg: "bg-[#00d06c]",
+                          selectedRing: "ring-[#00d06c]",
+                        },
+                      };
+
+                      const brand = brandedStyle[gateway.id];
+                      const isCash = gateway.id === "cashOnDelivery";
+
+                      if (brand && !isCash) {
+                        // Branded button — always shows brand colour, ring when selected
+                        return (
+                          <button
+                            key={gateway.id}
+                            type="button"
+                            onClick={() => setSelectedPaymentMethod(gateway.id)}
+                            className={`flex items-center gap-3 p-4 rounded-lg border-2 text-left transition-all ${brand.bg} ${brand.text} ${brand.border} ${
+                              isSelected ? `ring-2 ${brand.selectedRing} ring-offset-2` : "opacity-80 hover:opacity-100"
+                            }`}
+                          >
+                            <gateway.Icon className="h-5 w-5 shrink-0" />
+                            <div>
+                              <p className="font-semibold text-sm">{label}</p>
+                              <p className="text-xs opacity-80">{description}</p>
+                            </div>
+                          </button>
+                        );
+                      }
+
+                      // Default (cash / unbranded) button
                       return (
                         <button
                           key={gateway.id}

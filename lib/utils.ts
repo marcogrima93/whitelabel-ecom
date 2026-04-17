@@ -35,7 +35,7 @@ export function truncate(str: string, length: number): string {
  *  - anything else                 → "Online Payment"
  */
 export function getPaymentGatewayLabel(paymentIntentId: string | null | undefined): string {
-  if (!paymentIntentId) return "Cash on Delivery";
+  if (!paymentIntentId) return "Cash";
   if (paymentIntentId.startsWith("paypal_capture_")) return "PayPal";
   if (paymentIntentId.startsWith("revolut_")) return "Revolut Pay";
   if (paymentIntentId.startsWith("pi_")) return "Stripe";
