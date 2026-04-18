@@ -1,6 +1,7 @@
 "use client";
 
 import { Banknote } from "lucide-react";
+import { useState } from "react";
 
 interface PaymentMethodButtonProps {
   gatewayId: string;
@@ -10,16 +11,40 @@ interface PaymentMethodButtonProps {
   onClick: () => void;
 }
 
-// ─── SVG brand logos ──────────────────────────────────────────────────────────
+// ─── Image logo with hand-drawn SVG fallback ──────────────────────────────────
 
-const StripeLogo = () => (
-  // eslint-disable-next-line @next/next/no-img-element
-  <img src="/payment-logos/stripe.svg" alt="Stripe" className="h-8 w-auto" />
+interface LogoWithFallbackProps {
+  gatewayId: string;
+  alt: string;
+  fallback: React.ReactNode;
+}
+
+const LogoWithFallback = ({ gatewayId, alt, fallback }: LogoWithFallbackProps) => {
+  const [failed, setFailed] = useState(false);
+  if (failed) return <>{fallback}</>;
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={`/payment-logos/${gatewayId}.svg`}
+      alt={alt}
+      className="h-8 w-auto"
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
+// ─── Hand-drawn fallback SVGs ─────────────────────────────────────────────────
+
+const StripeFallback = () => (
+  <svg viewBox="0 0 80 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-7 w-auto">
+    <text x="0" y="21" fill="white" fontSize="20" fontFamily="Arial, sans-serif" fontWeight="bold">Stripe</text>
+  </svg>
 );
 
-const PayPalLogo = () => (
-  // eslint-disable-next-line @next/next/no-img-element
-  <img src="/payment-logos/paypal.svg" alt="PayPal" className="h-8 w-auto" />
+const PayPalFallback = () => (
+  <svg viewBox="0 0 95 28" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-7 w-auto">
+    <text x="0" y="21" fill="#009cde" fontSize="20" fontFamily="Arial, sans-serif" fontWeight="bold">PayPal</text>
+  </svg>
 );
 
 const RevolutLogo = () => (
@@ -81,70 +106,59 @@ const BovLogo = () => (
 // ─── Brand config per gateway ─────────────────────────────────────────────────
 
 const BRAND_CONFIG: Record<string, {
-  Logo: () => JSX.Element;
+  fallback: React.ReactNode;
   bg: string;
   selectedRing: string;
-  checkColor: string;
 }> = {
   stripe: {
-    Logo: StripeLogo,
+    fallback: <StripeFallback />,
     bg: "bg-[#635bff]",
     selectedRing: "ring-[#4f46e5]",
-    checkColor: "text-white",
   },
   paypal: {
-    Logo: PayPalLogo,
+    fallback: <PayPalFallback />,
     bg: "bg-[#003087]",
     selectedRing: "ring-[#009cde]",
-    checkColor: "text-[#009cde]",
   },
   revolut: {
-    Logo: RevolutLogo,
+    fallback: <RevolutLogo />,
     bg: "bg-[#191C1F]",
     selectedRing: "ring-white/60",
-    checkColor: "text-white",
   },
   mollie: {
-    Logo: MollieLogo,
+    fallback: <MollieLogo />,
     bg: "bg-[#1a1a2e]",
     selectedRing: "ring-[#FF5B24]",
-    checkColor: "text-[#FF5B24]",
   },
   skrill: {
-    Logo: SkrillLogo,
+    fallback: <SkrillLogo />,
     bg: "bg-[#862165]",
     selectedRing: "ring-[#c43b8a]",
-    checkColor: "text-white",
   },
   trustPayments: {
-    Logo: TrustPaymentsLogo,
+    fallback: <TrustPaymentsLogo />,
     bg: "bg-[#0078a0]",
     selectedRing: "ring-[#00b4d8]",
-    checkColor: "text-white",
   },
   bov: {
-    Logo: BovLogo,
+    fallback: <BovLogo />,
     bg: "bg-[#cc0000]",
     selectedRing: "ring-[#ff3333]",
-    checkColor: "text-white",
   },
   fondy: {
-    Logo: FondyLogo,
+    fallback: <FondyLogo />,
     bg: "bg-[#0055cc]",
     selectedRing: "ring-[#3385ff]",
-    checkColor: "text-white",
   },
   myPos: {
-    Logo: MyPosLogo,
+    fallback: <MyPosLogo />,
     bg: "bg-[#ff6600]",
     selectedRing: "ring-[#ff9944]",
-    checkColor: "text-white",
   },
   sumUp: {
-    Logo: SumUpLogo,
+    fallback: <SumUpLogo />,
     bg: "bg-[#00b050]",
     selectedRing: "ring-[#00e066]",
-    checkColor: "text-white",
   },
 };
 
@@ -161,7 +175,7 @@ export function PaymentMethodButton({
 
   // ── Branded button ──────────────────────────────────────────────────────────
   if (brand) {
-    const { Logo, bg, selectedRing } = brand;
+    const { fallback, bg, selectedRing } = brand;
     return (
       <button
         type="button"
@@ -180,12 +194,12 @@ export function PaymentMethodButton({
         {/* Selected check mark */}
         {isSelected && (
           <span className="absolute top-2 right-2 flex h-5 w-5 items-center justify-center rounded-full bg-white/20">
-            <svg viewBox="0 0 12 12" className="h-3 w-3 text-white fill-white">
-              <path d="M1.5 6l3 3 6-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+            <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none">
+              <path d="M1.5 6l3 3 6-6" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </span>
         )}
-        <Logo />
+        <LogoWithFallback gatewayId={gatewayId} alt={label} fallback={fallback} />
         <p className="text-xs text-white/70 text-center leading-tight">{description}</p>
       </button>
     );
