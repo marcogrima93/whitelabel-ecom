@@ -184,6 +184,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ orderNumber: order.order_number });
     }
 
+    // ── Revolut Pay ───────────────────────────────────────────────────────
+    // Creates the internal order record (status PENDING) and returns the
+    // orderNumber. The Revolut order itself is created lazily by the client
+    // via POST /api/checkout/revolut/create-order when the SDK initialises.
+    if (paymentMethod === "REVOLUT") {
+      const order = await createOrder({ ...orderBase, stripePaymentIntentId: undefined });
+      if (!order) {
+        return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+      }
+      return NextResponse.json({ orderNumber: order.order_number });
+    }
+
     // ── Stripe payment ────────────────────────────────────────────────────
     const { clientSecret, paymentIntentId } = await createStripePaymentIntent({
       total,
