@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import StripeForm from "@/components/checkout/StripeForm";
 import PayPalForm from "@/components/checkout/PayPalForm";
+import RevolutForm from "@/components/checkout/RevolutForm";
 import { PaymentMethodButton } from "@/components/checkout/PaymentMethodButton";
 import { getEnabledGateways, type GatewayId } from "@/lib/payments/registry";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
@@ -124,6 +125,7 @@ export default function CheckoutPage() {
   const [orderNumber, setOrderNumber] = useState("");
   const [clientSecret, setClientSecret] = useState("");
   const [checkoutOrderNumber, setCheckoutOrderNumber] = useState("");
+  const [revolutOrderNumber, setRevolutOrderNumber] = useState("");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(
     () => (getEnabledGateways()[0]?.id ?? "stripe") as PaymentMethod
@@ -548,6 +550,35 @@ export default function CheckoutPage() {
         }
       } catch (err) {
         console.error("PayPal init error:", err);
+        setStep("delivery");
+        setCheckoutError("An unexpected error occurred. Please try again.");
+      }
+      return;
+    }
+
+    // ── Revolut Pay ────────────────────────────────────────────────────────
+    // Creates the internal order record and stores the order number so
+    // RevolutForm can reference it when calling /api/checkout/revolut/create-order.
+    if (selectedPaymentMethod === "revolut") {
+      if (revolutOrderNumber) return; // already initialised
+      try {
+        await saveNewAddressIfRequested();
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildCheckoutBody("REVOLUT")),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStep("delivery");
+          setCheckoutError(data.error || "Failed to initialise Revolut Pay. Please try again.");
+          return;
+        }
+        if (data.orderNumber) {
+          setRevolutOrderNumber(data.orderNumber);
+        }
+      } catch (err) {
+        console.error("Revolut init error:", err);
         setStep("delivery");
         setCheckoutError("An unexpected error occurred. Please try again.");
       }
@@ -1164,6 +1195,30 @@ export default function CheckoutPage() {
                     <PayPalForm
                       amount={total}
                       orderNumber={checkoutOrderNumber}
+                      onSuccess={handlePaymentSuccess}
+                      onBack={() => setStep("delivery")}
+                    />
+                  )}
+                </div>
+              )}
+
+              {/* Revolut Pay */}
+              {selectedPaymentMethod === "revolut" && (
+                <div className="p-6 rounded-lg border bg-card space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    Secure payment via Revolut Pay
+                  </div>
+                  {!revolutOrderNumber ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <RevolutForm
+                      amount={total}
+                      orderNumber={revolutOrderNumber}
+                      customerEmail={deliveryForm.email || userProfile?.email}
+                      customerName={getCustomerName()}
                       onSuccess={handlePaymentSuccess}
                       onBack={() => setStep("delivery")}
                     />
