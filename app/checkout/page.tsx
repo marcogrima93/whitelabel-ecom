@@ -33,6 +33,7 @@ import {
   BookUser,
   CalendarDays,
   User,
+  Banknote,
 } from "lucide-react";
 import StripeForm from "@/components/checkout/StripeForm";
 import PayPalForm from "@/components/checkout/PayPalForm";
