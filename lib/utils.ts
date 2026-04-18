@@ -22,3 +22,22 @@ export function slugify(text: string): string {
 export function truncate(str: string, length: number): string {
   return str.length > length ? str.substring(0, length) + "..." : str;
 }
+
+/**
+ * Derives a human-readable payment gateway label from the stored
+ * stripe_payment_intent_id value (which is reused for all gateway references).
+ *
+ * Convention:
+ *  - null / undefined  → "Cash on Delivery"
+ *  - starts with "paypal_capture_" → "PayPal"
+ *  - starts with "revolut_"        → "Revolut Pay"
+ *  - starts with "pi_"             → "Stripe"
+ *  - anything else                 → "Online Payment"
+ */
+export function getPaymentGatewayLabel(paymentIntentId: string | null | undefined): string {
+  if (!paymentIntentId) return "Cash";
+  if (paymentIntentId.startsWith("paypal_capture_")) return "PayPal";
+  if (paymentIntentId.startsWith("revolut_")) return "Revolut Pay";
+  if (paymentIntentId.startsWith("pi_")) return "Stripe";
+  return "Online Payment";
+}

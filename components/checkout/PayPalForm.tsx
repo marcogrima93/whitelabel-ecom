@@ -45,7 +45,7 @@ function PayPalButtonsInner({
     const res = await fetch("/api/checkout/paypal/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderNumber }),
+      body: JSON.stringify({ orderNumber, total: amount }),
     });
 
     if (!res.ok) {

@@ -2,6 +2,7 @@
 
 import { getOrders } from "@/lib/supabase/queries";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import { getPaymentGatewayLabel } from "@/lib/utils";
 
 export async function exportAllOrdersToCSV(): Promise<string> {
   const supabase = await createServiceRoleClient();
@@ -61,7 +62,7 @@ export async function exportAllOrdersToCSV(): Promise<string> {
       : "";
 
     // Determine payment method
-    const paymentMethod = order.stripe_payment_intent_id ? "Card" : "Cash";
+    const paymentMethod = getPaymentGatewayLabel(order.stripe_payment_intent_id);
 
     // Extract customer name from delivery_address or email prefix
     const customerName = order.delivery_address?.fullName || order.email.split("@")[0];

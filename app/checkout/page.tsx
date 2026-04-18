@@ -31,12 +31,13 @@ import {
   ArrowRight,
   Package,
   BookUser,
-  Banknote,
   CalendarDays,
   User,
+  Banknote,
 } from "lucide-react";
 import StripeForm from "@/components/checkout/StripeForm";
 import PayPalForm from "@/components/checkout/PayPalForm";
+import { PaymentMethodButton } from "@/components/checkout/PaymentMethodButton";
 import { getEnabledGateways, type GatewayId } from "@/lib/payments/registry";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
 
@@ -1077,10 +1078,8 @@ export default function CheckoutPage() {
               {enabledGateways.length > 0 && (
                 <div className="space-y-3 pt-2">
                   <h3 className="font-semibold text-sm">Payment Method</h3>
-                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     {enabledGateways.map((gateway) => {
-                      const isSelected = selectedPaymentMethod === gateway.id;
-                      // Override label/description for COD based on delivery type
                       const label =
                         gateway.id === "cashOnDelivery"
                           ? deliveryType === "DELIVERY"
@@ -1094,22 +1093,14 @@ export default function CheckoutPage() {
                             : "Pay when you collect"
                           : gateway.description;
                       return (
-                        <button
+                        <PaymentMethodButton
                           key={gateway.id}
-                          type="button"
+                          gatewayId={gateway.id}
+                          label={label}
+                          description={description}
+                          isSelected={selectedPaymentMethod === gateway.id}
                           onClick={() => setSelectedPaymentMethod(gateway.id)}
-                          className={`flex items-center gap-3 p-4 rounded-lg border text-left transition-all ${
-                            isSelected
-                              ? "border-primary bg-primary/5 ring-2 ring-primary"
-                              : "border-input hover:bg-accent"
-                          }`}
-                        >
-                          <gateway.Icon className="h-5 w-5 shrink-0" />
-                          <div>
-                            <p className="font-medium text-sm">{label}</p>
-                            <p className="text-xs text-muted-foreground">{description}</p>
-                          </div>
-                        </button>
+                        />
                       );
                     })}
                   </div>

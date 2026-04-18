@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { siteConfig } from "@/site.config";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getPaymentGatewayLabel } from "@/lib/utils";
 import { updateOrderStatusAction, getOrderDetailAction, resendOrderEmailAction, updateOrderSlotAction } from "./actions";
 import type { Order, OrderItem, DeliveryMethod } from "@/lib/supabase/types";
 import { Label } from "@/components/ui/label";
@@ -498,15 +498,20 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
                 >
                   {selectedOrder.delivery_method}
                 </Badge>
-                {selectedOrder.stripe_payment_intent_id ? (
-                  <Badge variant="outline" className="gap-1">
-                    <CreditCard className="h-3 w-3" /> Card
-                  </Badge>
-                ) : (
-                  <Badge variant="outline" className="gap-1">
-                    <Banknote className="h-3 w-3" /> Cash
-                  </Badge>
-                )}
+                {(() => {
+                  const label = getPaymentGatewayLabel(selectedOrder.stripe_payment_intent_id);
+                  const isCash = !selectedOrder.stripe_payment_intent_id;
+                  return (
+                    <Badge variant="outline" className="gap-1">
+                      {isCash ? (
+                        <Banknote className="h-3 w-3" />
+                      ) : (
+                        <CreditCard className="h-3 w-3" />
+                      )}
+                      {label}
+                    </Badge>
+                  );
+                })()}
               </div>
 
               {/* Customer */}

@@ -31,19 +31,19 @@ export async function POST(req: Request) {
       );
     }
 
-    // Update the order status in the database
+    // Store the PayPal capture ID on the order but keep status as PENDING.
+    // Admins manually advance the order (same flow as Stripe).
     const supabase = await createServerSupabaseClient();
     const { error: dbError } = await supabase
       .from("orders")
       .update({
-        status: "CONFIRMED",
         stripe_payment_intent_id: `paypal_capture_${captureId}`, // reuse the column for capture ID
       })
       .eq("order_number", orderNumber);
 
     if (dbError) {
-      console.error("Failed to update order after PayPal capture:", dbError);
-      // Don't fail the response — payment was captured, order update can be retried via webhook
+      console.error("Failed to store PayPal capture ID on order:", dbError);
+      // Don't fail the response — payment was captured, order update can be retried
     }
 
     return NextResponse.json({ status, orderNumber });

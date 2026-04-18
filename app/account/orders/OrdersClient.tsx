@@ -14,7 +14,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Package, Eye, Loader2, MapPin, Calendar, CreditCard } from "lucide-react";
 import { siteConfig } from "@/site.config";
-import { formatPrice } from "@/lib/utils";
+import { formatPrice, getPaymentGatewayLabel } from "@/lib/utils";
 import type { Order, OrderItem } from "@/lib/supabase/types";
 
 const statusVariant = (status: string) => {
@@ -264,7 +264,7 @@ export default function OrdersClient({ orders }: OrdersClientProps) {
                     <CreditCard className="h-3.5 w-3.5" /> Payment
                   </div>
                   <p className="text-muted-foreground">
-                    {selectedOrder.stripe_payment_intent_id ? "Card (Stripe)" : "Cash"}
+                    {getPaymentGatewayLabel(selectedOrder.stripe_payment_intent_id)}
                   </p>
                 </div>
               </div>

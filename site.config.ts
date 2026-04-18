@@ -165,7 +165,8 @@ export const siteConfig = {
       enabled: true, // Required env vars: PAYPAL_CLIENT_ID, NEXT_PUBLIC_PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET, PAYPAL_MODE (sandbox|live)
     },
     revolut: {
-      enabled: false, // Required env vars: REVOLUT_API_KEY, NEXT_PUBLIC_REVOLUT_PUBLIC_ID
+      enabled: true,
+      // Required env vars: REVOLUT_API_KEY, NEXT_PUBLIC_REVOLUT_PUBLIC_ID
     },
     trustPayments: {
       enabled: false, // Required env vars: TRUST_PAYMENTS_SITE_REFERENCE, TRUST_PAYMENTS_USERNAME, TRUST_PAYMENTS_PASSWORD
