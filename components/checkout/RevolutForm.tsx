@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import type { RevolutCheckoutError, RevolutPayDropOffState } from "@revolut/checkout";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
@@ -120,13 +121,18 @@ export default function RevolutForm({
           setSdkReady(true);
         }
 
-        revolutPay.on("payment", (event: { type: string; error?: string; dropOffState?: string }) => {
+        type PaymentEvent =
+          | { type: "success"; orderId: string }
+          | { type: "error"; error: RevolutCheckoutError; orderId: string }
+          | { type: "cancel"; dropOffState: RevolutPayDropOffState; orderId?: string };
+
+        revolutPay.on("payment", (event: PaymentEvent) => {
           switch (event.type) {
             case "success":
               onSuccess(orderNumber);
               break;
             case "error":
-              setError(event.error ?? "An error occurred during payment.");
+              setError(event.error?.message ?? "An error occurred during payment.");
               break;
             case "cancel":
               if (event.dropOffState === "payment_summary") {
