@@ -75,18 +75,24 @@ export async function createRevolutOrder(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
+      "Revolut-Api-Version": "2024-09-01",
     },
     body: JSON.stringify(body),
   });
 
+  const data = await res.json().catch(() => null);
+
   if (!res.ok) {
-    const text = await res.text().catch(() => "");
     throw new Error(
-      `[revolut] Failed to create order (${res.status}): ${text}`
+      `[revolut] Failed to create order (${res.status}): ${JSON.stringify(data)}`
     );
   }
 
-  const data = await res.json();
+  if (!data?.token) {
+    throw new Error(
+      `[revolut] Revolut order created but no token returned: ${JSON.stringify(data)}`
+    );
+  }
 
   return {
     orderId: data.id as string,
