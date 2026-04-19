@@ -16,7 +16,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import type { RevolutCheckoutError, RevolutPayDropOffState } from "@revolut/checkout";
+import type { RevolutCheckoutError, RevolutPayEventPayload } from "@revolut/checkout";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
