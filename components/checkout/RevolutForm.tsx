@@ -171,7 +171,10 @@ export default function RevolutForm({
       )}
 
       {/* Revolut embeddedCheckout mounts the full widget here */}
-      <div ref={containerRef} className={loading && !error ? "hidden" : ""} />
+      <div 
+        ref={containerRef} 
+        className={`w-full min-w-0 overflow-hidden [&>*]:max-w-full [&_iframe]:!max-w-full [&_iframe]:!w-full ${loading && !error ? "hidden" : ""}`} 
+      />
 
       {error && (
         <div className="flex items-center gap-2 text-sm text-destructive">
