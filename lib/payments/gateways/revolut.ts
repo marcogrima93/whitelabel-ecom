@@ -71,14 +71,12 @@ export async function createRevolutOrder(
   }
 
   const baseUrl = getBaseUrl();
-  console.log("[revolut] Creating order | mode:", process.env.REVOLUT_API_MODE ?? "sandbox", "| url:", baseUrl);
 
   const res = await fetch(`${baseUrl}/orders`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
-      "Revolut-Api-Version": "2024-09-01",
     },
     body: JSON.stringify(body),
     cache: "no-store",
