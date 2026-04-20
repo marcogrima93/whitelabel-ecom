@@ -43,9 +43,8 @@ export default function RevolutForm({
 }: RevolutFormProps) {
   const { currency } = siteConfig;
   const containerRef = useRef<HTMLDivElement>(null);
-  // destroyRef holds the cleanup fn returned by the SDK so we can call it on
-  // unmount — this prevents the double-button issue caused by React StrictMode
-  // running effects twice in development.
+  // destroyRef holds the cleanup fn so we can call it on unmount —
+  // prevents the double-button issue caused by React StrictMode running effects twice.
   const destroyRef = useRef<(() => void) | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,7 +62,6 @@ export default function RevolutForm({
       setSdkReady(false);
     }
 
-    // Clear the container manually before re-mounting
     if (containerRef.current) {
       containerRef.current.innerHTML = "";
     }
@@ -111,28 +109,35 @@ export default function RevolutForm({
             failure: `${window.location.origin}/checkout?revolut=failure`,
             cancel: `${window.location.origin}/checkout?revolut=cancel`,
           },
+          ...(customerEmail || customerName
+            ? {
+                customer: {
+                  ...(customerName ? { name: customerName } : {}),
+                  ...(customerEmail ? { email: customerEmail } : {}),
+                },
+              }
+            : {}),
         };
 
         if (containerRef.current && !cancelled) {
-          // Clear the container again right before mounting in case of race
           containerRef.current.innerHTML = "";
           revolutPay.mount(containerRef.current, paymentOptions);
           destroyRef.current = () => revolutPay.destroy();
           setSdkReady(true);
         }
 
-        type PaymentEvent =
-          | { type: "success"; orderId: string }
-          | { type: "error"; error: RevolutCheckoutError; orderId: string }
-          | { type: "cancel"; dropOffState: RevolutPayDropOffState; orderId?: string };
-
-        revolutPay.on("payment", (event: PaymentEvent) => {
+        // Use the SDK's own exported payload type — avoids importing
+        // RevolutPayDropOffState which is not exported by the package.
+        revolutPay.on("payment", (event: RevolutPayEventPayload<"payment">) => {
           switch (event.type) {
             case "success":
               onSuccess(orderNumber);
               break;
             case "error":
-              setError(event.error?.message ?? "An error occurred during payment.");
+              setError(
+                (event.error as RevolutCheckoutError)?.message ??
+                  "An error occurred during payment."
+              );
               break;
             case "cancel":
               if (event.dropOffState === "payment_summary") {
@@ -141,9 +146,13 @@ export default function RevolutForm({
               break;
           }
         });
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!cancelled) {
-          setError(err.message ?? "Failed to initialise Revolut Pay.");
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Failed to initialise Revolut Pay."
+          );
         }
       }
     }
