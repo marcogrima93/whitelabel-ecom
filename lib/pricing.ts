@@ -52,6 +52,33 @@ export function getPriceForUser(
   };
 }
 
+// ── Currency helpers ─────────────────────────────────────────────────────────
+
+/**
+ * Safely rounds a number to 2 decimal places, avoiding floating-point drift.
+ * e.g. 104.97999999999999 → 104.98
+ */
+function roundCurrency(n: number): number {
+  return Math.round((n + Number.EPSILON) * 100) / 100;
+}
+
+/**
+ * Converts a major-unit currency amount (e.g. €104.98) to its smallest
+ * denomination (e.g. 10498 cents) **without** floating-point rounding errors.
+ *
+ * Uses string manipulation to avoid the classic `104.98 * 100 → 10497.999…`
+ * problem that causes payment gateways to charge rounded-up amounts.
+ *
+ * Works for any two-decimal-place currency (EUR, USD, GBP …).
+ */
+export function toMinorUnits(amount: number): number {
+  // First round to 2dp so we work with a clean value
+  const rounded = roundCurrency(amount);
+  // Use toFixed(2) to get an exact string, then strip the dot and parse
+  const [whole, frac = "00"] = rounded.toFixed(2).split(".");
+  return parseInt(whole, 10) * 100 + parseInt(frac.padEnd(2, "0"), 10);
+}
+
 // ── VAT helpers ──────────────────────────────────────────────────────────────
 
 /**
@@ -68,9 +95,9 @@ export function getPriceForUser(
 export function calcVatAmount(subtotal: number, deliveryFee: number = 0): number {
   const combined = subtotal + deliveryFee;
   if (siteConfig.vatIncluded) {
-    return combined - combined / (1 + siteConfig.vatRate);
+    return roundCurrency(combined - combined / (1 + siteConfig.vatRate));
   }
-  return combined * siteConfig.vatRate;
+  return roundCurrency(combined * siteConfig.vatRate);
 }
 
 /**
@@ -80,9 +107,9 @@ export function calcVatAmount(subtotal: number, deliveryFee: number = 0): number
  */
 export function calcTotal(subtotal: number, deliveryFee: number): number {
   if (siteConfig.vatIncluded) {
-    return subtotal + deliveryFee;
+    return roundCurrency(subtotal + deliveryFee);
   }
-  return subtotal + deliveryFee + calcVatAmount(subtotal, deliveryFee);
+  return roundCurrency(subtotal + deliveryFee + calcVatAmount(subtotal, deliveryFee));
 }
 
 export function formatVatNote(): string {

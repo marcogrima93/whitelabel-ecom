@@ -82,7 +82,7 @@ export default function RevolutForm({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 orderNumber,
-                total: Math.round(amount),
+                total: amount,
                 currencyCode: currency.code.toUpperCase(),
                 customerEmail,
                 customerName,

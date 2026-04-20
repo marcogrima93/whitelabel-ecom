@@ -15,6 +15,7 @@
 
 import Stripe from "stripe";
 import { siteConfig } from "@/site.config";
+import { toMinorUnits } from "@/lib/pricing";
 
 export const STRIPE_ENV_VARS = [
   "STRIPE_SECRET_KEY",
@@ -60,7 +61,7 @@ export async function createStripePaymentIntent(
   }
 
   const paymentIntent = await stripe.paymentIntents.create({
-    amount: Math.round(params.total * 100),
+    amount: toMinorUnits(params.total),
     currency: siteConfig.currency.code.toLowerCase(),
     receipt_email: params.customerEmail,
     automatic_payment_methods: { enabled: true },
