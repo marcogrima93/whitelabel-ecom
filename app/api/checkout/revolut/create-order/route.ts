@@ -34,7 +34,7 @@ export async function POST(req: Request) {
     // Return only the public token — never expose the secret key or full order
     return NextResponse.json({ token: result.token, orderId: result.orderId });
   } catch (err: any) {
-    console.error("[revolut] create-order error:", err);
+    console.error("[revolut] create-order error:", err?.message ?? err);
     return NextResponse.json(
       { error: err.message ?? "Failed to create Revolut order" },
       { status: 500 }

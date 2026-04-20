@@ -16,6 +16,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import type { RevolutCheckoutError, RevolutPayEventPayload } from "@revolut/checkout";
 import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
@@ -42,34 +43,48 @@ export default function RevolutForm({
 }: RevolutFormProps) {
   const { currency } = siteConfig;
   const containerRef = useRef<HTMLDivElement>(null);
-  const mountedRef = useRef(false);
+  // destroyRef holds the cleanup fn so we can call it on unmount —
+  // prevents the double-button issue caused by React StrictMode running effects twice.
+  const destroyRef = useRef<(() => void) | null>(null);
   const [sdkReady, setSdkReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (mountedRef.current) return; // only initialise once
     if (!revolutPublicToken) {
       setError("Revolut Pay is not configured. Set NEXT_PUBLIC_REVOLUT_PUBLIC_ID.");
       return;
     }
 
-    let revolutPay: any = null;
+    // Destroy any previously mounted instance (StrictMode double-invoke safety)
+    if (destroyRef.current) {
+      destroyRef.current();
+      destroyRef.current = null;
+      setSdkReady(false);
+    }
+
+    if (containerRef.current) {
+      containerRef.current.innerHTML = "";
+    }
+
+    let cancelled = false;
 
     async function initRevolut() {
       try {
         const RevolutCheckout = (await import("@revolut/checkout")).default;
 
-        const { revolutPay: rp } = await RevolutCheckout.payments({
+        const { revolutPay } = await RevolutCheckout.payments({
           publicToken: revolutPublicToken,
           locale: "auto",
         });
 
-        revolutPay = rp;
-        setSdkReady(true);
+        if (cancelled) {
+          revolutPay.destroy();
+          return;
+        }
 
         const paymentOptions = {
           currency: currency.code.toUpperCase(),
-          totalAmount: Math.round(amount), // must be integer (lowest denomination)
+          totalAmount: Math.round(amount),
           createOrder: async () => {
             const res = await fetch("/api/checkout/revolut/create-order", {
               method: "POST",
@@ -89,26 +104,40 @@ export default function RevolutForm({
             const data = await res.json();
             return { publicId: data.token as string };
           },
-          // Mobile redirects — update with your real domain before going live
           mobileRedirectUrls: {
             success: `${window.location.origin}/checkout?revolut=success`,
             failure: `${window.location.origin}/checkout?revolut=failure`,
             cancel: `${window.location.origin}/checkout?revolut=cancel`,
           },
+          ...(customerEmail || customerName
+            ? {
+                customer: {
+                  ...(customerName ? { name: customerName } : {}),
+                  ...(customerEmail ? { email: customerEmail } : {}),
+                },
+              }
+            : {}),
         };
 
-        if (containerRef.current) {
+        if (containerRef.current && !cancelled) {
+          containerRef.current.innerHTML = "";
           revolutPay.mount(containerRef.current, paymentOptions);
-          mountedRef.current = true;
+          destroyRef.current = () => revolutPay.destroy();
+          setSdkReady(true);
         }
 
-        revolutPay.on("payment", (event: { type: string; error?: string; dropOffState?: string }) => {
+        // Use the SDK's own exported payload type — avoids importing
+        // RevolutPayDropOffState which is not exported by the package.
+        revolutPay.on("payment", (event: RevolutPayEventPayload<"payment">) => {
           switch (event.type) {
             case "success":
               onSuccess(orderNumber);
               break;
             case "error":
-              setError(event.error ?? "An error occurred during payment.");
+              setError(
+                (event.error as RevolutCheckoutError)?.message ??
+                  "An error occurred during payment."
+              );
               break;
             case "cancel":
               if (event.dropOffState === "payment_summary") {
@@ -117,18 +146,28 @@ export default function RevolutForm({
               break;
           }
         });
-      } catch (err: any) {
-        setError(err.message ?? "Failed to initialise Revolut Pay.");
+      } catch (err: unknown) {
+        if (!cancelled) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "Failed to initialise Revolut Pay."
+          );
+        }
       }
     }
 
     initRevolut();
 
     return () => {
-      // Unmount the Revolut Pay button when the component unmounts
-      try {
-        revolutPay?.destroy?.();
-      } catch {}
+      cancelled = true;
+      if (destroyRef.current) {
+        destroyRef.current();
+        destroyRef.current = null;
+      }
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
