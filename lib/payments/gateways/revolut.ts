@@ -56,7 +56,7 @@ export async function createRevolutOrder(
   const { total, currencyCode, orderNumber, customerEmail, customerName } = params;
 
   const body: Record<string, unknown> = {
-    amount: Math.round(total), // must be integer (lowest denomination)
+    amount: Math.round(total * 100), // must be integer (lowest denomination)
     currency: currencyCode.toUpperCase(),
     description: `Order ${orderNumber}`,
     capture_mode: "automatic",
