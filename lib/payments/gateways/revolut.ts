@@ -37,8 +37,8 @@ export interface RevolutOrderResult {
 function getBaseUrl(): string {
   const mode = process.env.REVOLUT_API_MODE ?? "sandbox";
   return mode === "production"
-    ? "https://merchant.revolut.com/api/1.0"
-    : "https://sandbox-merchant.revolut.com/api/1.0";
+    ? "https://merchant.revolut.com/api"      // ← remove /1.0
+    : "https://sandbox-merchant.revolut.com/api"; // ← remove /1.0
 }
 
 /**
