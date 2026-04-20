@@ -77,6 +77,7 @@ export async function createRevolutOrder(
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${apiKey}`,
+      "Revolut-Api-Version": "2024-09-01",
     },
     body: JSON.stringify(body),
     cache: "no-store",

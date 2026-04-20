@@ -71,8 +71,8 @@ export default function RevolutForm({
         const RevolutCheckout = (await import("@revolut/checkout")).default;
 
         const { destroy } = await RevolutCheckout.embeddedCheckout({
-          publicToken: revolutPublicToken,
           mode: revolutMode,
+          publicToken: revolutPublicToken,
           locale: "auto",
           target: containerRef.current!,
 
@@ -90,27 +90,26 @@ export default function RevolutForm({
             });
             if (!res.ok) {
               const data = await res.json().catch(() => ({}));
-              throw new Error(
-                data.error ?? "Failed to create Revolut order."
-              );
+              throw new Error(data.error ?? "Failed to create Revolut order.");
             }
             const data = await res.json();
             return { publicId: data.token as string };
           },
 
-          // Pre-fill customer details to reduce friction
           ...(customerEmail ? { email: customerEmail } : {}),
 
-          onSuccess() {
+          onSuccess(_payload: { orderId: string }) {
             if (!cancelled) onSuccess(orderNumber);
           },
 
-          onError(err: { message?: string }) {
+          onError(payload: { error: { message?: string }; orderId: string }) {
             if (!cancelled)
-              setError(err?.message ?? "An error occurred during payment.");
+              setError(
+                payload?.error?.message ?? "An error occurred during payment."
+              );
           },
 
-          onCancel() {
+          onCancel(_payload: { orderId: string | undefined }) {
             if (!cancelled) setError("Payment was cancelled.");
           },
         });
