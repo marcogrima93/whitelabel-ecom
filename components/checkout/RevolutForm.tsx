@@ -40,10 +40,44 @@ export default function RevolutForm({
   onBack,
 }: RevolutFormProps) {
   const { currency } = siteConfig;
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const destroyRef = useRef<(() => void) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Scale the widget down to fit the wrapper width on narrow viewports.
+  // The Revolut SDK injects an iframe with a hardcoded pixel width; we can't
+  // override it via CSS, so we use transform:scale() on the inner container.
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    const container = containerRef.current;
+    if (!wrapper || !container) return;
+
+    const applyScale = () => {
+      const wrapperWidth = wrapper.offsetWidth;
+      const contentWidth = container.scrollWidth;
+      if (contentWidth > 0 && wrapperWidth < contentWidth) {
+        const scale = wrapperWidth / contentWidth;
+        container.style.transform = `scale(${scale})`;
+        container.style.transformOrigin = "top left";
+        // Adjust wrapper height so it doesn't leave a gap
+        container.style.height = "auto";
+        wrapper.style.height = `${container.scrollHeight * scale}px`;
+      } else {
+        container.style.transform = "";
+        container.style.transformOrigin = "";
+        wrapper.style.height = "auto";
+      }
+    };
+
+    const ro = new ResizeObserver(applyScale);
+    ro.observe(wrapper);
+    ro.observe(container);
+    applyScale();
+
+    return () => ro.disconnect();
+  }, [loading]);
 
   useEffect(() => {
     if (!revolutPublicToken) {
@@ -82,7 +116,7 @@ export default function RevolutForm({
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
                 orderNumber,
-                total: amount,
+                total: Math.round(amount),
                 currencyCode: currency.code.toUpperCase(),
                 customerEmail,
                 customerName,
@@ -170,11 +204,15 @@ export default function RevolutForm({
         </div>
       )}
 
-      {/* Revolut embeddedCheckout mounts the full widget here */}
-      <div 
-        ref={containerRef} 
-        className={`w-full min-w-0 overflow-hidden [&>*]:max-w-full [&_iframe]:!max-w-full [&_iframe]:!w-full ${loading && !error ? "hidden" : ""}`} 
-      />
+      {/* Outer wrapper clips overflow and provides the true available width.
+          Inner container is where Revolut mounts the widget; it gets
+          CSS-scaled down by the ResizeObserver above when it overflows. */}
+      <div
+        ref={wrapperRef}
+        className={`w-full overflow-hidden${loading && !error ? " hidden" : ""}`}
+      >
+        <div ref={containerRef} />
+      </div>
 
       {error && (
         <div className="flex items-center gap-2 text-sm text-destructive">
