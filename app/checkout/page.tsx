@@ -144,6 +144,9 @@ export default function CheckoutPage() {
   const [saveAddress, setSaveAddress] = useState(false);
   const [saveAddressLabel, setSaveAddressLabel] = useState("Home");
 
+  // Billing address — "use same address for billing" (default on for delivery, off for collection)
+  const [useSameAddressForBilling, setUseSameAddressForBilling] = useState(true);
+
   // Fulfillment settings (slots + per-method blocked days/dates from admin)
   type FulfillmentMethod = "delivery" | "collection";
   type SlotName = "morning" | "afternoon" | "evening";
@@ -418,6 +421,16 @@ export default function CheckoutPage() {
       city: deliveryForm.town,
       postcode: deliveryForm.postcode,
     };
+  };
+
+  /**
+   * Returns a structured billing address when "use same address for billing"
+   * is checked AND the order is a delivery (not collection).
+   * Returns null otherwise — the gateway will ask the customer for billing address.
+   */
+  const buildBillingAddress = () => {
+    if (!useSameAddressForBilling || deliveryType !== "DELIVERY") return null;
+    return buildDeliveryAddress();
   };
 
   // Name sourced from userProfile (profiles.name) for logged-in users, or from
@@ -877,6 +890,18 @@ export default function CheckoutPage() {
                       </div>
                     </>
                   )}
+
+                  {/* Use same address for billing — shown for both saved and new address modes */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Checkbox
+                      id="ck-billing-same"
+                      checked={useSameAddressForBilling}
+                      onCheckedChange={(v) => setUseSameAddressForBilling(!!v)}
+                    />
+                    <Label htmlFor="ck-billing-same" className="cursor-pointer font-normal text-sm">
+                      Use same address for billing
+                    </Label>
+                  </div>
 
                   {/* Save address checkbox — only for logged-in users on new addresses */}
                   {userProfile && (addressMode === "new" || savedAddresses.length === 0) && (
