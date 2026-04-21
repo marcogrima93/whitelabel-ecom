@@ -1204,7 +1204,7 @@ export default function CheckoutPage() {
 
               {/* Revolut Pay */}
               {selectedPaymentMethod === "revolut" && (
-                <div className="p-6 rounded-lg border bg-card space-y-4">
+                <div className="p-6 rounded-lg border bg-card space-y-4 min-w-0 overflow-hidden">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <CreditCard className="h-4 w-4" />
                     Secure payment via Revolut Pay

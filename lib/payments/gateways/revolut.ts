@@ -11,6 +11,8 @@
  * Docs: https://developer.revolut.com/docs/merchant/create-order
  */
 
+import { toMinorUnits } from "@/lib/pricing";
+
 export const REVOLUT_ENV_VARS = [
   "REVOLUT_API_KEY",
   "NEXT_PUBLIC_REVOLUT_PUBLIC_ID",
@@ -56,7 +58,7 @@ export async function createRevolutOrder(
   const { total, currencyCode, orderNumber, customerEmail, customerName } = params;
 
   const body: Record<string, unknown> = {
-    amount: Math.round(total * 100), // must be integer (lowest denomination)
+    amount: toMinorUnits(total), // must be integer (lowest denomination)
     currency: currencyCode.toUpperCase(),
     description: `Order ${orderNumber}`,
     capture_mode: "automatic",
