@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { siteConfig } from "@/site.config";
+import type { BillingAddress } from "@/components/checkout/StripeForm";
 
 interface RevolutFormProps {
   amount: number;
@@ -25,6 +26,12 @@ interface RevolutFormProps {
   customerName?: string;
   onSuccess: (orderNumber: string) => void;
   onBack: () => void;
+  /**
+   * When provided (delivery + "use same address for billing" ticked),
+   * the address is forwarded to the Revolut order create API so Revolut
+   * can pre-fill / skip the billing address step.
+   */
+  billingAddress?: BillingAddress | null;
 }
 
 const revolutPublicToken = process.env.NEXT_PUBLIC_REVOLUT_PUBLIC_ID ?? "";
@@ -38,6 +45,7 @@ export default function RevolutForm({
   customerName,
   onSuccess,
   onBack,
+  billingAddress,
 }: RevolutFormProps) {
   const { currency } = siteConfig;
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -120,6 +128,7 @@ export default function RevolutForm({
                 currencyCode: currency.code.toUpperCase(),
                 customerEmail,
                 customerName,
+                billingAddress: billingAddress ?? null,
               }),
             });
             if (!res.ok) {

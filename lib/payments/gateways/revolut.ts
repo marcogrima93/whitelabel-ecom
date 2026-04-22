@@ -18,6 +18,15 @@ export const REVOLUT_ENV_VARS = [
   "NEXT_PUBLIC_REVOLUT_PUBLIC_ID",
 ] as const;
 
+export interface BillingAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  county?: string;
+  postcode: string;
+  country: string;
+}
+
 export interface CreateRevolutOrderParams {
   /** Total in the lowest denomination (e.g. cents). Must be an integer. */
   total: number;
@@ -27,6 +36,11 @@ export interface CreateRevolutOrderParams {
   orderNumber: string;
   customerEmail?: string;
   customerName?: string;
+  /**
+   * When provided the address is attached to the Revolut customer object so
+   * the gateway can pre-fill / skip the billing address step.
+   */
+  billingAddress?: BillingAddress | null;
 }
 
 export interface RevolutOrderResult {
@@ -55,7 +69,7 @@ export async function createRevolutOrder(
     throw new Error("[revolut] REVOLUT_API_KEY is not set.");
   }
 
-  const { total, currencyCode, orderNumber, customerEmail, customerName } = params;
+  const { total, currencyCode, orderNumber, customerEmail, customerName, billingAddress } = params;
 
   const body: Record<string, unknown> = {
     amount: toMinorUnits(total), // must be integer (lowest denomination)
@@ -64,11 +78,25 @@ export async function createRevolutOrder(
     capture_mode: "automatic",
   };
 
-  // Optionally attach customer details for a smoother checkout experience
-  if (customerEmail || customerName) {
+  // Optionally attach customer details for a smoother checkout experience.
+  // When billingAddress is provided, include it in the customer object so
+  // Revolut can pre-fill / skip the billing address step.
+  if (customerEmail || customerName || billingAddress) {
     body.customer = {
       ...(customerEmail ? { email: customerEmail } : {}),
       ...(customerName ? { full_name: customerName } : {}),
+      ...(billingAddress
+        ? {
+            address: {
+              street_line_1: billingAddress.line1,
+              ...(billingAddress.line2 ? { street_line_2: billingAddress.line2 } : {}),
+              city: billingAddress.city,
+              ...(billingAddress.county ? { region: billingAddress.county } : {}),
+              postcode: billingAddress.postcode,
+              country_code: billingAddress.country.toUpperCase(),
+            },
+          }
+        : {}),
     };
   }
 

@@ -569,7 +569,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    // ── Revolut Pay ────────────────────────────────────────────────────────
+    // ── Revolut Pay ───────────────────────────────────────────────────────��
     // Creates the internal order record and stores the order number so
     // RevolutForm can reference it when calling /api/checkout/revolut/create-order.
     if (selectedPaymentMethod === "revolut") {
@@ -1222,6 +1222,7 @@ export default function CheckoutPage() {
                       orderNumber={checkoutOrderNumber}
                       onSuccess={handlePaymentSuccess}
                       onBack={() => setStep("delivery")}
+                      billingAddress={buildBillingAddress()}
                     />
                   )}
                 </div>
@@ -1246,6 +1247,7 @@ export default function CheckoutPage() {
                       customerName={getCustomerName()}
                       onSuccess={handlePaymentSuccess}
                       onBack={() => setStep("delivery")}
+                      billingAddress={buildBillingAddress()}
                     />
                   )}
                 </div>
@@ -1269,6 +1271,7 @@ export default function CheckoutPage() {
                         orderNumber={checkoutOrderNumber}
                         onSuccess={handlePaymentSuccess}
                         onBack={() => setStep("delivery")}
+                        billingAddress={buildBillingAddress()}
                       />
                     </Elements>
                   )}

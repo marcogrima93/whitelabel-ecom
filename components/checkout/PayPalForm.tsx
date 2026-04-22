@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { siteConfig } from "@/site.config";
+import type { BillingAddress } from "@/components/checkout/StripeForm";
 
 interface PayPalFormProps {
   amount: number;
@@ -25,6 +26,12 @@ interface PayPalFormProps {
   /** Called with the internal order number once payment is captured */
   onSuccess: (orderNumber: string) => void;
   onBack: () => void;
+  /**
+   * When provided (delivery + "use same address for billing" ticked),
+   * the address is forwarded to the PayPal order create API so PayPal
+   * can pre-fill / skip the billing address step.
+   */
+  billingAddress?: BillingAddress | null;
 }
 
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
@@ -35,6 +42,7 @@ function PayPalButtonsInner({
   orderNumber,
   onSuccess,
   onBack,
+  billingAddress,
 }: PayPalFormProps) {
   const [{ isPending }] = usePayPalScriptReducer();
   const [error, setError] = useState<string | null>(null);
@@ -45,7 +53,11 @@ function PayPalButtonsInner({
     const res = await fetch("/api/checkout/paypal/create", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ orderNumber, total: amount }),
+      body: JSON.stringify({
+        orderNumber,
+        total: amount,
+        billingAddress: billingAddress ?? null,
+      }),
     });
 
     if (!res.ok) {
@@ -102,7 +114,9 @@ function PayPalButtonsInner({
           onApprove={onApprove}
           onError={(err) => {
             setError(
-              typeof err === "string" ? err : "An unexpected PayPal error occurred."
+              typeof err === "string"
+                ? err
+                : "An unexpected PayPal error occurred."
             );
           }}
           onCancel={() => setError("Payment was cancelled.")}
