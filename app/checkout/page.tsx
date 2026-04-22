@@ -403,6 +403,9 @@ export default function CheckoutPage() {
   // phone is intentionally sourced from userProfile (profiles.phone), not from the
   // address record — profiles is the single source of truth for the user's phone number.
   const buildDeliveryAddress = () => {
+    // country_code falls back to site config or "GB" — this is a single-country shop.
+    const defaultCountry =
+      (siteConfig as { countryCode?: string }).countryCode ?? "GB";
     if (addressMode === "saved" && selectedAddress) {
       return {
         fullName: userProfile?.name || "",
@@ -411,6 +414,7 @@ export default function CheckoutPage() {
         line2: selectedAddress.line_2 || "",
         city: selectedAddress.city,
         postcode: selectedAddress.postcode,
+        country: (selectedAddress as { country?: string }).country || defaultCountry,
       };
     }
     return {
@@ -420,6 +424,7 @@ export default function CheckoutPage() {
       line2: deliveryForm.line2,
       city: deliveryForm.town,
       postcode: deliveryForm.postcode,
+      country: (deliveryForm as { country?: string }).country || defaultCountry,
     };
   };
 
@@ -569,7 +574,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    // ── Revolut Pay ───────────────────────────────────────────────────────��
+    // ── Revolut Pay ───────────────────────────────────────────────────────���
     // Creates the internal order record and stores the order number so
     // RevolutForm can reference it when calling /api/checkout/revolut/create-order.
     if (selectedPaymentMethod === "revolut") {
