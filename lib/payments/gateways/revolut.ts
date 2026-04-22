@@ -86,21 +86,8 @@ export async function createRevolutOrder(
     };
   }
 
-  // When the customer opted to use their delivery address for billing, attach
-  // it to the top-level `shipping.address` object — this is the only place
-  // the Revolut Merchant API accepts an address on an order.
-  if (billingAddress) {
-    body.shipping = {
-      address: {
-        street_line_1: billingAddress.line1,
-        ...(billingAddress.line2 ? { street_line_2: billingAddress.line2 } : {}),
-        city: billingAddress.city,
-        ...(billingAddress.county ? { region: billingAddress.county } : {}),
-        postcode: billingAddress.postcode,
-        country_code: billingAddress.country.slice(0, 2).toUpperCase(),
-      },
-    };
-  }
+  // Note: billing address pre-fill is handled client-side by the Revolut
+  // Checkout widget (billingAddress option) — it is NOT an order API field.
 
   const baseUrl = getBaseUrl();
 

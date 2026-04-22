@@ -13,7 +13,7 @@ import { createRevolutOrder } from "@/lib/payments/gateways/revolut";
 
 export async function POST(req: Request) {
   try {
-    const { orderNumber, total, currencyCode, customerEmail, customerName, billingAddress } =
+    const { orderNumber, total, currencyCode, customerEmail, customerName } =
       await req.json();
 
     if (!orderNumber || typeof total !== "number" || !currencyCode) {
@@ -29,7 +29,6 @@ export async function POST(req: Request) {
       orderNumber,
       customerEmail,
       customerName,
-      billingAddress: billingAddress ?? null,
     });
 
     // Return only the public token — never expose the secret key or full order

@@ -128,7 +128,6 @@ export default function RevolutForm({
                 currencyCode: currency.code.toUpperCase(),
                 customerEmail,
                 customerName,
-                billingAddress: billingAddress ?? null,
               }),
             });
             if (!res.ok) {
@@ -139,7 +138,21 @@ export default function RevolutForm({
             return { publicId: data.token as string };
           },
 
+          // Pre-fill customer info in the widget per:
+          // https://developer.revolut.com/docs/guides/accept-payments/online-payments/revolut-checkout/web.md
           ...(customerEmail ? { email: customerEmail } : {}),
+          ...(billingAddress
+            ? {
+                billingAddress: {
+                  countryCode: billingAddress.country.slice(0, 2).toUpperCase(),
+                  ...(billingAddress.county ? { region: billingAddress.county } : {}),
+                  city: billingAddress.city,
+                  postcode: billingAddress.postcode,
+                  streetLine1: billingAddress.line1,
+                  ...(billingAddress.line2 ? { streetLine2: billingAddress.line2 } : {}),
+                },
+              }
+            : {}),
 
           onSuccess(_payload: { orderId: string }) {
             if (!cancelled) onSuccess(orderNumber);
