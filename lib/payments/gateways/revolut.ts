@@ -78,25 +78,27 @@ export async function createRevolutOrder(
     capture_mode: "automatic",
   };
 
-  // Optionally attach customer details for a smoother checkout experience.
-  // When billingAddress is provided, include it in the customer object so
-  // Revolut can pre-fill / skip the billing address step.
-  if (customerEmail || customerName || billingAddress) {
+  // Optionally attach customer details (no address field on customer object per API spec).
+  if (customerEmail || customerName) {
     body.customer = {
       ...(customerEmail ? { email: customerEmail } : {}),
       ...(customerName ? { full_name: customerName } : {}),
-      ...(billingAddress
-        ? {
-            address: {
-              street_line_1: billingAddress.line1,
-              ...(billingAddress.line2 ? { street_line_2: billingAddress.line2 } : {}),
-              city: billingAddress.city,
-              ...(billingAddress.county ? { region: billingAddress.county } : {}),
-              postcode: billingAddress.postcode,
-              country_code: billingAddress.country.toUpperCase(),
-            },
-          }
-        : {}),
+    };
+  }
+
+  // When the customer opted to use their delivery address for billing, attach
+  // it to the top-level `shipping.address` object — this is the only place
+  // the Revolut Merchant API accepts an address on an order.
+  if (billingAddress) {
+    body.shipping = {
+      address: {
+        street_line_1: billingAddress.line1,
+        ...(billingAddress.line2 ? { street_line_2: billingAddress.line2 } : {}),
+        city: billingAddress.city,
+        ...(billingAddress.county ? { region: billingAddress.county } : {}),
+        postcode: billingAddress.postcode,
+        country_code: billingAddress.country.slice(0, 2).toUpperCase(),
+      },
     };
   }
 
