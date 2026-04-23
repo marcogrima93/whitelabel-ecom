@@ -18,6 +18,9 @@ export const siteConfig = {
   logoDisplay: "logo-and-name" as "logo-only" | "logo-and-name",
 
   // ── Locale & Currency ─────────────────────────────────────────────────
+  // countryCode: ISO 3166-1 alpha-2 code for this deployment's country.
+  // Used as the default country on all addresses and passed to payment gateways.
+  countryCode: "MT" as string,
   currency: {
     code: "EUR",
     symbol: "€",

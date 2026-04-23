@@ -90,6 +90,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           city: formData.town,
           region: formData.town,
           postcode: formData.postcode,
+          country: siteConfig.countryCode,
           is_default: formData.isDefault,
         });
 
@@ -105,6 +106,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                     city: formData.town,
                     region: formData.town,
                     postcode: formData.postcode,
+                    country: siteConfig.countryCode,
                     is_default: formData.isDefault,
                   }
                 : formData.isDefault
@@ -123,6 +125,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           city: formData.town,
           region: formData.town,
           postcode: formData.postcode,
+          country: siteConfig.countryCode,
           is_default: formData.isDefault,
         });
 

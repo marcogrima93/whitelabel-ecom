@@ -67,7 +67,7 @@ export default function StripeForm({
             city: billingAddress.city,
             state: billingAddress.county ?? "",
             postal_code: billingAddress.postcode,
-            country: billingAddress.country ?? "GB",
+            country: billingAddress.country,
           },
         }
       : undefined;
@@ -106,7 +106,7 @@ export default function StripeForm({
                       city: billingAddress.city,
                       state: billingAddress.county ?? "",
                       postalCode: billingAddress.postcode,
-                      country: billingAddress.country ?? "GB",
+                      country: billingAddress.country,
                     },
                   },
                 },

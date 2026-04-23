@@ -80,6 +80,8 @@ export interface Address {
   city: string;
   region: string;
   postcode: string;
+  /** ISO 3166-1 alpha-2 country code — defaults to siteConfig.countryCode ("MT"). */
+  country: string;
   is_default: boolean;
   created_at: string;
 }

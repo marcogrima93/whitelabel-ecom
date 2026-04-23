@@ -108,6 +108,7 @@ interface SavedAddress {
   line_2: string | null;
   city: string;
   postcode: string;
+  country: string;
   is_default: boolean;
 }
 
@@ -403,9 +404,6 @@ export default function CheckoutPage() {
   // phone is intentionally sourced from userProfile (profiles.phone), not from the
   // address record — profiles is the single source of truth for the user's phone number.
   const buildDeliveryAddress = () => {
-    // country_code falls back to site config or "GB" — this is a single-country shop.
-    const defaultCountry =
-      (siteConfig as { countryCode?: string }).countryCode ?? "GB";
     if (addressMode === "saved" && selectedAddress) {
       return {
         fullName: userProfile?.name || "",
@@ -414,7 +412,7 @@ export default function CheckoutPage() {
         line2: selectedAddress.line_2 || "",
         city: selectedAddress.city,
         postcode: selectedAddress.postcode,
-        country: (selectedAddress as { country?: string }).country || defaultCountry,
+        country: selectedAddress.country || siteConfig.countryCode,
       };
     }
     return {
@@ -424,7 +422,7 @@ export default function CheckoutPage() {
       line2: deliveryForm.line2,
       city: deliveryForm.town,
       postcode: deliveryForm.postcode,
-      country: (deliveryForm as { country?: string }).country || defaultCountry,
+      country: siteConfig.countryCode,
     };
   };
 
@@ -443,6 +441,7 @@ export default function CheckoutPage() {
   const getCustomerName = () =>
     userProfile?.name || deliveryForm.fullName;
 
+
   const saveNewAddressIfRequested = async () => {
     if (!saveAddress || addressMode !== "new" || deliveryType !== "DELIVERY" || !userProfile) return;
     if (!deliveryForm.line1 || !deliveryForm.town || !deliveryForm.postcode) return;
@@ -459,6 +458,7 @@ export default function CheckoutPage() {
           city: deliveryForm.town,
           region: deliveryForm.town,
           postcode: deliveryForm.postcode,
+          country: siteConfig.countryCode,
           is_default: savedAddresses.length === 0,
         }),
       });
