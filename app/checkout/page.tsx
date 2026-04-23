@@ -41,6 +41,7 @@ import RevolutForm from "@/components/checkout/RevolutForm";
 import { PaymentMethodButton } from "@/components/checkout/PaymentMethodButton";
 import { getEnabledGateways, type GatewayId } from "@/lib/payments/registry";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
+import { COUNTRIES } from "@/lib/countries";
 
 // ── Malta date helpers ────────────────────────────────────────────────────────
 // Malta is UTC+1 (CET) or UTC+2 (CEST). We use the browser's locale-aware
@@ -209,6 +210,7 @@ export default function CheckoutPage() {
     line2: "",
     town: defaultTown,
     postcode: "",
+    country: "MT",
     deliverySlot: "", // will be set to first available slot after settings load
     preferredDate: "", // filled on mount below
   });
@@ -412,7 +414,7 @@ export default function CheckoutPage() {
         line2: selectedAddress.line_2 || "",
         city: selectedAddress.city,
         postcode: selectedAddress.postcode,
-        country: selectedAddress.country || siteConfig.countryCode,
+        country: selectedAddress.country || "MT",
       };
     }
     return {
@@ -422,7 +424,7 @@ export default function CheckoutPage() {
       line2: deliveryForm.line2,
       city: deliveryForm.town,
       postcode: deliveryForm.postcode,
-      country: siteConfig.countryCode,
+      country: deliveryForm.country,
     };
   };
 
@@ -458,7 +460,7 @@ export default function CheckoutPage() {
           city: deliveryForm.town,
           region: deliveryForm.town,
           postcode: deliveryForm.postcode,
-          country: siteConfig.countryCode,
+          country: deliveryForm.country,
           is_default: savedAddresses.length === 0,
         }),
       });
@@ -892,6 +894,24 @@ export default function CheckoutPage() {
                             required
                           />
                         </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Country</Label>
+                        <Select
+                          value={deliveryForm.country}
+                          onValueChange={(v) => updateForm("country", v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-64">
+                            {COUNTRIES.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </>
                   )}
