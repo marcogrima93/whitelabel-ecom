@@ -58,24 +58,29 @@ export default function StripeForm({
     setLoading(true);
     setError(null);
 
-    // Build billing_details from the pre-filled address when available
-    const billingDetails = billingAddress
-      ? {
-          address: {
-            line1: billingAddress.line1,
-            line2: billingAddress.line2 ?? "",
-            city: billingAddress.city,
-            state: billingAddress.county ?? "",
-            postal_code: billingAddress.postcode,
-            country: billingAddress.country,
-          },
-        }
-      : undefined;
-
     const { error: submitError, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        ...(billingDetails ? { payment_method_data: { billing_details: billingDetails } } : {}),
+        // When the customer ticked "use same address for billing" we hide the
+        // address fields in the widget and must supply billing_details ourselves.
+        // When unticked, Stripe collects the full address via the widget — no
+        // need to pass anything here.
+        ...(billingAddress
+          ? {
+              payment_method_data: {
+                billing_details: {
+                  address: {
+                    line1: billingAddress.line1,
+                    line2: billingAddress.line2 ?? "",
+                    city: billingAddress.city,
+                    state: billingAddress.county ?? "",
+                    postal_code: billingAddress.postcode,
+                    country: billingAddress.country,
+                  },
+                },
+              },
+            }
+          : {}),
       },
       redirect: "if_required",
     });
@@ -96,22 +101,23 @@ export default function StripeForm({
         options={
           billingAddress
             ? {
-                // Don't render the address fields — we're supplying them
-                fields: { billingDetails: { address: "never" } },
-                defaultValues: {
+                // Billing address ticked: hide address fields entirely and
+                // supply the data ourselves via confirmPayment billing_details.
+                fields: {
                   billingDetails: {
-                    address: {
-                      line1: billingAddress.line1,
-                      line2: billingAddress.line2 ?? "",
-                      city: billingAddress.city,
-                      state: billingAddress.county ?? "",
-                      postalCode: billingAddress.postcode,
-                      country: billingAddress.country,
-                    },
+                    address: "never",
                   },
                 },
               }
-            : undefined
+            : {
+                // Billing address NOT ticked (or collection mode): force Stripe
+                // to always collect the full billing address, not just country.
+                fields: {
+                  billingDetails: {
+                    address: "auto",
+                  },
+                },
+              }
         }
       />
 
