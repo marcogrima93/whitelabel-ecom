@@ -769,6 +769,11 @@ export default function CheckoutPage() {
                               )}
                               <p className="text-muted-foreground">{selectedAddress.line_1}{selectedAddress.line_2 ? `, ${selectedAddress.line_2}` : ""}</p>
                               <p className="text-muted-foreground">{selectedAddress.city}, {selectedAddress.postcode}</p>
+                              {selectedAddress.country && (
+                                <p className="text-muted-foreground">
+                                  {COUNTRIES.find((c) => c.code === selectedAddress.country)?.name ?? selectedAddress.country}
+                                </p>
+                              )}
                             </div>
                           )}
                         </div>
