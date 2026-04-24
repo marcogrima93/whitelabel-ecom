@@ -101,8 +101,8 @@ export default function StripeForm({
         options={
           billingAddress
             ? {
-                // Billing address ticked: hide address fields entirely and
-                // supply the data ourselves via confirmPayment billing_details.
+                // Billing address ticked: suppress all address fields — we
+                // supply them ourselves in confirmPayment.
                 fields: {
                   billingDetails: {
                     address: "never",
@@ -110,11 +110,21 @@ export default function StripeForm({
                 },
               }
             : {
-                // Billing address NOT ticked (or collection mode): force Stripe
-                // to always collect the full billing address, not just country.
+                // Billing address NOT ticked: force every individual address
+                // sub-field to "auto" so Stripe always renders the full address
+                // form (line1, city, postal_code, state, country).
+                // Using the top-level address:"auto" only collects the minimum
+                // required by the payment method, which for cards is just country.
                 fields: {
                   billingDetails: {
-                    address: "auto",
+                    address: {
+                      line1: "auto",
+                      line2: "auto",
+                      city: "auto",
+                      state: "auto",
+                      postalCode: "auto",
+                      country: "auto",
+                    },
                   },
                 },
               }
