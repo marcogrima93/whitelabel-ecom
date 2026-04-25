@@ -58,26 +58,12 @@ async function getPayPalAccessToken(): Promise<string> {
   return data.access_token as string;
 }
 
-export interface BillingAddress {
-  line1: string;
-  line2?: string;
-  city: string;
-  county?: string;
-  postcode: string;
-  country: string;
-}
-
 export interface CreatePayPalOrderParams {
   total: number;
   currencyCode: string;
   orderNumber: string;
   returnUrl: string;
   cancelUrl: string;
-  /**
-   * When provided the address is attached to the PayPal order so the
-   * buyer does not have to re-enter it in the PayPal flow.
-   */
-  billingAddress?: BillingAddress | null;
 }
 
 export interface PayPalOrderResult {
@@ -94,25 +80,6 @@ export async function createPayPalOrder(
   const accessToken = await getPayPalAccessToken();
   const base = getPayPalBaseUrl();
 
-  const { billingAddress } = params;
-
-  // Build the optional shipping.address block when the customer opted to use
-  // their delivery address for billing — PayPal uses it to pre-fill the form.
-  const shippingBlock = billingAddress
-    ? {
-        shipping: {
-          address: {
-            address_line_1: billingAddress.line1,
-            ...(billingAddress.line2 ? { address_line_2: billingAddress.line2 } : {}),
-            admin_area_2: billingAddress.city,
-            ...(billingAddress.county ? { admin_area_1: billingAddress.county } : {}),
-            postal_code: billingAddress.postcode,
-            country_code: billingAddress.country.toUpperCase(),
-          },
-        },
-      }
-    : {};
-
   const res = await fetch(`${base}/v2/checkout/orders`, {
     method: "POST",
     headers: {
@@ -123,14 +90,13 @@ export async function createPayPalOrder(
     body: JSON.stringify({
       intent: "CAPTURE",
       purchase_units: [
-        {
-          reference_id: params.orderNumber,
-          amount: {
-            currency_code: params.currencyCode.toUpperCase(),
-            value: params.total.toFixed(2),
+          {
+            reference_id: params.orderNumber,
+            amount: {
+              currency_code: params.currencyCode.toUpperCase(),
+              value: params.total.toFixed(2),
+            },
           },
-          ...shippingBlock,
-        },
       ],
       application_context: {
         return_url: params.returnUrl,

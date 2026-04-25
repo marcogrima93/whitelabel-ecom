@@ -18,8 +18,6 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { siteConfig } from "@/site.config";
-import type { BillingAddress } from "@/components/checkout/StripeForm";
-
 interface PayPalFormProps {
   amount: number;
   orderNumber: string;
@@ -27,11 +25,11 @@ interface PayPalFormProps {
   onSuccess: (orderNumber: string) => void;
   onBack: () => void;
   /**
-   * When provided (delivery + "use same address for billing" ticked),
-   * the address is forwarded to the PayPal order create API so PayPal
-   * can pre-fill / skip the billing address step.
+   * Accepted for API compatibility with other payment forms (e.g. Stripe,
+   * Revolut) but intentionally unused — PayPal collects billing address
+   * natively inside its own hosted UI.
    */
-  billingAddress?: BillingAddress | null;
+  billingAddress?: unknown;
 }
 
 const paypalClientId = process.env.NEXT_PUBLIC_PAYPAL_CLIENT_ID ?? "";
@@ -56,7 +54,6 @@ function PayPalButtonsInner({
       body: JSON.stringify({
         orderNumber,
         total: amount,
-        billingAddress: billingAddress ?? null,
       }),
     });
 

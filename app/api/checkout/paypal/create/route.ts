@@ -13,7 +13,7 @@ import { createPayPalOrder } from "@/lib/payments/gateways/paypal";
  */
 export async function POST(req: Request) {
   try {
-    const { orderNumber, total, billingAddress } = await req.json();
+    const { orderNumber, total } = await req.json();
 
     if (!orderNumber) {
       return NextResponse.json({ error: "orderNumber is required" }, { status: 400 });
@@ -31,7 +31,6 @@ export async function POST(req: Request) {
       orderNumber,
       returnUrl: `${origin}/checkout?paypal=success`,
       cancelUrl: `${origin}/checkout?paypal=cancel`,
-      billingAddress: billingAddress ?? null,
     });
 
     return NextResponse.json(result);
