@@ -1,16 +1,21 @@
 "use client";
 
 import { useState } from "react";
-import {
-  AddressElement,
-  PaymentElement,
-  useStripe,
-  useElements,
-} from "@stripe/react-stripe-js";
+import { PaymentElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { siteConfig } from "@/site.config";
+import { COUNTRIES } from "@/lib/countries";
 
 export interface BillingAddress {
   line1: string;
@@ -49,39 +54,56 @@ export default function StripeForm({
   const [loading, setLoading] = useState(false);
   const { currency } = siteConfig;
 
+  // Manual billing address form — used when the customer has NOT ticked
+  // "use same address for billing". We collect it ourselves so we can
+  // pass every field to Stripe regardless of country-specific field rules.
+  const [manualBilling, setManualBilling] = useState({
+    name: "",
+    line1: "",
+    line2: "",
+    city: "",
+    postcode: "",
+    country: "MT",
+  });
+
+  const updateBilling = (field: keyof typeof manualBilling, value: string) =>
+    setManualBilling((prev) => ({ ...prev, [field]: value }));
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!stripe || !elements) {
-      return;
-    }
+    if (!stripe || !elements) return;
 
     setLoading(true);
     setError(null);
 
+    // Resolve which billing address to use:
+    // - ticked → use the delivery address passed as prop
+    // - unticked → use the manual form the customer filled in
+    const resolvedBilling = billingAddress ?? {
+      line1: manualBilling.line1,
+      line2: manualBilling.line2,
+      city: manualBilling.city,
+      postcode: manualBilling.postcode,
+      country: manualBilling.country,
+    };
+
     const { error: submitError, paymentIntent } = await stripe.confirmPayment({
       elements,
       confirmParams: {
-        // When the customer ticked "use same address for billing" we hide the
-        // address fields in the widget and must supply billing_details ourselves.
-        // When unticked, Stripe collects the full address via the widget — no
-        // need to pass anything here.
-        ...(billingAddress
-          ? {
-              payment_method_data: {
-                billing_details: {
-                  address: {
-                    line1: billingAddress.line1,
-                    line2: billingAddress.line2 ?? "",
-                    city: billingAddress.city,
-                    state: billingAddress.county ?? "",
-                    postal_code: billingAddress.postcode,
-                    country: billingAddress.country,
-                  },
-                },
-              },
-            }
-          : {}),
+        payment_method_data: {
+          billing_details: {
+            name: billingAddress ? undefined : manualBilling.name,
+            address: {
+              line1: resolvedBilling.line1,
+              line2: resolvedBilling.line2 ?? "",
+              city: resolvedBilling.city,
+              state: "",
+              postal_code: resolvedBilling.postcode,
+              country: resolvedBilling.country,
+            },
+          },
+        },
       },
       redirect: "if_required",
     });
@@ -98,31 +120,92 @@ export default function StripeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/*
-       * When billing checkbox is NOT ticked (billingAddress is null):
-       *   Render a separate AddressElement in "billing" mode. This is the only
-       *   Stripe-supported way to force full address collection (line1, city,
-       *   postcode, country). It auto-attaches to confirmPayment — no extra
-       *   code needed at confirm time.
-       *
-       * When billing checkbox IS ticked (billingAddress is set):
-       *   Hide address fields on PaymentElement entirely ("never") and supply
-       *   the delivery address ourselves via confirmPayment billing_details.
-       */}
+      {/* Manual billing address form — shown only when unticked.
+          We collect every field ourselves so Stripe receives a complete
+          billing_details object regardless of country-specific field rules. */}
       {!billingAddress && (
-        <AddressElement options={{ mode: "billing" }} />
+        <div className="space-y-3 rounded-md border p-4">
+          <p className="text-sm font-medium">Billing address</p>
+          <div className="space-y-2">
+            <Label htmlFor="sb-name">Full name</Label>
+            <Input
+              id="sb-name"
+              value={manualBilling.name}
+              onChange={(e) => updateBilling("name", e.target.value)}
+              placeholder="Full name"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sb-line1">Address line 1</Label>
+            <Input
+              id="sb-line1"
+              value={manualBilling.line1}
+              onChange={(e) => updateBilling("line1", e.target.value)}
+              placeholder="Street address"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sb-line2">Address line 2</Label>
+            <Input
+              id="sb-line2"
+              value={manualBilling.line2}
+              onChange={(e) => updateBilling("line2", e.target.value)}
+              placeholder="Apartment, suite, etc. (optional)"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="sb-city">City</Label>
+              <Input
+                id="sb-city"
+                value={manualBilling.city}
+                onChange={(e) => updateBilling("city", e.target.value)}
+                placeholder="City"
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="sb-postcode">Postcode</Label>
+              <Input
+                id="sb-postcode"
+                value={manualBilling.postcode}
+                onChange={(e) => updateBilling("postcode", e.target.value)}
+                placeholder="Postcode"
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Country</Label>
+            <Select
+              value={manualBilling.country}
+              onValueChange={(v) => updateBilling("country", v)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select country" />
+              </SelectTrigger>
+              <SelectContent className="max-h-64">
+                {COUNTRIES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    {c.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
       )}
 
+      {/* Always suppress Stripe's built-in address fields — we handle billing
+          ourselves in all cases (manual form or pre-filled from delivery). */}
       <PaymentElement
-        options={
-          billingAddress
-            ? {
-                fields: {
-                  billingDetails: { address: "never" },
-                },
-              }
-            : undefined
-        }
+        options={{
+          fields: {
+            billingDetails: { address: "never" },
+          },
+        }}
       />
 
       {error && <div className="text-sm text-destructive">{error}</div>}
