@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  AddressElement,
   PaymentElement,
   useStripe,
   useElements,
@@ -97,37 +98,30 @@ export default function StripeForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/*
+       * When billing checkbox is NOT ticked (billingAddress is null):
+       *   Render a separate AddressElement in "billing" mode. This is the only
+       *   Stripe-supported way to force full address collection (line1, city,
+       *   postcode, country). It auto-attaches to confirmPayment — no extra
+       *   code needed at confirm time.
+       *
+       * When billing checkbox IS ticked (billingAddress is set):
+       *   Hide address fields on PaymentElement entirely ("never") and supply
+       *   the delivery address ourselves via confirmPayment billing_details.
+       */}
+      {!billingAddress && (
+        <AddressElement options={{ mode: "billing" }} />
+      )}
+
       <PaymentElement
         options={
           billingAddress
             ? {
-                // Billing address ticked: suppress all address fields — we
-                // supply them ourselves in confirmPayment.
                 fields: {
-                  billingDetails: {
-                    address: "never",
-                  },
+                  billingDetails: { address: "never" },
                 },
               }
-            : {
-                // Billing address NOT ticked: force every individual address
-                // sub-field to "auto" so Stripe always renders the full address
-                // form (line1, city, postal_code, state, country).
-                // Using the top-level address:"auto" only collects the minimum
-                // required by the payment method, which for cards is just country.
-                fields: {
-                  billingDetails: {
-                    address: {
-                      line1: "auto",
-                      line2: "auto",
-                      city: "auto",
-                      state: "auto",
-                      postalCode: "auto",
-                      country: "auto",
-                    },
-                  },
-                },
-              }
+            : undefined
         }
       />
 
