@@ -144,7 +144,7 @@ export default function RevolutForm({
           ...(billingAddress
             ? {
                 billingAddress: {
-                  countryCode: billingAddress.country.slice(0, 2).toUpperCase(),
+                  countryCode: billingAddress.country.slice(0, 2).toUpperCase() as import("@revolut/checkout").CountryCode,
                   ...(billingAddress.county ? { region: billingAddress.county } : {}),
                   city: billingAddress.city,
                   postcode: billingAddress.postcode,
