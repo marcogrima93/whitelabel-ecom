@@ -90,13 +90,13 @@ export async function createPayPalOrder(
     body: JSON.stringify({
       intent: "CAPTURE",
       purchase_units: [
-        {
-          reference_id: params.orderNumber,
-          amount: {
-            currency_code: params.currencyCode.toUpperCase(),
-            value: params.total.toFixed(2),
+          {
+            reference_id: params.orderNumber,
+            amount: {
+              currency_code: params.currencyCode.toUpperCase(),
+              value: params.total.toFixed(2),
+            },
           },
-        },
       ],
       application_context: {
         return_url: params.returnUrl,

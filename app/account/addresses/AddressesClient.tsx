@@ -25,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { MapPin, Plus, Pencil, Trash2, Loader2 } from "lucide-react";
 import type { Address } from "@/lib/supabase/types";
+import { COUNTRIES, DEFAULT_COUNTRY_CODE } from "@/lib/countries";
 import { siteConfig } from "@/site.config";
 
 import { addAddressAction, updateAddressAction, deleteAddressAction } from "./actions";
@@ -49,6 +50,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
     line2: "",
     town: (towns[0]?.name || "") as string,
     postcode: "",
+    country: DEFAULT_COUNTRY_CODE as string,
     isDefault: false,
   });
 
@@ -59,6 +61,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
       line2: "",
       town: towns[0]?.name || "",
       postcode: "",
+      country: DEFAULT_COUNTRY_CODE,
       isDefault: false,
     });
     setEditingAddress(null);
@@ -72,6 +75,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
       line2: address.line_2 || "",
       town: address.city,
       postcode: address.postcode,
+      country: address.country || DEFAULT_COUNTRY_CODE,
       isDefault: address.is_default,
     });
     setIsDialogOpen(true);
@@ -90,6 +94,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           city: formData.town,
           region: formData.town,
           postcode: formData.postcode,
+          country: formData.country,
           is_default: formData.isDefault,
         });
 
@@ -105,6 +110,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                     city: formData.town,
                     region: formData.town,
                     postcode: formData.postcode,
+                    country: formData.country,
                     is_default: formData.isDefault,
                   }
                 : formData.isDefault
@@ -123,6 +129,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
           city: formData.town,
           region: formData.town,
           postcode: formData.postcode,
+          country: formData.country,
           is_default: formData.isDefault,
         });
 
@@ -240,6 +247,24 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                     />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Select
+                    value={formData.country}
+                    onValueChange={(v) => setFormData((p) => ({ ...p, country: v }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-64">
+                      {COUNTRIES.map((c) => (
+                        <SelectItem key={c.code} value={c.code}>
+                          {c.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="addr-default"
@@ -319,6 +344,7 @@ export default function AddressesClient({ initialAddresses, userId }: AddressesC
                 {addr.line_2 && <p>{addr.line_2}</p>}
                 <p>{addr.city}</p>
                 <p>{addr.postcode}</p>
+                {addr.country && <p>{COUNTRIES.find((c) => c.code === addr.country)?.name ?? addr.country}</p>}
               </CardContent>
             </Card>
           ))}

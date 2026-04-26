@@ -41,6 +41,7 @@ import RevolutForm from "@/components/checkout/RevolutForm";
 import { PaymentMethodButton } from "@/components/checkout/PaymentMethodButton";
 import { getEnabledGateways, type GatewayId } from "@/lib/payments/registry";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
+import { COUNTRIES } from "@/lib/countries";
 
 // ── Malta date helpers ────────────────────────────────────────────────────────
 // Malta is UTC+1 (CET) or UTC+2 (CEST). We use the browser's locale-aware
@@ -108,6 +109,7 @@ interface SavedAddress {
   line_2: string | null;
   city: string;
   postcode: string;
+  country: string;
   is_default: boolean;
 }
 
@@ -143,6 +145,9 @@ export default function CheckoutPage() {
   // Save-address checkbox (only shown for logged-in users entering a new address)
   const [saveAddress, setSaveAddress] = useState(false);
   const [saveAddressLabel, setSaveAddressLabel] = useState("Home");
+
+  // Billing address — "use same address for billing" (default on for delivery, off for collection)
+  const [useSameAddressForBilling, setUseSameAddressForBilling] = useState(true);
 
   // Fulfillment settings (slots + per-method blocked days/dates from admin)
   type FulfillmentMethod = "delivery" | "collection";
@@ -205,6 +210,7 @@ export default function CheckoutPage() {
     line2: "",
     town: defaultTown,
     postcode: "",
+    country: "MT",
     deliverySlot: "", // will be set to first available slot after settings load
     preferredDate: "", // filled on mount below
   });
@@ -408,6 +414,7 @@ export default function CheckoutPage() {
         line2: selectedAddress.line_2 || "",
         city: selectedAddress.city,
         postcode: selectedAddress.postcode,
+        country: selectedAddress.country || "MT",
       };
     }
     return {
@@ -417,13 +424,25 @@ export default function CheckoutPage() {
       line2: deliveryForm.line2,
       city: deliveryForm.town,
       postcode: deliveryForm.postcode,
+      country: deliveryForm.country,
     };
+  };
+
+  /**
+   * Returns a structured billing address when "use same address for billing"
+   * is checked AND the order is a delivery (not collection).
+   * Returns null otherwise — the gateway will ask the customer for billing address.
+   */
+  const buildBillingAddress = () => {
+    if (!useSameAddressForBilling || deliveryType !== "DELIVERY") return null;
+    return buildDeliveryAddress();
   };
 
   // Name sourced from userProfile (profiles.name) for logged-in users, or from
   // the guest delivery form for unauthenticated checkout.
   const getCustomerName = () =>
     userProfile?.name || deliveryForm.fullName;
+
 
   const saveNewAddressIfRequested = async () => {
     if (!saveAddress || addressMode !== "new" || deliveryType !== "DELIVERY" || !userProfile) return;
@@ -441,6 +460,7 @@ export default function CheckoutPage() {
           city: deliveryForm.town,
           region: deliveryForm.town,
           postcode: deliveryForm.postcode,
+          country: deliveryForm.country,
           is_default: savedAddresses.length === 0,
         }),
       });
@@ -556,7 +576,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    // ── Revolut Pay ────────────────────────────────────────────────────────
+    // ── Revolut Pay ───────────────────────────────────────────────────────���
     // Creates the internal order record and stores the order number so
     // RevolutForm can reference it when calling /api/checkout/revolut/create-order.
     if (selectedPaymentMethod === "revolut") {
@@ -749,6 +769,11 @@ export default function CheckoutPage() {
                               )}
                               <p className="text-muted-foreground">{selectedAddress.line_1}{selectedAddress.line_2 ? `, ${selectedAddress.line_2}` : ""}</p>
                               <p className="text-muted-foreground">{selectedAddress.city}, {selectedAddress.postcode}</p>
+                              {selectedAddress.country && (
+                                <p className="text-muted-foreground">
+                                  {COUNTRIES.find((c) => c.code === selectedAddress.country)?.name ?? selectedAddress.country}
+                                </p>
+                              )}
                             </div>
                           )}
                         </div>
@@ -875,8 +900,38 @@ export default function CheckoutPage() {
                           />
                         </div>
                       </div>
+                      <div className="space-y-2">
+                        <Label>Country</Label>
+                        <Select
+                          value={deliveryForm.country}
+                          onValueChange={(v) => updateForm("country", v)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select country" />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-64">
+                            {COUNTRIES.map((c) => (
+                              <SelectItem key={c.code} value={c.code}>
+                                {c.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </>
                   )}
+
+                  {/* Use same address for billing — shown for both saved and new address modes */}
+                  <div className="flex items-center gap-2 pt-1">
+                    <Checkbox
+                      id="ck-billing-same"
+                      checked={useSameAddressForBilling}
+                      onCheckedChange={(v) => setUseSameAddressForBilling(!!v)}
+                    />
+                    <Label htmlFor="ck-billing-same" className="cursor-pointer font-normal text-sm">
+                      Use same address for billing
+                    </Label>
+                  </div>
 
                   {/* Save address checkbox — only for logged-in users on new addresses */}
                   {userProfile && (addressMode === "new" || savedAddresses.length === 0) && (
@@ -1197,6 +1252,7 @@ export default function CheckoutPage() {
                       orderNumber={checkoutOrderNumber}
                       onSuccess={handlePaymentSuccess}
                       onBack={() => setStep("delivery")}
+                      billingAddress={buildBillingAddress()}
                     />
                   )}
                 </div>
@@ -1221,6 +1277,7 @@ export default function CheckoutPage() {
                       customerName={getCustomerName()}
                       onSuccess={handlePaymentSuccess}
                       onBack={() => setStep("delivery")}
+                      billingAddress={buildBillingAddress()}
                     />
                   )}
                 </div>
@@ -1244,6 +1301,7 @@ export default function CheckoutPage() {
                         orderNumber={checkoutOrderNumber}
                         onSuccess={handlePaymentSuccess}
                         onBack={() => setStep("delivery")}
+                        billingAddress={buildBillingAddress()}
                       />
                     </Elements>
                   )}

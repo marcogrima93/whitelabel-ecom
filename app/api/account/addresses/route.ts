@@ -21,7 +21,7 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { label, line_1, line_2, city, region, postcode, is_default } = body;
+    const { label, line_1, line_2, city, region, postcode, country, is_default } = body;
 
     if (!label || !line_1 || !city || !postcode) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
       city,
       region: region || city,
       postcode,
+      country: country || "MT",
       is_default: is_default ?? false,
     });
 

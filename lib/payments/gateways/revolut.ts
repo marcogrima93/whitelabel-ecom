@@ -18,6 +18,15 @@ export const REVOLUT_ENV_VARS = [
   "NEXT_PUBLIC_REVOLUT_PUBLIC_ID",
 ] as const;
 
+export interface BillingAddress {
+  line1: string;
+  line2?: string;
+  city: string;
+  county?: string;
+  postcode: string;
+  country: string;
+}
+
 export interface CreateRevolutOrderParams {
   /** Total in the lowest denomination (e.g. cents). Must be an integer. */
   total: number;
@@ -27,6 +36,11 @@ export interface CreateRevolutOrderParams {
   orderNumber: string;
   customerEmail?: string;
   customerName?: string;
+  /**
+   * When provided the address is attached to the Revolut customer object so
+   * the gateway can pre-fill / skip the billing address step.
+   */
+  billingAddress?: BillingAddress | null;
 }
 
 export interface RevolutOrderResult {
@@ -55,7 +69,7 @@ export async function createRevolutOrder(
     throw new Error("[revolut] REVOLUT_API_KEY is not set.");
   }
 
-  const { total, currencyCode, orderNumber, customerEmail, customerName } = params;
+  const { total, currencyCode, orderNumber, customerEmail, customerName, billingAddress } = params;
 
   const body: Record<string, unknown> = {
     amount: toMinorUnits(total), // must be integer (lowest denomination)
@@ -64,13 +78,16 @@ export async function createRevolutOrder(
     capture_mode: "automatic",
   };
 
-  // Optionally attach customer details for a smoother checkout experience
+  // Optionally attach customer details (no address field on customer object per API spec).
   if (customerEmail || customerName) {
     body.customer = {
       ...(customerEmail ? { email: customerEmail } : {}),
       ...(customerName ? { full_name: customerName } : {}),
     };
   }
+
+  // Note: billing address pre-fill is handled client-side by the Revolut
+  // Checkout widget (billingAddress option) — it is NOT an order API field.
 
   const baseUrl = getBaseUrl();
 

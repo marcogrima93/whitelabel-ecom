@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Loader2, AlertCircle } from "lucide-react";
 import { formatPrice } from "@/lib/utils";
 import { siteConfig } from "@/site.config";
+import type { BillingAddress } from "@/components/checkout/StripeForm";
 
 interface RevolutFormProps {
   amount: number;
@@ -25,6 +26,12 @@ interface RevolutFormProps {
   customerName?: string;
   onSuccess: (orderNumber: string) => void;
   onBack: () => void;
+  /**
+   * When provided (delivery + "use same address for billing" ticked),
+   * the address is forwarded to the Revolut order create API so Revolut
+   * can pre-fill / skip the billing address step.
+   */
+  billingAddress?: BillingAddress | null;
 }
 
 const revolutPublicToken = process.env.NEXT_PUBLIC_REVOLUT_PUBLIC_ID ?? "";
@@ -38,6 +45,7 @@ export default function RevolutForm({
   customerName,
   onSuccess,
   onBack,
+  billingAddress,
 }: RevolutFormProps) {
   const { currency } = siteConfig;
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -130,7 +138,24 @@ export default function RevolutForm({
             return { publicId: data.token as string };
           },
 
+          // Pre-fill customer info in the widget per:
+          // https://developer.revolut.com/docs/guides/accept-payments/online-payments/revolut-checkout/web.md
           ...(customerEmail ? { email: customerEmail } : {}),
+          ...(billingAddress
+            ? {
+                // Cast to any: the SDK's CountryCode is a string union type
+                // not exported from its types index, so we cannot satisfy it
+                // statically. The value is always a valid 2-letter ISO code at runtime.
+                billingAddress: {
+                  countryCode: billingAddress.country.slice(0, 2).toUpperCase(),
+                  ...(billingAddress.county ? { region: billingAddress.county } : {}),
+                  city: billingAddress.city,
+                  postcode: billingAddress.postcode,
+                  streetLine1: billingAddress.line1,
+                  ...(billingAddress.line2 ? { streetLine2: billingAddress.line2 } : {}),
+                } as any,
+              }
+            : {}),
 
           onSuccess(_payload: { orderId: string }) {
             if (!cancelled) onSuccess(orderNumber);
