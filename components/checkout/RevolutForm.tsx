@@ -143,6 +143,9 @@ export default function RevolutForm({
           ...(customerEmail ? { email: customerEmail } : {}),
           ...(billingAddress
             ? {
+                // Cast to any: the SDK's CountryCode is a string union type
+                // not exported from its types index, so we cannot satisfy it
+                // statically. The value is always a valid 2-letter ISO code at runtime.
                 billingAddress: {
                   countryCode: billingAddress.country.slice(0, 2).toUpperCase(),
                   ...(billingAddress.county ? { region: billingAddress.county } : {}),
@@ -150,7 +153,7 @@ export default function RevolutForm({
                   postcode: billingAddress.postcode,
                   streetLine1: billingAddress.line1,
                   ...(billingAddress.line2 ? { streetLine2: billingAddress.line2 } : {}),
-                },
+                } as any,
               }
             : {}),
 
