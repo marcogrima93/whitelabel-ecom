@@ -178,7 +178,7 @@ export const siteConfig = {
       enabled: false, // Required env vars: SKRILL_MERCHANT_EMAIL, SKRILL_SECRET_WORD
     },
     mollie: {
-      enabled: false, // Required env vars: MOLLIE_API_KEY
+      enabled: true, // Required env vars: MOLLIE_API_KEY
     },
     fondy: {
       enabled: false, // Required env vars: FONDY_MERCHANT_ID, FONDY_SECRET_KEY
