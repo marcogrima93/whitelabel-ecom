@@ -156,7 +156,7 @@ export const siteConfig = {
   // lib/payments/registry.ts.
   payments: {
     stripe: {
-      enabled: true, // Required env vars: STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
+      enabled: false, // Required env vars: STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
     },
     cashOnDelivery: {
       enabled: false, // No env vars required
