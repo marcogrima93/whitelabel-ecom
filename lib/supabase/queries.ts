@@ -220,6 +220,23 @@ export async function createOrder(orderData: {
   return order;
 }
 
+export async function getOrderByOrderNumber(orderNumber: string): Promise<Order | null> {
+  const supabase = await createServiceRoleClient();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("order_number", orderNumber)
+    .single();
+
+  if (error) {
+    console.error("Error fetching order by order number:", error);
+    return null;
+  }
+
+  return data;
+}
+
 export async function getOrderByPaymentIntent(paymentIntentId: string): Promise<Order | null> {
   const supabase = await createServiceRoleClient();
   

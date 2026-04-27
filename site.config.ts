@@ -156,7 +156,7 @@ export const siteConfig = {
   // lib/payments/registry.ts.
   payments: {
     stripe: {
-      enabled: true, // Required env vars: STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
+      enabled: false, // Required env vars: STRIPE_SECRET_KEY, NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY, STRIPE_WEBHOOK_SECRET
     },
     cashOnDelivery: {
       enabled: false, // No env vars required
@@ -178,7 +178,7 @@ export const siteConfig = {
       enabled: false, // Required env vars: SKRILL_MERCHANT_EMAIL, SKRILL_SECRET_WORD
     },
     mollie: {
-      enabled: false, // Required env vars: MOLLIE_API_KEY
+      enabled: true, // Required env vars: MOLLIE_API_KEY
     },
     fondy: {
       enabled: false, // Required env vars: FONDY_MERCHANT_ID, FONDY_SECRET_KEY

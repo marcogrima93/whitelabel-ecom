@@ -12,6 +12,7 @@ import {
 } from "@/lib/payments/gateways/stripe";
 // To handle a new gateway: import its server-side function from lib/payments/gateways/<name>.ts
 // and add a case in the payment method switch below.
+import { getMollieClient } from "@/lib/payments/gateways/mollie";
 
 function generateOrderNumber(): string {
   const timestamp = Date.now().toString(36).toUpperCase();
@@ -192,6 +193,39 @@ export async function POST(req: Request) {
       const order = await createOrder({ ...orderBase, stripePaymentIntentId: undefined });
       if (!order) {
         return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+      }
+      return NextResponse.json({ orderNumber: order.order_number });
+    }
+
+    // ── Mollie ────────────────────────────────────────────────────────────
+    // Creates the internal order record (status PENDING) and returns the
+    // orderNumber. The actual Mollie hosted payment URL is created by the
+    // client via POST /api/checkout/mollie/create-payment, and the browser
+    // is then redirected there.
+    if (paymentMethod === "MOLLIE") {
+      const order = await createOrder({ ...orderBase, stripePaymentIntentId: undefined });
+      if (!order) {
+        return NextResponse.json({ error: "Failed to create order" }, { status: 500 });
+      }
+      // Send confirmation email immediately so the customer has a record even
+      // before payment is completed (Mollie webhook will update status later).
+      try {
+        await sendOrderConfirmationEmail(
+          order,
+          orderItems.map((item: any, i: number) => ({
+            id: `tmp-${i}`,
+            order_id: order.id,
+            product_id: item.productId,
+            product_name: item.productName,
+            product_image: item.productImage,
+            selected_option: item.selectedOption,
+            price_per_unit: item.pricePerUnit,
+            quantity: item.quantity,
+            line_total: item.pricePerUnit * item.quantity,
+          }))
+        );
+      } catch (emailErr) {
+        console.error("Failed to send confirmation email (mollie order):", emailErr);
       }
       return NextResponse.json({ orderNumber: order.order_number });
     }

@@ -1,7 +1,7 @@
 "use client";
 // Checkout page — client component (uses hooks, Stripe Elements, cart store)
-import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useMemo, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
 import { useCartStore } from "@/lib/store/cart";
@@ -38,6 +38,7 @@ import {
 import StripeForm from "@/components/checkout/StripeForm";
 import PayPalForm from "@/components/checkout/PayPalForm";
 import RevolutForm from "@/components/checkout/RevolutForm";
+import MollieForm from "@/components/checkout/MollieForm";
 import { PaymentMethodButton } from "@/components/checkout/PaymentMethodButton";
 import { getEnabledGateways, type GatewayId } from "@/lib/payments/registry";
 import { PhoneInput, joinPhone, splitPhone, DEFAULT_COUNTRY_CODE } from "@/components/ui/phone-input";
@@ -116,7 +117,7 @@ interface SavedAddress {
 const towns = siteConfig.delivery.towns;
 const defaultTown = towns[0]?.name || "";
 
-export default function CheckoutPage() {
+function CheckoutPageInner() {
   const { items, getSubtotal, getDiscountAmount, discountCode, discountPercentage, clearCart, additionalNotes } = useCartStore();
   const router = useRouter();
   const { currency } = siteConfig;
@@ -128,6 +129,7 @@ export default function CheckoutPage() {
   const [clientSecret, setClientSecret] = useState("");
   const [checkoutOrderNumber, setCheckoutOrderNumber] = useState("");
   const [revolutOrderNumber, setRevolutOrderNumber] = useState("");
+  const [mollieOrderNumber, setMollieOrderNumber] = useState("");
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<PaymentMethod>(
     () => (getEnabledGateways()[0]?.id ?? "stripe") as PaymentMethod
@@ -364,6 +366,25 @@ export default function CheckoutPage() {
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
 
+  // Mollie redirect-back detection:
+  // After the customer completes (or cancels) payment on the Mollie hosted page,
+  // Mollie redirects back to /checkout?mollie_payment_id=tr_xxx&orderNumber=ORD-xxx.
+  // We detect those params and immediately show the confirmation screen.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (!mounted) return;
+    const molliePaymentId = searchParams.get("mollie_payment_id");
+    const returnOrderNumber = searchParams.get("orderNumber");
+    if (molliePaymentId && returnOrderNumber) {
+      // Treat any return from Mollie as success — the webhook will cancel the
+      // order asynchronously if the payment actually failed/was cancelled.
+      handlePaymentSuccess(returnOrderNumber);
+      // Clean up the URL so a hard refresh doesn't re-trigger
+      window.history.replaceState({}, "", "/checkout");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mounted]);
+
   // Redirect to cart if no items — only after hydration so Zustand has rehydrated from localStorage
   useEffect(() => {
     if (!mounted) return;
@@ -576,7 +597,7 @@ export default function CheckoutPage() {
       return;
     }
 
-    // ── Revolut Pay ───────────────────────────────────────────────────────���
+    // ── Revolut Pay ───────────────────────────────────────────────────────
     // Creates the internal order record and stores the order number so
     // RevolutForm can reference it when calling /api/checkout/revolut/create-order.
     if (selectedPaymentMethod === "revolut") {
@@ -599,6 +620,36 @@ export default function CheckoutPage() {
         }
       } catch (err) {
         console.error("Revolut init error:", err);
+        setStep("delivery");
+        setCheckoutError("An unexpected error occurred. Please try again.");
+      }
+      return;
+    }
+
+    // ── Mollie ────────────────────────────────────────────────────────────
+    // Creates the internal order record and stores the order number so
+    // MollieForm can call /api/checkout/mollie/create-payment and redirect
+    // the browser to the Mollie hosted checkout page.
+    if (selectedPaymentMethod === "mollie") {
+      if (mollieOrderNumber) return; // already initialised
+      try {
+        await saveNewAddressIfRequested();
+        const res = await fetch("/api/checkout", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(buildCheckoutBody("MOLLIE")),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setStep("delivery");
+          setCheckoutError(data.error || "Failed to initialise Mollie. Please try again.");
+          return;
+        }
+        if (data.orderNumber) {
+          setMollieOrderNumber(data.orderNumber);
+        }
+      } catch (err) {
+        console.error("Mollie init error:", err);
         setStep("delivery");
         setCheckoutError("An unexpected error occurred. Please try again.");
       }
@@ -1283,6 +1334,30 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {/* Mollie */}
+              {selectedPaymentMethod === "mollie" && (
+                <div className="p-6 rounded-lg border bg-card space-y-4">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CreditCard className="h-4 w-4" />
+                    Secure payment via Mollie
+                  </div>
+                  {!mollieOrderNumber ? (
+                    <div className="flex justify-center py-10">
+                      <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : (
+                    <MollieForm
+                      amount={total}
+                      orderNumber={mollieOrderNumber}
+                      customerEmail={deliveryForm.email || userProfile?.email}
+                      onSuccess={handlePaymentSuccess}
+                      onBack={() => setStep("delivery")}
+                      billingAddress={buildBillingAddress()}
+                    />
+                  )}
+                </div>
+              )}
+
               {/* Stripe (default card gateway) */}
               {selectedPaymentMethod === "stripe" && (
                 <div className="p-6 rounded-lg border bg-card space-y-4">
@@ -1438,5 +1513,13 @@ export default function CheckoutPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function CheckoutPage() {
+  return (
+    <Suspense>
+      <CheckoutPageInner />
+    </Suspense>
   );
 }

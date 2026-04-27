@@ -11,6 +11,7 @@
     "seed": "tsx lib/supabase/seed.ts"
   },
   "dependencies": {
+    "@mollie/api-client": "^4.5.0",
     "@paypal/react-paypal-js": "^8.7.0",
     "@radix-ui/react-accordion": "^1.2.2",
     "@radix-ui/react-avatar": "^1.1.2",
