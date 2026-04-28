@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { createMolliePayment } from "@/lib/payments/gateways/mollie";
 import type { MollieBillingAddress } from "@/lib/payments/gateways/mollie";
+import { siteConfig } from "@/site.config";
 
 export async function POST(req: Request) {
   try {
