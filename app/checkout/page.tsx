@@ -1,7 +1,7 @@
 "use client";
 // Checkout page — client component (uses hooks, Stripe Elements, cart store)
 import { useState, useEffect, useMemo, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
 import { useCartStore } from "@/lib/store/cart";
@@ -365,25 +365,6 @@ function CheckoutPageInner() {
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
-
-  // Mollie redirect-back detection:
-  // After the customer completes (or cancels) payment on the Mollie hosted page,
-  // Mollie redirects back to /checkout?mollie_payment_id=tr_xxx&orderNumber=ORD-xxx.
-  // We detect those params and immediately show the confirmation screen.
-  const searchParams = useSearchParams();
-  useEffect(() => {
-    if (!mounted) return;
-    const molliePaymentId = searchParams.get("mollie_payment_id");
-    const returnOrderNumber = searchParams.get("orderNumber");
-    if (molliePaymentId && returnOrderNumber) {
-      // Treat any return from Mollie as success — the webhook will cancel the
-      // order asynchronously if the payment actually failed/was cancelled.
-      handlePaymentSuccess(returnOrderNumber);
-      // Clean up the URL so a hard refresh doesn't re-trigger
-      window.history.replaceState({}, "", "/checkout");
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mounted]);
 
   // Redirect to cart if no items — only after hydration so Zustand has rehydrated from localStorage
   useEffect(() => {

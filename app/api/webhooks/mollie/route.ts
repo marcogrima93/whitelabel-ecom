@@ -20,7 +20,7 @@ import {
   getOrderByOrderNumber,
   updateOrderStatus,
 } from "@/lib/supabase/queries";
-import { sendOrderConfirmationEmail } from "@/lib/email";
+import { createServiceRoleClient } from "@/lib/supabase/server";
 
 export async function POST(req: Request) {
   try {
@@ -51,9 +51,19 @@ export async function POST(req: Request) {
 
     switch (payment.status) {
       case "paid": {
-        // Payment confirmed — order stays PENDING until admin fulfils it.
-        // Confirmation email is sent at order creation; no need to re-send.
-        console.log(`[mollie webhook] Payment confirmed for order ${orderNumber}`);
+        // Store the Mollie payment ID on the order so the admin panel can
+        // identify it as a Mollie payment (via getPaymentGatewayLabel).
+        // Reuses the stripe_payment_intent_id column — same pattern as PayPal/Revolut.
+        try {
+          const supabase = await createServiceRoleClient();
+          await supabase
+            .from("orders")
+            .update({ stripe_payment_intent_id: paymentId })
+            .eq("id", order.id);
+        } catch (dbErr) {
+          console.error("[mollie webhook] Failed to store payment ID on order:", dbErr);
+        }
+        console.log(`[mollie webhook] Payment confirmed for order ${orderNumber} (${paymentId})`);
         break;
       }
       case "failed":
