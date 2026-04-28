@@ -157,8 +157,21 @@ export default function RevolutForm({
               }
             : {}),
 
-          onSuccess(_payload: { orderId: string }) {
-            if (!cancelled) onSuccess(orderNumber);
+          onSuccess(payload: { orderId: string }) {
+            if (cancelled) return;
+            // Fire-and-forget: store the Revolut orderId so the admin panel
+            // labels this order as "Revolut Pay" rather than "Cash".
+            fetch("/api/checkout/revolut/confirm", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                orderNumber,
+                revolutOrderId: payload.orderId,
+              }),
+            }).catch((err) =>
+              console.error("[revolut] Failed to store orderId:", err)
+            );
+            onSuccess(orderNumber);
           },
 
           onError(payload: { error: { message?: string }; orderId: string }) {

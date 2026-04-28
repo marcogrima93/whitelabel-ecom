@@ -11,6 +11,7 @@
 import { NextResponse } from "next/server";
 import { createMolliePayment } from "@/lib/payments/gateways/mollie";
 import type { MollieBillingAddress } from "@/lib/payments/gateways/mollie";
+import { siteConfig } from "@/site.config";
 
 export async function POST(req: Request) {
   try {
@@ -35,14 +36,16 @@ export async function POST(req: Request) {
       );
     }
 
-    // Build the redirect URL — Mollie appends ?mollie_payment_id=tr_xxx automatically
-    // when it redirects back, so we add our own orderNumber param to look it up.
+    // Redirect back to the dedicated /order-confirmation page after payment.
+    // This avoids the empty-cart problem that would occur if we redirected back
+    // to /checkout (Mollie loads a fresh page so cart state is gone).
+    // We pass orderNumber so the page can display the reference.
     const origin =
       process.env.NEXT_PUBLIC_SITE_URL ||
       req.headers.get("origin") ||
       "http://localhost:3000";
 
-    const redirectUrl = `${origin}/checkout?mollie_payment_id={payment.id}&orderNumber=${encodeURIComponent(orderNumber)}`;
+    const redirectUrl = `${origin}/order-confirmation?orderNumber=${encodeURIComponent(orderNumber)}`;
 
     // In test mode Mollie silently ignores the webhookUrl if it is not a publicly
     // accessible https URL. For local development this is expected.

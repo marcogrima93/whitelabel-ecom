@@ -38,6 +38,7 @@ export function getPaymentGatewayLabel(paymentIntentId: string | null | undefine
   if (!paymentIntentId) return "Cash";
   if (paymentIntentId.startsWith("paypal_capture_")) return "PayPal";
   if (paymentIntentId.startsWith("revolut_")) return "Revolut Pay";
+  if (paymentIntentId.startsWith("tr_")) return "Mollie";
   if (paymentIntentId.startsWith("pi_")) return "Stripe";
   return "Online Payment";
 }
