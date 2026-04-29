@@ -36,16 +36,18 @@ export async function POST(req: Request) {
       );
     }
 
-    // Redirect back to the dedicated /order-confirmation page after payment.
-    // This avoids the empty-cart problem that would occur if we redirected back
-    // to /checkout (Mollie loads a fresh page so cart state is gone).
-    // We pass orderNumber so the page can display the reference.
-    // Use the shopUrl from site config as the canonical origin (e.g. https://chill.mt).
-    // Fall back to the request origin header for local development.
-    const origin =
-      siteConfig.shopUrl ||
-      req.headers.get("origin") ||
-      "http://localhost:3000";
+    // Determine the origin to use for redirect and webhook URLs.
+    // In production we always use siteConfig.shopUrl so URLs are canonical.
+    // In development we use the request's own origin header (e.g. http://localhost:3000)
+    // so Mollie redirects back to the correct local port after test payment.
+    const requestOrigin = req.headers.get("origin") ?? "";
+    const isLocalDev =
+      requestOrigin.startsWith("http://localhost") ||
+      requestOrigin.startsWith("http://127.0.0.1");
+
+    const origin = isLocalDev
+      ? requestOrigin
+      : siteConfig.shopUrl || requestOrigin || "http://localhost:3000";
 
     const redirectUrl = `${origin}/order-confirmation?orderNumber=${encodeURIComponent(orderNumber)}`;
 
