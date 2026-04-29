@@ -111,9 +111,9 @@ function OrderConfirmationInner() {
         </div>
 
         {/* Branding */}
-        {siteConfig.name && (
+        {siteConfig.shopName && (
           <p className="text-xs text-muted-foreground pt-2">
-            {siteConfig.name}
+            {siteConfig.shopName}
           </p>
         )}
       </div>
