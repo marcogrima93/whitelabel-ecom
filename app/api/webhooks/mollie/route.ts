@@ -49,33 +49,63 @@ export async function POST(req: Request) {
       return NextResponse.json({ received: true });
     }
 
+    const supabase = await createServiceRoleClient();
+
     switch (payment.status) {
+      /**
+       * AUTHORIZED — card or Klarna payment has been authorised and awaits capture.
+       * Store the payment ID so the admin panel can label it as "Mollie", but keep
+       * the order as PENDING (no money received yet, capture pending).
+       */
+      case "authorized": {
+        await supabase
+          .from("orders")
+          .update({ stripe_payment_intent_id: paymentId })
+          .eq("id", order.id);
+        console.log(`[mollie webhook] Payment ${paymentId} authorised for order ${orderNumber} — awaiting capture`);
+        break;
+      }
+
+      /**
+       * PAID — payment fully settled. Store the payment ID (labels as "Mollie" in
+       * admin panel) and keep the order PENDING for the admin to fulfil. This is
+       * the same pattern as Stripe/Revolut/PayPal — no automatic status promotion.
+       */
       case "paid": {
-        // Store the Mollie payment ID on the order so the admin panel can
-        // identify it as a Mollie payment (via getPaymentGatewayLabel).
-        // Reuses the stripe_payment_intent_id column — same pattern as PayPal/Revolut.
-        try {
-          const supabase = await createServiceRoleClient();
-          await supabase
-            .from("orders")
-            .update({ stripe_payment_intent_id: paymentId })
-            .eq("id", order.id);
-        } catch (dbErr) {
-          console.error("[mollie webhook] Failed to store payment ID on order:", dbErr);
-        }
+        await supabase
+          .from("orders")
+          .update({ stripe_payment_intent_id: paymentId })
+          .eq("id", order.id);
         console.log(`[mollie webhook] Payment confirmed for order ${orderNumber} (${paymentId})`);
         break;
       }
-      case "failed":
+
+      /**
+       * CANCELED — customer explicitly cancelled on the Mollie hosted page.
+       * EXPIRED  — customer abandoned / payment timed out.
+       * FAILED   — payment attempt failed with no retry possible.
+       * All three are definitive terminal statuses — cancel the order.
+       */
       case "canceled":
-      case "expired": {
-        await updateOrderStatus(order.id, "CANCELLED");
-        console.log(`[mollie webhook] Order ${orderNumber} cancelled (status: ${payment.status})`);
+      case "expired":
+      case "failed": {
+        // Only cancel if the order hasn't already been moved to a terminal state
+        if (order.order_status === "PENDING") {
+          await updateOrderStatus(order.id, "CANCELLED");
+        }
+        console.log(`[mollie webhook] Order ${orderNumber} cancelled (mollie status: ${payment.status})`);
         break;
       }
+
+      /**
+       * OPEN    — payment created but not yet started; no webhook fired by Mollie.
+       * PENDING — payment in progress; no webhook fired by Mollie.
+       * Both are handled here defensively in case Mollie behaviour changes.
+       */
+      case "open":
+      case "pending":
       default:
-        // open, pending, authorized — no action needed
-        console.log(`[mollie webhook] Payment ${paymentId} status: ${payment.status}`);
+        console.log(`[mollie webhook] Payment ${paymentId} status '${payment.status}' — no action taken`);
     }
 
     return NextResponse.json({ received: true });
