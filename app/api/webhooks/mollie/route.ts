@@ -89,7 +89,7 @@ export async function POST(req: Request) {
       case "canceled":
       case "expired":
       case "failed": {
-        if (order.order_status === "PENDING") {
+        if (order.status === "PENDING") {
           await updateOrderStatus(order.id, "CANCELLED");
         }
         console.log(`[mollie webhook] Order ${orderNumber} cancelled (mollie status: ${payment.status})`);
