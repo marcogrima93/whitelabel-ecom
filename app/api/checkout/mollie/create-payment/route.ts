@@ -47,7 +47,10 @@ export async function POST(req: Request) {
       req.headers.get("origin") ||
       "http://localhost:3000";
 
-    const redirectUrl = `${origin}/order-confirmation?orderNumber=${encodeURIComponent(orderNumber)}`;
+    // Mollie appends ?status=... automatically to the redirectUrl so we can
+    // show the right message on the confirmation page without an extra API call.
+    // We include a {status} placeholder that Mollie replaces on redirect.
+    const redirectUrl = `${origin}/order-confirmation?orderNumber=${encodeURIComponent(orderNumber)}&status={status}`;
 
     // In test mode Mollie silently ignores the webhookUrl if it is not a publicly
     // accessible https URL. For local development this is expected.
