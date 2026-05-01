@@ -126,35 +126,48 @@ function OrderConfirmationInner() {
   const clearCart = useCartStore((s) => s.clearCart);
 
   const orderNumber = searchParams.get("orderNumber");
-  // Mollie appends ?id=tr_xxx to the redirect URL automatically.
-  // If there is no id param this is a non-Mollie gateway (Stripe/PayPal) — always success.
-  const molliePaymentId = searchParams.get("id");
-
-  const [status, setStatus] = useState<MollieStatus>(
-    molliePaymentId ? "loading" : "success"
-  );
+  // Look up the real payment status server-side using the orderNumber.
+  // We query our own DB for the tr_xxx stored by the webhook, then ask Mollie.
+  // If there is no orderNumber this is direct navigation — redirect home.
+  // Non-Mollie gateways (Stripe/PayPal) never land on this page with a Mollie
+  // payment ID, so they'll get status "success" immediately from the API
+  // (no tr_xxx in DB means not a Mollie payment).
+  const [status, setStatus] = useState<MollieStatus>("loading");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Look up the real payment status from Mollie via our server-side route.
-  // This is the ONLY reliable way to know the outcome — URL params can't be trusted.
+  // Fetch the real payment status from our server — never trust URL params.
+  // Retries up to 5 times (2s apart) in case the Mollie webhook hasn't fired yet.
   useEffect(() => {
-    if (!mounted || !molliePaymentId) return;
+    if (!mounted || !orderNumber) return;
 
-    fetch(`/api/mollie/payment-status?id=${encodeURIComponent(molliePaymentId)}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.status) {
-          setStatus(data.status as MollieStatus);
-        } else {
-          setStatus("error");
-        }
-      })
-      .catch(() => setStatus("error"));
-  }, [mounted, molliePaymentId]);
+    let attempts = 0;
+    const MAX_ATTEMPTS = 5;
+    const RETRY_DELAY_MS = 2000;
+
+    function poll() {
+      fetch(`/api/mollie/payment-status?orderNumber=${encodeURIComponent(orderNumber!)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.retryable && attempts < MAX_ATTEMPTS) {
+            attempts++;
+            setTimeout(poll, RETRY_DELAY_MS);
+            return;
+          }
+          if (data.status) {
+            setStatus(data.status as MollieStatus);
+          } else {
+            setStatus("error");
+          }
+        })
+        .catch(() => setStatus("error"));
+    }
+
+    poll();
+  }, [mounted, orderNumber]);
 
   useEffect(() => {
     if (!mounted) return;

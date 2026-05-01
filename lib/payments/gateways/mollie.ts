@@ -56,8 +56,10 @@ export interface CreateMolliePaymentParams {
   orderNumber: string;
   /** Customer email — shown on the Mollie hosted page */
   customerEmail?: string;
-  /** Full URL Mollie redirects the browser to after payment */
+  /** Full URL Mollie redirects the browser to after payment (all statuses except explicit cancel) */
   redirectUrl: string;
+  /** Full URL Mollie redirects to when the customer explicitly presses cancel — keeps redirectUrl for success/pending only */
+  cancelUrl: string;
   /** Full URL Mollie POSTs payment status updates to */
   webhookUrl: string;
   /**
@@ -92,6 +94,7 @@ export async function createMolliePayment(
     orderNumber,
     customerEmail,
     redirectUrl,
+    cancelUrl,
     webhookUrl,
     billingAddress,
   } = params;
@@ -107,6 +110,10 @@ export async function createMolliePayment(
     },
     description: `Order ${orderNumber}`,
     redirectUrl,
+    // cancelUrl: when the customer presses "back" / cancel on the Mollie page,
+    // they are sent here instead of to redirectUrl. This lets us show a proper
+    // "payment cancelled" page without falsely showing "payment received".
+    cancelUrl,
     // webhookUrl must be an https:// URL in production; Mollie ignores it in test mode
     webhookUrl,
     metadata: {
