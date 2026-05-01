@@ -36,21 +36,24 @@ export async function POST(req: Request) {
       );
     }
 
-    // Redirect back to the dedicated /order-confirmation page after payment.
-    // This avoids the empty-cart problem that would occur if we redirected back
-    // to /checkout (Mollie loads a fresh page so cart state is gone).
-    // We pass orderNumber so the page can display the reference.
-    // Use the shopUrl from site config as the canonical origin (e.g. https://chill.mt).
-    // Fall back to the request origin header for local development.
-    const origin =
-      siteConfig.shopUrl ||
-      req.headers.get("origin") ||
-      "http://localhost:3000";
+    // Determine the canonical origin.
+    // In local dev use the request origin so Mollie redirects back to localhost.
+    const requestOrigin = req.headers.get("origin") ?? "";
+    const isLocalDev =
+      requestOrigin.startsWith("http://localhost") ||
+      requestOrigin.startsWith("http://127.0.0.1");
+    const origin = isLocalDev
+      ? requestOrigin
+      : siteConfig.shopUrl || requestOrigin || "http://localhost:3000";
 
-    // Mollie automatically appends ?id=tr_xxx to this URL when redirecting.
-    // The confirmation page uses that payment ID to fetch the real status
-    // server-side via GET /api/mollie/payment-status?id=tr_xxx.
+    // redirectUrl — reached for ALL terminal statuses EXCEPT explicit cancel
+    // (when cancelUrl is set). We pass orderNumber so the page can look it up.
     const redirectUrl = `${origin}/order-confirmation?orderNumber=${encodeURIComponent(orderNumber)}`;
+
+    // cancelUrl — reached ONLY when the customer explicitly presses "back" or
+    // "cancel" on the Mollie hosted checkout page. We send them back to the
+    // checkout page with a query param so we can show a cancellation notice.
+    const cancelUrl = `${origin}/checkout?cancelled=1`;
 
     // In test mode Mollie silently ignores the webhookUrl if it is not a publicly
     // accessible https URL. For local development this is expected.
@@ -62,6 +65,7 @@ export async function POST(req: Request) {
       orderNumber,
       customerEmail,
       redirectUrl,
+      cancelUrl,
       webhookUrl,
       billingAddress: billingAddress ?? null,
     });

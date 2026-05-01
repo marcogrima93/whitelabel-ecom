@@ -1,7 +1,7 @@
 "use client";
 // Checkout page — client component (uses hooks, Stripe Elements, cart store)
 import { useState, useEffect, useMemo, Suspense } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Elements } from "@stripe/react-stripe-js";
 import { useCartStore } from "@/lib/store/cart";
@@ -365,6 +365,17 @@ function CheckoutPageInner() {
 
   const [mounted, setMounted] = useState(false);
   useEffect(() => { setMounted(true); }, []);
+
+  // When Mollie redirects back after cancellation (?cancelled=1), show a notice.
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (!mounted) return;
+    if (searchParams.get("cancelled") === "1") {
+      setCheckoutError("Your payment was cancelled. You can try again or choose a different payment method.");
+      // Clean up the URL so a page refresh doesn't re-show the banner
+      window.history.replaceState({}, "", "/checkout");
+    }
+  }, [mounted, searchParams]);
 
   // Redirect to cart if no items — only after hydration so Zustand has rehydrated from localStorage
   useEffect(() => {
