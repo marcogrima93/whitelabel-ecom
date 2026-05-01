@@ -11,7 +11,7 @@ export const siteConfig = {
   // ── Branding ──────────────────────────────────────────────────────────
   shopName: "CHILL Clothing Malta",
   shopDescription: "New and Preloved Clothing.",
-  shopUrl: "https://chill-mt.vercell.app",
+  shopUrl: "https://chill-mt.vercel.app",
   logo: "/logo.svg", // Place in /public
   // "logo-only"       = just the logo image in the header
   // "logo-and-name"   = logo image (left) + shop name text (right)
