@@ -27,50 +27,85 @@ import { useCartStore } from "@/lib/store/cart";
 import { siteConfig } from "@/site.config";
 
 /**
- * Derives UI copy from the Mollie payment status passed back in the redirect URL.
- *
- * paid        → confirmed, money received
- * authorized  → card authorised, capture pending — treat as success (money guaranteed)
- * open        → bank transfer / slow method still processing — show pending
- * pending     → same as open
- * failed      → payment failed — show failure message
- * canceled    → customer cancelled — show cancelled message
- * expired     → session expired — show cancelled message
- * (blank)     → unknown / direct navigation — treat as success (Stripe/PayPal path)
+ * All possible real Mollie payment statuses (from the API, not the URL).
+ * "success" is our own internal sentinel for non-Mollie gateways (Stripe/PayPal).
  */
-type MollieStatus = "paid" | "authorized" | "open" | "pending" | "failed" | "canceled" | "expired" | "";
+type MollieStatus =
+  | "paid"
+  | "authorized"
+  | "open"
+  | "pending"
+  | "failed"
+  | "canceled"
+  | "expired"
+  | "success"   // non-Mollie gateway path — always a success
+  | "loading"   // waiting for API response
+  | "error";    // API lookup failed
 
 function getStatusConfig(status: MollieStatus) {
   switch (status) {
+    case "loading":
+      return {
+        icon: <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />,
+        iconBg: "bg-muted/50",
+        heading: "Checking payment status…",
+        body: "Please wait while we confirm your payment.",
+        cta: null,
+        ctaHref: null,
+        isFailure: false,
+        showOrderNumber: false,
+      };
+
     case "failed":
     case "canceled":
     case "expired":
       return {
         icon: <XCircle className="h-10 w-10 text-destructive" />,
         iconBg: "bg-destructive/10",
-        heading: status === "canceled" ? "Payment cancelled" : status === "expired" ? "Payment expired" : "Payment failed",
+        heading:
+          status === "canceled"
+            ? "Payment cancelled"
+            : status === "expired"
+            ? "Payment expired"
+            : "Payment failed",
         body:
           status === "canceled"
-            ? "You cancelled the payment. Your order has not been charged. You can try again or choose a different payment method."
+            ? "You cancelled the payment. Your order has not been charged. Please return to checkout to try again."
             : status === "expired"
-            ? "Your payment session expired before the payment was completed. Please try again."
-            : "The payment could not be completed. No charge has been made. Please try again with a different payment method.",
-        cta: "Try again",
+            ? "Your payment session timed out before completion. Please return to checkout to try again."
+            : "The payment could not be completed. No charge has been made. Please try a different payment method.",
+        cta: "Return to checkout",
         ctaHref: "/checkout",
         isFailure: true,
+        showOrderNumber: false,
       };
+
+    case "error":
+      return {
+        icon: <XCircle className="h-10 w-10 text-destructive" />,
+        iconBg: "bg-destructive/10",
+        heading: "Could not verify payment",
+        body: "We were unable to confirm your payment status. If you believe the payment went through, please contact us with your order number.",
+        cta: "Contact support",
+        ctaHref: "/contact",
+        isFailure: true,
+        showOrderNumber: true,
+      };
+
     case "open":
     case "pending":
       return {
         icon: <Clock className="h-10 w-10 text-amber-500" />,
         iconBg: "bg-amber-500/10",
         heading: "Payment pending",
-        body: "Your order has been placed and is awaiting payment confirmation. Some payment methods (e.g. bank transfer) can take a few days to settle. We will send you a confirmation email once payment is received.",
+        body: "Your order has been placed and is awaiting payment confirmation. Some methods (e.g. bank transfer) can take a few business days to settle. We will email you once payment is confirmed.",
         cta: null,
         ctaHref: null,
         isFailure: false,
+        showOrderNumber: true,
       };
-    // paid, authorized, or blank (non-Mollie gateway)
+
+    // paid, authorized, success (non-Mollie gateways)
     default:
       return {
         icon: <CheckCircle className="h-10 w-10 text-primary" />,
@@ -80,6 +115,7 @@ function getStatusConfig(status: MollieStatus) {
         cta: null,
         ctaHref: null,
         isFailure: false,
+        showOrderNumber: true,
       };
   }
 }
@@ -90,12 +126,35 @@ function OrderConfirmationInner() {
   const clearCart = useCartStore((s) => s.clearCart);
 
   const orderNumber = searchParams.get("orderNumber");
-  const rawStatus = (searchParams.get("status") ?? "") as MollieStatus;
+  // Mollie appends ?id=tr_xxx to the redirect URL automatically.
+  // If there is no id param this is a non-Mollie gateway (Stripe/PayPal) — always success.
+  const molliePaymentId = searchParams.get("id");
+
+  const [status, setStatus] = useState<MollieStatus>(
+    molliePaymentId ? "loading" : "success"
+  );
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Look up the real payment status from Mollie via our server-side route.
+  // This is the ONLY reliable way to know the outcome — URL params can't be trusted.
+  useEffect(() => {
+    if (!mounted || !molliePaymentId) return;
+
+    fetch(`/api/mollie/payment-status?id=${encodeURIComponent(molliePaymentId)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.status) {
+          setStatus(data.status as MollieStatus);
+        } else {
+          setStatus("error");
+        }
+      })
+      .catch(() => setStatus("error"));
+  }, [mounted, molliePaymentId]);
 
   useEffect(() => {
     if (!mounted) return;
@@ -103,8 +162,8 @@ function OrderConfirmationInner() {
       router.replace("/");
       return;
     }
-    // Always clear the cart — even on failed/cancelled, since the order was created
-    // server-side. The customer would start a fresh checkout if they retry.
+    // Clear cart on mount. Even for failed/cancelled orders the server-side order
+    // record was created — the customer starts a fresh checkout if they retry.
     clearCart();
   }, [mounted, orderNumber, clearCart, router]);
 
@@ -118,7 +177,8 @@ function OrderConfirmationInner() {
 
   if (!orderNumber) return null;
 
-  const { icon, iconBg, heading, body, cta, ctaHref, isFailure } = getStatusConfig(rawStatus);
+  const { icon, iconBg, heading, body, cta, ctaHref, isFailure, showOrderNumber } =
+    getStatusConfig(status);
 
   return (
     <div className="container mx-auto px-4 py-16 max-w-lg">
@@ -134,37 +194,41 @@ function OrderConfirmationInner() {
           <p className="text-muted-foreground text-sm">{body}</p>
         </div>
 
-        <Separator />
-
-        {/* Order number — show for non-failure statuses */}
-        {!isFailure && (
-          <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3 text-sm">
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Package className="h-4 w-4" />
-              Order number
+        {showOrderNumber && (
+          <>
+            <Separator />
+            <div className="flex items-center justify-between rounded-lg bg-muted/50 px-4 py-3 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Package className="h-4 w-4" />
+                Order number
+              </div>
+              <span className="font-semibold font-mono">{orderNumber}</span>
             </div>
-            <span className="font-semibold font-mono">{orderNumber}</span>
-          </div>
+          </>
         )}
 
-        {/* CTAs */}
-        <div className="flex flex-col gap-3 pt-2">
-          {cta && ctaHref ? (
-            <Button asChild>
-              <Link href={ctaHref}>{cta}</Link>
+        {/* Only show CTAs once we have a real status (not loading) */}
+        {status !== "loading" && (
+          <div className="flex flex-col gap-3 pt-2">
+            {cta && ctaHref ? (
+              <Button asChild>
+                <Link href={ctaHref}>{cta}</Link>
+              </Button>
+            ) : (
+              !isFailure && (
+                <Button asChild>
+                  <Link href="/account/orders">View my orders</Link>
+                </Button>
+              )
+            )}
+            <Button variant="ghost" asChild>
+              <Link href="/">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Continue shopping
+              </Link>
             </Button>
-          ) : (
-            <Button asChild>
-              <Link href="/account/orders">View my orders</Link>
-            </Button>
-          )}
-          <Button variant="ghost" asChild>
-            <Link href="/">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Continue shopping
-            </Link>
-          </Button>
-        </div>
+          </div>
+        )}
 
         {/* Branding */}
         {siteConfig.shopName && (
