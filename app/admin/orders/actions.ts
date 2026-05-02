@@ -81,6 +81,7 @@ export async function resendOrderEmailAction(orderId: string): Promise<boolean> 
 
   try {
     switch (order.status) {
+      case "PAYMENT_PENDING":
       case "PENDING":
         await sendOrderConfirmationEmail(order, items);
         break;

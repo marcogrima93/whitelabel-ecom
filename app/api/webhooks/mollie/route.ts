@@ -51,60 +51,62 @@ export async function POST(req: Request) {
 
     const supabase = await createServiceRoleClient();
 
+    // Always store the payment ID first so admin panel labels correctly regardless of status.
+    // This is a no-op if already set, but ensures even PAYMENT_PENDING orders are labelled "Mollie".
+    await supabase
+      .from("orders")
+      .update({ stripe_payment_intent_id: paymentId })
+      .eq("id", order.id);
+
     switch (payment.status) {
       /**
-       * AUTHORIZED — card/Klarna payment authorised, awaiting capture.
-       * Webhook fires. Store the payment ID so admin panel labels it "Mollie".
-       * Keep order PENDING — money not yet fully settled.
+       * OPEN    — payment created/initiated but not yet settled (e.g. bank transfer, some redirect methods).
+       * PENDING — payment in progress, outcome not yet known.
+       * Webhook fires for these. Move to PAYMENT_PENDING so admin can see it's awaiting money.
+       * Will transition to PENDING (paid) or CANCELLED when a follow-up webhook fires.
        */
-      case "authorized": {
-        await supabase
-          .from("orders")
-          .update({ stripe_payment_intent_id: paymentId })
-          .eq("id", order.id);
-        console.log(`[mollie webhook] Payment ${paymentId} authorised for order ${orderNumber} — capture pending`);
+      case "open":
+      case "pending": {
+        if (order.status !== "PAYMENT_PENDING") {
+          await updateOrderStatus(order.id, "PAYMENT_PENDING");
+        }
+        console.log(`[mollie webhook] Order ${orderNumber} set to PAYMENT_PENDING (mollie: ${payment.status})`);
         break;
       }
 
       /**
-       * PAID — payment fully settled (all methods including card after capture).
-       * Webhook fires. Store the payment ID so admin panel labels it "Mollie".
-       * Order stays PENDING for admin to fulfil — same pattern as Stripe/PayPal.
+       * AUTHORIZED — card/Klarna authorised, awaiting capture (money guaranteed).
+       * PAID       — payment fully settled.
+       * Both → PENDING (ready for admin to fulfil).
        */
+      case "authorized":
       case "paid": {
-        await supabase
-          .from("orders")
-          .update({ stripe_payment_intent_id: paymentId })
-          .eq("id", order.id);
-        console.log(`[mollie webhook] Payment confirmed for order ${orderNumber} (${paymentId})`);
+        if (order.status !== "PENDING") {
+          await updateOrderStatus(order.id, "PENDING");
+        }
+        console.log(`[mollie webhook] Order ${orderNumber} set to PENDING — payment ${payment.status} (${paymentId})`);
         break;
       }
 
       /**
-       * CANCELED — customer cancelled. Definitive. Webhook fires.
-       * EXPIRED   — customer abandoned / timed out. Definitive. Webhook fires.
-       * FAILED    — payment failed, no retry possible. Definitive. Webhook fires.
-       * Only cancel the order if it is still PENDING to prevent double-writes.
+       * CANCELED — customer cancelled. Definitive.
+       * EXPIRED  — timed out. Definitive.
+       * FAILED   — no retry possible. Definitive.
+       * Guard against double-writes — only cancel if not already in a terminal state.
        */
       case "canceled":
       case "expired":
       case "failed": {
-        if (order.status === "PENDING") {
+        const nonTerminal: string[] = ["PENDING", "PAYMENT_PENDING"];
+        if (nonTerminal.includes(order.status)) {
           await updateOrderStatus(order.id, "CANCELLED");
         }
-        console.log(`[mollie webhook] Order ${orderNumber} cancelled (mollie status: ${payment.status})`);
+        console.log(`[mollie webhook] Order ${orderNumber} CANCELLED (mollie: ${payment.status})`);
         break;
       }
 
-      /**
-       * OPEN    — payment created, customer hasn't acted yet. No webhook from Mollie.
-       * PENDING — payment in progress (e.g. bank transfer). No webhook from Mollie.
-       * Handled defensively below in case Mollie behaviour changes.
-       */
-      case "open":
-      case "pending":
       default:
-        console.log(`[mollie webhook] Payment ${paymentId} status '${payment.status}' — no action taken`);
+        console.log(`[mollie webhook] Payment ${paymentId} unhandled status '${payment.status}'`);
     }
 
     return NextResponse.json({ received: true });

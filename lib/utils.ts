@@ -28,9 +28,10 @@ export function truncate(str: string, length: number): string {
  * stripe_payment_intent_id value (which is reused for all gateway references).
  *
  * Convention:
- *  - null / undefined  → "Cash on Delivery"
+ *  - null / undefined              → "Cash"
  *  - starts with "paypal_capture_" → "PayPal"
  *  - starts with "revolut_"        → "Revolut Pay"
+ *  - starts with "tr_"             → "Mollie"
  *  - starts with "pi_"             → "Stripe"
  *  - anything else                 → "Online Payment"
  */
@@ -40,5 +41,6 @@ export function getPaymentGatewayLabel(paymentIntentId: string | null | undefine
   if (paymentIntentId.startsWith("revolut_")) return "Revolut Pay";
   if (paymentIntentId.startsWith("tr_")) return "Mollie";
   if (paymentIntentId.startsWith("pi_")) return "Stripe";
+  // Fallback covers any future gateways or unexpected formats
   return "Online Payment";
 }

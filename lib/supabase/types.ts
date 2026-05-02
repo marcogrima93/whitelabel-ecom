@@ -9,7 +9,8 @@ export type StockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK" | "PRE_ORDER
 export type StockMode = "UNLIMITED" | "LIMITED";
 export type UserRole = "RETAIL" | "WHOLESALE" | "ADMIN";
 export type OrderStatus =
-  | "PENDING"
+  | "PAYMENT_PENDING"   // Mollie: open/pending — payment initiated but not settled
+  | "PENDING"           // Payment confirmed — awaiting fulfilment by admin
   | "OUT_FOR_DELIVERY"
   | "DELIVERED"
   | "READY_FOR_COLLECTION"
@@ -232,7 +233,7 @@ export interface Database {
       stock_status: StockStatus;
       stock_mode: StockMode;
       user_role: UserRole;
-      order_status: OrderStatus;
+      order_status: OrderStatus; // includes PAYMENT_PENDING
       delivery_method: DeliveryMethod;
     };
   };
