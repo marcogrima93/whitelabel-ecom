@@ -239,6 +239,181 @@ export async function sendOrderConfirmationEmail(
   ]);
 }
 
+// ── 1b. Payment Pending (Mollie open/pending — e.g. bank transfer) ───────────
+
+export async function sendPaymentPendingEmail(
+  order: Order,
+  items: OrderItem[]
+): Promise<void> {
+  const html = baseTemplate(`
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">Payment Pending</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">
+      We&apos;ve received your order and are waiting to confirm your payment.
+      Some payment methods (such as bank transfers) can take a few business days to settle.
+      We will email you as soon as we receive your payment and begin processing your order.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+      <tr>
+        <td style="color:#555;">Order Number</td>
+        <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
+      </tr>
+      <tr>
+        <td style="color:#555;padding-top:4px;">Status</td>
+        <td style="text-align:right;padding-top:4px;color:#f59e0b;font-weight:600;">Payment Pending</td>
+      </tr>
+    </table>
+
+    ${buildItemsTable(items)}
+    ${buildTotalsSection(order)}
+
+    <div style="background:#fffbeb;border-left:4px solid #f59e0b;border-radius:4px;padding:14px 16px;margin-top:24px;">
+      <p style="margin:0;font-size:14px;color:#92400e;">
+        <strong>No action needed from you.</strong> Your order is reserved while we await payment confirmation.
+        If payment is not received, the order will be automatically cancelled and you will be notified.
+      </p>
+    </div>
+
+    <p style="margin:24px 0 0;font-size:14px;color:#555;">
+      Questions? Contact us at
+      <a href="mailto:${siteConfig.contact.email}" style="color:#111;">${siteConfig.contact.email}</a>.
+    </p>
+  `);
+
+  const ownerHtml = baseTemplate(`
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">New Order — Payment Pending</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">
+      A new order has been placed on ${siteConfig.shopName} but payment has not yet settled.
+      The order is reserved until payment is confirmed.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+      <tr>
+        <td style="color:#555;">Order Number</td>
+        <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
+      </tr>
+      <tr>
+        <td style="color:#555;padding-top:4px;">Customer</td>
+        <td style="text-align:right;padding-top:4px;">${order.email.replace(/ \(guest\)$/, "")}</td>
+      </tr>
+    </table>
+
+    ${buildItemsTable(items)}
+    ${buildTotalsSection(order)}
+  `);
+
+  const ownerEmail = siteConfig.notifications.ownerEmail;
+  const customerEmail = order.email.replace(/ \(guest\)$/, "");
+
+  await Promise.all([
+    send({
+      to: customerEmail,
+      subject: `Order Received — Payment Pending – ${order.order_number} | ${siteConfig.shopName}`,
+      html,
+    }),
+    send({
+      to: ownerEmail,
+      subject: `New Order (Payment Pending): ${order.order_number} – ${customerEmail}`,
+      html: ownerHtml,
+    }),
+  ]);
+}
+
+// ── 1c. Payment Confirmed (Mollie paid/authorized — after PAYMENT_PENDING) ───
+
+export async function sendPaymentConfirmedEmail(
+  order: Order,
+  items: OrderItem[]
+): Promise<void> {
+  const isCollection = order.delivery_method === "COLLECTION";
+  const fulfilmentLabel = isCollection ? "Collection" : "Delivery";
+
+  const html = baseTemplate(`
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">Payment Confirmed — Order Processing</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">
+      Great news! We&apos;ve received your payment and your order is now being processed.
+    </p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+      <tr>
+        <td style="color:#555;">Order Number</td>
+        <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
+      </tr>
+      <tr>
+        <td style="color:#555;padding-top:4px;">Fulfilment</td>
+        <td style="text-align:right;padding-top:4px;">${fulfilmentLabel}</td>
+      </tr>
+    </table>
+
+    ${buildItemsTable(items)}
+    ${buildTotalsSection(order)}
+    ${buildFulfilmentSection(order)}
+
+    <p style="margin:24px 0 0;font-size:14px;color:#555;">
+      We&apos;ll be in touch with an update on your ${fulfilmentLabel.toLowerCase()} soon. Questions? Contact us at
+      <a href="mailto:${siteConfig.contact.email}" style="color:#111;">${siteConfig.contact.email}</a>.
+    </p>
+  `);
+
+  await send({
+    to: order.email.replace(/ \(guest\)$/, ""),
+    subject: `Payment Confirmed – ${order.order_number} | ${siteConfig.shopName}`,
+    html,
+  });
+}
+
+// ── 1d. Payment Failed/Expired/Cancelled by Mollie ───────────────────────────
+
+export type MollieFailureReason = "canceled" | "expired" | "failed";
+
+export async function sendPaymentFailedEmail(
+  order: Order,
+  items: OrderItem[],
+  reason: MollieFailureReason
+): Promise<void> {
+  const headingMap: Record<MollieFailureReason, string> = {
+    canceled: "Payment Cancelled",
+    expired:  "Payment Expired",
+    failed:   "Payment Failed",
+  };
+  const bodyMap: Record<MollieFailureReason, string> = {
+    canceled: "You cancelled the payment before it was completed. Your order has not been charged and has been automatically cancelled.",
+    expired:  "Your payment session expired before the payment was completed. Your order has been automatically cancelled. No charge was made.",
+    failed:   "Unfortunately your payment could not be processed. Your order has been automatically cancelled. No charge was made.",
+  };
+  const ctaMap: Record<MollieFailureReason, string> = {
+    canceled: "If you&apos;d like to place a new order, please visit our store.",
+    expired:  "If you&apos;d like to try again, please return to our store and place a new order.",
+    failed:   "Please try again with a different payment method or contact your bank if the issue persists.",
+  };
+
+  const html = baseTemplate(`
+    <h1 style="margin:0 0 4px;font-size:24px;font-weight:700;">${headingMap[reason]}</h1>
+    <p style="margin:0 0 24px;color:#555;font-size:15px;">${bodyMap[reason]}</p>
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="font-size:14px;margin-bottom:24px;">
+      <tr>
+        <td style="color:#555;">Order Number</td>
+        <td style="text-align:right;font-family:monospace;font-weight:600;">${order.order_number}</td>
+      </tr>
+    </table>
+
+    ${buildItemsTable(items)}
+    ${buildTotalsSection(order)}
+
+    <p style="margin:24px 0 0;font-size:14px;color:#555;">
+      ${ctaMap[reason]} Questions? Contact us at
+      <a href="mailto:${siteConfig.contact.email}" style="color:#111;">${siteConfig.contact.email}</a>.
+    </p>
+  `);
+
+  await send({
+    to: order.email.replace(/ \(guest\)$/, ""),
+    subject: `${headingMap[reason]} – ${order.order_number} | ${siteConfig.shopName}`,
+    html,
+  });
+}
+
 // ── 2. Out for Delivery — delivery orders only ───────────────────────────────
 
 export async function sendOutForDeliveryEmail(

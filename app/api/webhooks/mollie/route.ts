@@ -21,6 +21,13 @@ import {
   updateOrderStatus,
 } from "@/lib/supabase/queries";
 import { createServiceRoleClient } from "@/lib/supabase/server";
+import {
+  sendPaymentPendingEmail,
+  sendPaymentConfirmedEmail,
+  sendPaymentFailedEmail,
+  type MollieFailureReason,
+} from "@/lib/email";
+import { getOrderById } from "@/lib/supabase/queries";
 
 export async function POST(req: Request) {
   try {
