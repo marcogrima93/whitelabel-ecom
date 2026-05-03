@@ -313,11 +313,18 @@ export default function AdminCustomersClient({
                             {formatPrice(Number(order.total), siteConfig.currency.code, siteConfig.currency.locale)}
                           </span>
                           <Badge variant={
-                            order.status === "DELIVERED" ? "success" :
+                            order.status === "DELIVERED" || order.status === "COLLECTED" ? "success" :
                             order.status === "CANCELLED" ? "destructive" :
-                            order.status === "PENDING" ? "warning" : "secondary"
+                            order.status === "PENDING" ? "warning" :
+                            order.status === "PAYMENT_PENDING" ? "secondary" : "outline"
                           }>
-                            {order.status}
+                            {order.status === "PAYMENT_PENDING" ? "Payment Pending" :
+                             order.status === "PENDING" ? "Paid" :
+                             order.status === "OUT_FOR_DELIVERY" ? "Out for Delivery" :
+                             order.status === "READY_FOR_COLLECTION" ? "Ready for Collection" :
+                             order.status === "DELIVERED" ? "Delivered" :
+                             order.status === "COLLECTED" ? "Collected" :
+                             order.status === "CANCELLED" ? "Cancelled" : order.status}
                           </Badge>
                         </div>
                       </div>

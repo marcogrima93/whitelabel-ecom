@@ -23,6 +23,7 @@ const statusVariant = (status: string) => {
     case "COLLECTED":            return "success" as const;
     case "OUT_FOR_DELIVERY":
     case "READY_FOR_COLLECTION": return "default" as const;
+    case "PAYMENT_PENDING":      return "secondary" as const;
     case "PENDING":              return "warning" as const;
     case "CANCELLED":            return "destructive" as const;
     default:                     return "outline" as const;
@@ -31,7 +32,8 @@ const statusVariant = (status: string) => {
 
 function getStatusLabel(status: string, _deliveryMethod: string): string {
   switch (status) {
-    case "PENDING":              return "Pending";
+    case "PAYMENT_PENDING":      return "Payment Pending";
+    case "PENDING":              return "Paid";
     case "OUT_FOR_DELIVERY":     return "Out for Delivery";
     case "DELIVERED":            return "Delivered";
     case "READY_FOR_COLLECTION": return "Ready for Collection";

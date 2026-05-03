@@ -42,6 +42,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 
 type OrderStatus =
+  | "PAYMENT_PENDING"
   | "PENDING"
   | "OUT_FOR_DELIVERY"
   | "DELIVERED"
@@ -76,25 +77,27 @@ function OrderItemStockBadge({ status }: { status: string }) {
 // Human-readable label for any status + delivery method combination
 function getStatusLabel(status: OrderStatus, deliveryMethod: string): string {
   switch (status) {
-    case "PENDING":             return "Pending";
-    case "OUT_FOR_DELIVERY":    return "Out for Delivery";
-    case "DELIVERED":           return "Delivered";
+    case "PAYMENT_PENDING":      return "Payment Pending";
+    case "PENDING":              return "Paid";
+    case "OUT_FOR_DELIVERY":     return "Out for Delivery";
+    case "DELIVERED":            return "Delivered";
     case "READY_FOR_COLLECTION": return "Ready for Collection";
-    case "COLLECTED":           return "Collected";
-    case "CANCELLED":           return "Cancelled";
-    default:                    return status;
+    case "COLLECTED":            return "Collected";
+    case "CANCELLED":            return "Cancelled";
+    default:                     return status;
   }
 }
 
 const statusVariant = (status: OrderStatus) => {
   switch (status) {
     case "DELIVERED":
-    case "COLLECTED":           return "success" as const;
+    case "COLLECTED":            return "success" as const;
     case "OUT_FOR_DELIVERY":
     case "READY_FOR_COLLECTION": return "default" as const;
-    case "PENDING":             return "warning" as const;
-    case "CANCELLED":           return "destructive" as const;
-    default:                    return "outline" as const;
+    case "PAYMENT_PENDING":      return "secondary" as const;
+    case "PENDING":              return "warning" as const;
+    case "CANCELLED":            return "destructive" as const;
+    default:                     return "outline" as const;
   }
 };
 
@@ -106,14 +109,16 @@ const isTerminal = (status: OrderStatus) => TERMINAL_STATUSES.includes(status);
 function statusOptionsFor(deliveryMethod: string): { value: OrderStatus; label: string }[] {
   if (deliveryMethod === "COLLECTION") {
     return [
-      { value: "PENDING",              label: "Pending" },
+      { value: "PAYMENT_PENDING",      label: "Payment Pending" },
+      { value: "PENDING",              label: "Paid" },
       { value: "READY_FOR_COLLECTION", label: "Ready for Collection" },
       { value: "COLLECTED",            label: "Collected" },
       { value: "CANCELLED",            label: "Cancelled" },
     ];
   }
   return [
-    { value: "PENDING",          label: "Pending" },
+    { value: "PAYMENT_PENDING",  label: "Payment Pending" },
+    { value: "PENDING",          label: "Paid" },
     { value: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
     { value: "DELIVERED",        label: "Delivered" },
     { value: "CANCELLED",        label: "Cancelled" },
@@ -273,7 +278,8 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="PAYMENT_PENDING">Payment Pending</SelectItem>
+            <SelectItem value="PENDING">Paid</SelectItem>
             <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
             <SelectItem value="DELIVERED">Delivered</SelectItem>
             <SelectItem value="READY_FOR_COLLECTION">Ready for Collection</SelectItem>
