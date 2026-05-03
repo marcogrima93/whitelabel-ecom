@@ -319,7 +319,7 @@ export default function AdminCustomersClient({
                             order.status === "PAYMENT_PENDING" ? "secondary" : "outline"
                           }>
                             {order.status === "PAYMENT_PENDING" ? "Payment Pending" :
-                             order.status === "PENDING" ? "Pending" :
+                             order.status === "PENDING" ? "Paid" :
                              order.status === "OUT_FOR_DELIVERY" ? "Out for Delivery" :
                              order.status === "READY_FOR_COLLECTION" ? "Ready for Collection" :
                              order.status === "DELIVERED" ? "Delivered" :

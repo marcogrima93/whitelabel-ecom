@@ -29,6 +29,11 @@ import {
 } from "@/lib/email";
 import { getOrderById } from "@/lib/supabase/queries";
 
+// Helper: fetch order with its items (needed for email templates)
+async function getOrderWithItems(orderId: string) {
+  return getOrderById(orderId);
+}
+
 export async function POST(req: Request) {
   try {
     // Mollie sends application/x-www-form-urlencoded: id=tr_xxxx
@@ -74,32 +79,57 @@ export async function POST(req: Request) {
        */
       case "open":
       case "pending": {
-        if (order.status !== "PAYMENT_PENDING") {
+        // Only send the payment-pending email on first transition (avoid duplicate emails on retries)
+        const wasAlreadyPending = order.status === "PAYMENT_PENDING";
+        if (!wasAlreadyPending) {
           await updateOrderStatus(order.id, "PAYMENT_PENDING");
+          // Email customer that their payment is pending and we'll notify them when settled
+          try {
+            const orderWithItems = await getOrderWithItems(order.id);
+            if (orderWithItems) {
+              await sendPaymentPendingEmail(orderWithItems, orderWithItems.items);
+            }
+          } catch (emailErr) {
+            console.error("[mollie webhook] Failed to send payment-pending email:", emailErr);
+          }
         }
-        console.log(`[mollie webhook] Order ${orderNumber} set to PAYMENT_PENDING (mollie: ${payment.status})`);
+        console.log(`[mollie webhook] Order ${orderNumber} → PAYMENT_PENDING (mollie: ${payment.status})`);
         break;
       }
 
       /**
        * AUTHORIZED — card/Klarna authorised, awaiting capture (money guaranteed).
        * PAID       — payment fully settled.
-       * Both → PENDING (ready for admin to fulfil).
+       * Both → PENDING (labelled "Paid" in the UI — ready for admin to fulfil).
+       * If transitioning from PAYMENT_PENDING, send a "payment confirmed" email.
        */
       case "authorized":
       case "paid": {
+        const wasPaymentPending = order.status === "PAYMENT_PENDING";
         if (order.status !== "PENDING") {
           await updateOrderStatus(order.id, "PENDING");
+          // If order was previously PAYMENT_PENDING, send "payment confirmed" email
+          // For direct card payments the confirmation email is sent at order creation
+          if (wasPaymentPending) {
+            try {
+              const orderWithItems = await getOrderWithItems(order.id);
+              if (orderWithItems) {
+                await sendPaymentConfirmedEmail(orderWithItems, orderWithItems.items);
+              }
+            } catch (emailErr) {
+              console.error("[mollie webhook] Failed to send payment-confirmed email:", emailErr);
+            }
+          }
         }
-        console.log(`[mollie webhook] Order ${orderNumber} set to PENDING — payment ${payment.status} (${paymentId})`);
+        console.log(`[mollie webhook] Order ${orderNumber} → PENDING/PAID — payment ${payment.status} (${paymentId})`);
         break;
       }
 
       /**
        * CANCELED — customer cancelled. Definitive.
        * EXPIRED  — timed out. Definitive.
-       * FAILED   — no retry possible. Definitive.
-       * Guard against double-writes — only cancel if not already in a terminal state.
+       * FAILED   — payment failed, no retry. Definitive.
+       * Guard against double-writes; send a reason-specific cancellation email.
        */
       case "canceled":
       case "expired":
@@ -107,8 +137,21 @@ export async function POST(req: Request) {
         const nonTerminal: string[] = ["PENDING", "PAYMENT_PENDING"];
         if (nonTerminal.includes(order.status)) {
           await updateOrderStatus(order.id, "CANCELLED");
+          // Email customer with a reason-specific message
+          try {
+            const orderWithItems = await getOrderWithItems(order.id);
+            if (orderWithItems) {
+              await sendPaymentFailedEmail(
+                orderWithItems,
+                orderWithItems.items,
+                payment.status as MollieFailureReason
+              );
+            }
+          } catch (emailErr) {
+            console.error("[mollie webhook] Failed to send payment-failed email:", emailErr);
+          }
         }
-        console.log(`[mollie webhook] Order ${orderNumber} CANCELLED (mollie: ${payment.status})`);
+        console.log(`[mollie webhook] Order ${orderNumber} → CANCELLED (mollie: ${payment.status})`);
         break;
       }
 

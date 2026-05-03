@@ -3,6 +3,7 @@
 import { updateOrderStatus, updateOrderNotes, updateOrderDeliverySlot, getOrderById } from "@/lib/supabase/queries";
 import {
   sendOrderConfirmationEmail,
+  sendPaymentPendingEmail,
   sendOutForDeliveryEmail,
   sendReadyForCollectionEmail,
   sendReceiptEmail,
@@ -82,7 +83,11 @@ export async function resendOrderEmailAction(orderId: string): Promise<boolean> 
   try {
     switch (order.status) {
       case "PAYMENT_PENDING":
+        // Re-send the "payment pending, we'll notify you" email
+        await sendPaymentPendingEmail(order, items);
+        break;
       case "PENDING":
+        // PENDING = paid — resend the order confirmation
         await sendOrderConfirmationEmail(order, items);
         break;
       case "OUT_FOR_DELIVERY":

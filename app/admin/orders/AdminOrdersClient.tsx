@@ -78,7 +78,7 @@ function OrderItemStockBadge({ status }: { status: string }) {
 function getStatusLabel(status: OrderStatus, deliveryMethod: string): string {
   switch (status) {
     case "PAYMENT_PENDING":      return "Payment Pending";
-    case "PENDING":              return "Pending";
+    case "PENDING":              return "Paid";
     case "OUT_FOR_DELIVERY":     return "Out for Delivery";
     case "DELIVERED":            return "Delivered";
     case "READY_FOR_COLLECTION": return "Ready for Collection";
@@ -110,7 +110,7 @@ function statusOptionsFor(deliveryMethod: string): { value: OrderStatus; label: 
   if (deliveryMethod === "COLLECTION") {
     return [
       { value: "PAYMENT_PENDING",      label: "Payment Pending" },
-      { value: "PENDING",              label: "Pending" },
+      { value: "PENDING",              label: "Paid" },
       { value: "READY_FOR_COLLECTION", label: "Ready for Collection" },
       { value: "COLLECTED",            label: "Collected" },
       { value: "CANCELLED",            label: "Cancelled" },
@@ -118,7 +118,7 @@ function statusOptionsFor(deliveryMethod: string): { value: OrderStatus; label: 
   }
   return [
     { value: "PAYMENT_PENDING",  label: "Payment Pending" },
-    { value: "PENDING",          label: "Pending" },
+    { value: "PENDING",          label: "Paid" },
     { value: "OUT_FOR_DELIVERY", label: "Out for Delivery" },
     { value: "DELIVERED",        label: "Delivered" },
     { value: "CANCELLED",        label: "Cancelled" },
@@ -279,7 +279,7 @@ export default function AdminOrdersClient({ initialOrders }: { initialOrders: Or
           <SelectContent>
             <SelectItem value="all">All Statuses</SelectItem>
             <SelectItem value="PAYMENT_PENDING">Payment Pending</SelectItem>
-            <SelectItem value="PENDING">Pending</SelectItem>
+            <SelectItem value="PENDING">Paid</SelectItem>
             <SelectItem value="OUT_FOR_DELIVERY">Out for Delivery</SelectItem>
             <SelectItem value="DELIVERED">Delivered</SelectItem>
             <SelectItem value="READY_FOR_COLLECTION">Ready for Collection</SelectItem>

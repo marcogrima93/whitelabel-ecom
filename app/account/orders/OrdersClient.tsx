@@ -33,7 +33,7 @@ const statusVariant = (status: string) => {
 function getStatusLabel(status: string, _deliveryMethod: string): string {
   switch (status) {
     case "PAYMENT_PENDING":      return "Payment Pending";
-    case "PENDING":              return "Pending";
+    case "PENDING":              return "Paid";
     case "OUT_FOR_DELIVERY":     return "Out for Delivery";
     case "DELIVERED":            return "Delivered";
     case "READY_FOR_COLLECTION": return "Ready for Collection";
